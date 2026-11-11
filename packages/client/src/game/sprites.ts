@@ -440,6 +440,17 @@ export interface Decor {
 }
 let decor: Decor | null = null;
 
+/**
+ * Oublie toutes les images en mémoire : elles seront redessinées à la demande.
+ * Nécessaire au retour d'arrière-plan sur téléphone, où le navigateur peut avoir vidé les images mises de côté.
+ */
+export function resetSprites(): void {
+  fishCache.clear();
+  shadowCache.clear();
+  boatCache.clear();
+  decor = null;
+}
+
 export function getDecor(): Decor {
   if (decor) return decor;
   const pineRows = ['.....d.....', '....dDd....', '....DDD....', '...dDDDd...', '...DDDDD...', '..dDDDDDd..', '...DDDDD...', '..dDDDDDd..', '.dDDDDDDDd.', '..DDDDDDD..', '.dDDDDDDDd.', 'dDDDDDDDDDd', '.....t.....', '.....t.....', '....sts....', '...sssss...'];

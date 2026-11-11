@@ -1,11 +1,13 @@
 // Sons synthétisés avec WebAudio : aucun fichier audio. Désactivable dans les réglages.
 //
-// Parti pris sonore : présent mais jamais agressif. Des attaques nettes sans « clic », des timbres
-// de cloche et de métal plutôt que des bips, et un coup critique percussif qui monte d'un demi-ton
-// à chaque coup enchaîné.
+// Parti pris sonore : musical et gratifiant. Les coups du combat sont joués sur un instrument à
+// lames (type marimba / glockenspiel) accordé en ré majeur. Chaque coup critique enchaîné joue la
+// note suivante d'une gamme qui monte : une série devient une petite mélodie, avec de plus en plus
+// d'harmonie, et un accord égrené tous les 5 coups. Un écho léger donne de l'ampleur.
 
 let ctx: BaseAudioContext | null = null;
 let master: GainNode | null = null;
+let echo: GainNode | null = null;
 let ambient: GainNode | null = null;
 let noiseData: AudioBuffer | null = null;
 let enabled = true;
@@ -20,7 +22,7 @@ export function setSound(on: boolean): void {
 /** À appeler sur un geste de l'utilisateur (règle des navigateurs). */
 export function unlockAudio(): void {
   if (ctx) {
-    if (ctx.state === 'suspended' && 'resume' in ctx) void (ctx as AudioContext).resume();
+    if (ctx.state === 'suspended' && 'resume' in ctx && !document.hidden) void (ctx as AudioContext).resume();
     return;
   }
   const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
@@ -35,7 +37,21 @@ export function unlockAudio(): void {
   tame.Q.value = 0.3;
   master.connect(tame).connect(ctx.destination);
 
-  // Deux secondes de bruit, générées une fois et réutilisées par tous les sons « d'eau » et de grelot.
+  // Écho : une répétition douce et assourdie, qui s'éteint en trois ou quatre rebonds.
+  echo = ctx.createGain();
+  const delay = ctx.createDelay(1);
+  delay.delayTime.value = 0.19;
+  const damp = ctx.createBiquadFilter();
+  damp.type = 'lowpass';
+  damp.frequency.value = 2600;
+  const feedback = ctx.createGain();
+  feedback.gain.value = 0.36;
+  const wet = ctx.createGain();
+  wet.gain.value = 0.32;
+  echo.connect(delay).connect(damp).connect(wet).connect(master);
+  damp.connect(feedback).connect(delay);
+
+  // Deux secondes de bruit, générées une fois et réutilisées par tous les sons « d'eau ».
   noiseData = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
   const d = noiseData.getChannelData(0);
   for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
@@ -60,6 +76,14 @@ export function unlockAudio(): void {
   lfo.start();
 }
 
+/** Coupe tout le son quand le jeu passe en arrière-plan (changement d'application, onglet caché), le rétablit au retour. */
+export function pauseAudio(paused: boolean): void {
+  if (!ctx || !('suspend' in ctx)) return;
+  const ac = ctx as AudioContext;
+  if (paused) void ac.suspend();
+  else if (ac.state !== 'running') void ac.resume();
+}
+
 /** Pluie et orage renforcent l'ambiance. */
 export function setAmbience(level: number): void {
   if (ambient && ctx) ambient.gain.setTargetAtTime(0.04 + level * 0.07, ctx.currentTime, 1);
@@ -72,6 +96,8 @@ interface NoteOpts {
   /** Glissement de hauteur sur la durée de la note, en Hz (négatif = descend). */
   slide?: number;
   attack?: number;
+  /** Part du son envoyée dans l'écho (0 = aucun). */
+  echo?: number;
 }
 
 /** Une note : montée courte (jamais instantanée, pour éviter le « clic »), puis extinction. */
@@ -88,11 +114,16 @@ function note(freq: number, dur: number, o: NoteOpts = {}): void {
   g.gain.linearRampToValueAtTime(o.vol ?? 0.07, t + attack);
   g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
   osc.connect(g).connect(master);
+  if (o.echo && echo) {
+    const send = ctx.createGain();
+    send.gain.value = o.echo;
+    g.connect(send).connect(echo);
+  }
   osc.start(t);
   osc.stop(t + dur + 0.03);
 }
 
-/** Un souffle de bruit filtré : éclaboussure, vent, grondement. */
+/** Un souffle de bruit filtré : éclaboussure, vent, grondement, scintillement. */
 function wash(dur: number, freq: number, vol: number, type: BiquadFilterType = 'lowpass', attack = 0.02, delay = 0): void {
   if (!ctx || !master || !enabled || !noiseData) return;
   const t = ctx.currentTime + delay;
@@ -111,75 +142,67 @@ function wash(dur: number, freq: number, vol: number, type: BiquadFilterType = '
   src.stop(t + dur + 0.03);
 }
 
-/** Grelot : une bande de bruit médium dont le volume vibre vite, comme une bille dans une bombe qu'on secoue. */
-function rattle(dur: number, freq: number, vol: number, rate: number, delay = 0): void {
-  if (!ctx || !master || !enabled || !noiseData) return;
-  const t = ctx.currentTime + delay;
-  const src = ctx.createBufferSource();
-  src.buffer = noiseData;
-  const f = ctx.createBiquadFilter();
-  f.type = 'bandpass';
-  f.frequency.value = freq;
-  f.Q.value = 0.9;
-  const env = ctx.createGain();
-  env.gain.setValueAtTime(0.0001, t);
-  env.gain.linearRampToValueAtTime(vol, t + 0.006);
-  env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  const trem = ctx.createGain();
-  trem.gain.value = 0.55;
-  const lfo = ctx.createOscillator();
-  lfo.type = 'triangle';
-  lfo.frequency.value = rate;
-  const depth = ctx.createGain();
-  depth.gain.value = 0.45;
-  lfo.connect(depth).connect(trem.gain);
-  src.connect(f).connect(env).connect(trem).connect(master);
-  src.start(t, Math.random() * (2 - dur - 0.05));
-  src.stop(t + dur + 0.03);
-  lfo.start(t);
-  lfo.stop(t + dur + 0.03);
-}
-
 /** Cloche : fondamentale, octave en triangle (présence) et un partiel aigu bref (éclat). */
-function bell(freq: number, dur: number, vol: number, delay = 0): void {
-  note(freq, dur, { vol, delay });
+function bell(freq: number, dur: number, vol: number, delay = 0, echoSend = 0): void {
+  note(freq, dur, { vol, delay, echo: echoSend });
   note(freq * 2, dur * 0.6, { type: 'triangle', vol: vol * 0.35, delay });
   note(freq * 3.01, dur * 0.3, { vol: vol * 0.12, delay });
 }
 
+/** Lame frappée (marimba / glockenspiel) : attaque franche, corps rond, harmoniques qui s'éteignent vite. */
+function mallet(freq: number, dur: number, vol: number, delay = 0, echoSend = 0.5): void {
+  note(freq, dur, { vol, delay, attack: 0.003, echo: echoSend });
+  note(freq * 2, dur * 0.55, { vol: vol * 0.42, delay, attack: 0.003, echo: echoSend * 0.5 });
+  note(freq * 3, dur * 0.3, { vol: vol * 0.2, delay, attack: 0.003 });
+  note(freq * 4.02, dur * 0.18, { type: 'triangle', vol: vol * 0.1, delay, attack: 0.002 });
+}
+
 const semitones = (n: number): number => Math.pow(2, n / 12);
-const STRIKE_BASE = 147; // ré grave : la note du premier coup
+const RE = 293.66; // ré : la tonique du jeu
+
+// La mélodie des séries : la gamme pentatonique de ré majeur, sur deux octaves et demie.
+// Chaque critique enchaîné joue la marche suivante. Aucune fausse note possible : toutes sonnent bien ensemble.
+const LADDER = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24, 26, 28, 31];
+// Une fois en haut, la série tourne sur les trois dernières marches au lieu de monter dans le suraigu.
+const TOP = [28, 31, 26];
+
+function ladder(streak: number): number {
+  const i = Math.max(streak, 1) - 1;
+  return i < LADDER.length ? LADDER[i] : TOP[(i - LADDER.length) % TOP.length];
+}
 
 /**
- * Frappe métallique du combat. `power` 0 = coup simple ; 1, 2, 3... = longueur de la série de critiques.
- * Chaque critique enchaîné monte d'un demi-ton (une octave au plus), devient un peu plus court et plus brillant.
- * Composition : un coup sourd, un corps métallique (partiels non harmoniques), un grelot et un tintement aigu.
+ * Coup critique. `streak` = nombre de critiques enchaînés (1 pour le premier).
+ * - la note monte d'une marche à chaque coup ;
+ * - à partir de 2, une quinte l'accompagne ; à partir de 4, l'octave scintille au-dessus ;
+ * - tous les 5 coups, un accord égrené et un souffle brillant saluent la série.
+ * Le tout repose sur un coup sourd, pour la sensation d'impact.
  */
-function strike(power: number): void {
-  const step = Math.min(Math.max(power, 1), 13) - 1;
-  const k = semitones(step);
-  const f0 = STRIKE_BASE * k;
-  const lift = Math.min(step, 8);
-  const dur = 0.68 * (1 - 0.025 * lift);
-  const gain = 1 + 0.03 * lift;
-  const crit = power >= 1;
+function crit(streak: number): void {
+  const f = RE * semitones(ladder(streak));
+  const lift = Math.min(Math.max(streak, 1) - 1, 8);
+  const vol = 0.17 + lift * 0.008;
+  // Impact.
+  note(120, 0.16, { vol: 0.17, attack: 0.003, slide: -55 });
+  wash(0.05, 5200, 0.035, 'highpass', 0.002);
+  // La note de la mélodie.
+  mallet(f, 0.75, vol);
+  // L'harmonie s'épaissit avec la série.
+  if (streak >= 2) mallet(f * 1.5, 0.55, vol * 0.3, 0.012, 0.3);
+  if (streak >= 4) note(f * 2, 0.6, { vol: vol * 0.28, delay: 0.07, attack: 0.004, echo: 0.6 });
+  if (streak >= 7) note(f * 4, 0.45, { type: 'triangle', vol: 0.022, delay: 0.13, echo: 0.6 });
+  // Palier : accord de ré majeur égrené vers l'aigu, puis un souffle brillant.
+  if (streak >= 5 && streak % 5 === 0) {
+    [0, 4, 7, 12, 16].forEach((st, i) => mallet(f * semitones(st), 0.6, 0.085, 0.11 + i * 0.055, 0.6));
+    wash(0.55, 6000, 0.045, 'highpass', 0.05, 0.12);
+  }
+}
 
-  // 1. Le coup : une basse courte qui descend.
-  note(f0, dur * 0.9, { vol: (crit ? 0.2 : 0.14) * gain, attack: 0.004, slide: -f0 * 0.25 });
-  note(f0 * 2.02, dur * 0.5, { vol: 0.07, attack: 0.004 });
-  // 2. Le grelot médium.
-  rattle(dur * (crit ? 0.85 : 0.45), 1500 * Math.sqrt(k), (crit ? 0.075 : 0.045) * gain, 34 + step * 2);
-  // 3. Le tic d'attaque.
-  wash(0.04, 3500, crit ? 0.06 : 0.035, 'highpass', 0.002);
-  if (!crit) return;
-  // 4. Le corps métallique : rapports de fréquence d'une barre de métal, donc ni accord ni mélodie.
-  note(f0 * 2.76, dur * 0.8, { vol: 0.06 * gain, attack: 0.004 });
-  note(f0 * 5.4, dur * 0.6, { vol: 0.05 * gain, attack: 0.004 });
-  note(f0 * 8.93, dur * 0.45, { vol: 0.035 * gain, attack: 0.004 });
-  // 5. Le tintement aigu, qui enfle puis s'éteint.
-  note(f0 * 16, dur, { vol: 0.05 * gain, attack: 0.05 });
-  // Paliers : tous les 5 critiques d'affilée, une courte cascade montante salue la série.
-  if (power >= 5 && power % 5 === 0) [4, 7, 12].forEach((st, i) => bell(f0 * 4 * semitones(st), 0.3, 0.05, 0.1 + i * 0.07));
+/** Coup simple : la même lame, une octave plus bas, sèche et sans harmonie. On entend la différence avec un critique. */
+function hit(): void {
+  note(110, 0.14, { vol: 0.14, attack: 0.003, slide: -50 });
+  mallet(RE / 2, 0.38, 0.15, 0, 0.2);
+  wash(0.04, 3000, 0.025, 'highpass', 0.002);
 }
 
 export type Sfx = 'click' | 'cast' | 'splash' | 'nibble' | 'bite' | 'hit' | 'crit' | 'miss' | 'win' | 'lose' | 'coin' | 'alarm' | 'crash' | 'thunder' | 'port';
@@ -200,24 +223,29 @@ export function sfx(name: Sfx, level = 1): void {
     case 'bite':
       // Signal de jeu : net et reconnaissable. Deux cloches montantes et un remous.
       bell(659.25, 0.3, 0.18);
-      bell(880, 0.45, 0.2, 0.1);
+      bell(880, 0.45, 0.2, 0.1, 0.4);
       return wash(0.32, 1100, 0.16, 'lowpass', 0.008);
     case 'hit':
-      return strike(0);
+      return hit();
     case 'crit':
-      return strike(Math.max(1, level));
+      return crit(Math.max(1, level));
     case 'miss':
-      note(150, 0.28, { type: 'triangle', vol: 0.15, slide: -60 });
-      return wash(0.18, 420, 0.09);
+      // La série se brise : deux notes qui retombent, et un choc mat.
+      mallet(RE * semitones(-5), 0.3, 0.1, 0, 0.2);
+      mallet(RE * semitones(-9), 0.42, 0.1, 0.09, 0.2);
+      note(140, 0.26, { type: 'triangle', vol: 0.12, slide: -60 });
+      return wash(0.18, 420, 0.08);
     case 'win':
-      [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => bell(f, 0.6, 0.12, i * 0.12));
-      return;
+      // Capture : la gamme remonte et se pose sur l'accord.
+      [0, 4, 7, 12].forEach((st, i) => mallet(RE * semitones(st), 0.6, 0.13, i * 0.11, 0.5));
+      [12, 16, 19].forEach((st) => mallet(RE * semitones(st), 1.1, 0.1, 0.5, 0.6));
+      return wash(0.7, 6000, 0.04, 'highpass', 0.06, 0.5);
     case 'lose':
-      note(392, 0.5, { type: 'triangle', vol: 0.12 });
-      return note(293.66, 0.7, { type: 'triangle', vol: 0.12, delay: 0.22 });
+      mallet(RE * semitones(3), 0.5, 0.12, 0, 0.4);
+      return mallet(RE * semitones(-2), 0.8, 0.12, 0.22, 0.4);
     case 'coin':
-      bell(987.77, 0.22, 0.125);
-      return bell(1318.5, 0.4, 0.125, 0.08);
+      bell(987.77, 0.22, 0.125, 0, 0.3);
+      return bell(1318.5, 0.4, 0.125, 0.08, 0.4);
     case 'alarm':
       for (const delay of [0, 0.34]) {
         note(240, 0.3, { type: 'triangle', vol: 0.15, attack: 0.02, delay });
@@ -230,7 +258,7 @@ export function sfx(name: Sfx, level = 1): void {
     case 'thunder':
       return wash(1.9, 220, 0.8, 'lowpass', 0.12);
     case 'port':
-      [392, 493.88, 587.33].forEach((f, i) => note(f, 0.5, { type: 'triangle', vol: 0.075, delay: i * 0.07, attack: 0.02 }));
+      [0, 4, 7].forEach((st, i) => mallet(RE * semitones(st), 0.6, 0.085, i * 0.08, 0.4));
       return;
   }
 }

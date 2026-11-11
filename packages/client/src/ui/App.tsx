@@ -42,7 +42,7 @@ function Login() {
         </form>
       )}
       <p className="small">Votre progression est sauvegardée sur votre compte Discord.</p>
-      {BASE && <a className="back" href="/">← Retour au site</a>}
+      {BASE && <a className="back" href="/">Retour au site</a>}
     </div>
   );
 }
@@ -51,7 +51,15 @@ function Toasts() {
   const toasts = useStore((s) => s.toasts);
   return (
     <div className="toasts" aria-live="polite">
-      {toasts.map((t) => <div key={t.id} className="toast">{t.text}</div>)}
+      {toasts.map((t) => {
+        // « Trophée débloqué : Première prise » : l'intitulé en capitales, le détail en clair.
+        const cut = t.text.indexOf(' : ');
+        return (
+          <div key={t.id} className="toast">
+            {cut > 0 && cut < 40 ? <><b>{t.text.slice(0, cut)}</b><span>{t.text.slice(cut + 3)}</span></> : <span>{t.text}</span>}
+          </div>
+        );
+      })}
     </div>
   );
 }

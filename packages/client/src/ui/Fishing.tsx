@@ -2,8 +2,8 @@ import { useEffect, useRef } from 'react';
 import { RARITY_COLORS, SILHOUETTE_NAMES, bulkOf } from '../../../shared/src/index';
 import { useStore, setState } from '../store';
 import { sfx } from '../game/audio';
-import { comboColor, comboTier } from '../game/combo';
-import { rt, FishIcon, Rarity, Tags, speciesOf, fmt, fmtKg, fmtLen } from './common';
+import { comboColor, comboTier, comboWord } from '../game/combo';
+import { rt, Coins, FishIcon, Rarity, Tags, speciesOf, fmtKg, fmtLen } from './common';
 
 /** Jauge de combat : mise à jour image par image directement dans le DOM (pas de rendu React à 60 Hz). */
 function Gauge() {
@@ -17,6 +17,7 @@ function Gauge() {
   const count = useRef<HTMLDivElement>(null);
   const combo = useRef<HTMLDivElement>(null);
   const comboNum = useRef<HTMLElement>(null);
+  const comboLabel = useRef<HTMLElement>(null);
   useEffect(() => {
     let raf = 0;
     let lastPop = 0;
@@ -52,6 +53,7 @@ function Gauge() {
           box.style.setProperty('--combo', color);
           box.style.setProperty('--lvl', String(tier));
           comboNum.current!.textContent = `×${f.combo.n}`;
+          comboLabel.current!.textContent = comboWord(f.combo.n);
           box.classList.add('on');
           if (f.combo.at !== lastPop) {
             lastPop = f.combo.at;
@@ -61,7 +63,7 @@ function Gauge() {
         } else box.classList.remove('on');
 
         const left = f.fightT0 - performance.now();
-        count.current!.textContent = left > 0 ? (left > 700 ? 'Prêt…' : 'Combattez !') : c.rush > 0 ? '⚠ Il s’emballe !' : c.warn ? '⚠ Attention…' : '';
+        count.current!.textContent = left > 0 ? (left > 700 ? 'Prêt…' : 'Combattez !') : c.rush > 0 ? 'Il s’emballe !' : c.warn ? 'Attention…' : '';
         const fl = f.flash;
         const age = fl ? performance.now() - fl.at : 9999;
         const el = flash.current!;
@@ -80,14 +82,14 @@ function Gauge() {
     <div className="fight">
       <div className="combo" ref={combo} aria-hidden="true">
         <b ref={comboNum} />
-        <small>COMBO</small>
+        <small ref={comboLabel} />
       </div>
       <div className="flash" ref={flash} />
       <div className="count" ref={count} />
       <div className="meters">
-        <label>🐟 Fatigue du poisson</label>
+        <label>Fatigue du poisson</label>
         <div className="bar"><div ref={fishBar} style={{ background: '#5cc8ff' }} /></div>
-        <label>🧵 Résistance de la ligne</label>
+        <label>Résistance de la ligne</label>
         <div className="bar"><div ref={lineBar} /></div>
       </div>
       <div className="gauge" ref={wrap}>
@@ -120,7 +122,7 @@ export function FishingOverlay() {
           </p>
           <div className="row">
             <button className={`big ${stage === 'bitten' ? 'pulse' : ''}`} disabled={stage === 'casting' || stage === 'hooking'} onClick={() => rt.game?.action()}>
-              🎣 Ferrer <kbd>Espace</kbd>
+              Ferrer <kbd>Espace</kbd>
             </button>
             <button disabled={stage === 'hooking'} onClick={() => void rt.game?.reelIn()}>Remonter la ligne</button>
           </div>
@@ -160,18 +162,18 @@ export function ResultModal() {
           <>
             <h2 style={{ color: RARITY_COLORS[speciesOf(f).rarity] }}>Capture !</h2>
             <div className="showcase"><FishIcon sp={speciesOf(f)} color={f.color} scale={4} animate /></div>
-            <h3>{speciesOf(f).name}</h3>
+            <h3 className="species">{speciesOf(f).name}</h3>
             <p className="tags"><Rarity r={speciesOf(f).rarity} /> <Tags f={f} /></p>
             <p className="badges">
-              {r.first && <span className="tag green">✨ Nouvelle espèce !</span>}
-              {r.record && <span className="tag gold">🏅 Nouveau record de poids !</span>}
+              {r.first && <span className="tag green">Nouvelle espèce</span>}
+              {r.record && <span className="tag gold">Record de poids</span>}
             </p>
-            <table className="facts">
-              <tbody>
-                <tr><th>Poids</th><td>{fmtKg(f.kg)}</td><th>Longueur</th><td>{fmtLen(f.len)}</td></tr>
-                <tr><th>Valeur</th><td>🪙 {fmt(f.value)}</td><th>Encombrement</th><td>{bulkOf(f.kg)} unités</td></tr>
-              </tbody>
-            </table>
+            <dl className="facts">
+              <div><dt>Poids</dt><dd>{fmtKg(f.kg)}</dd></div>
+              <div><dt>Longueur</dt><dd>{fmtLen(f.len)}</dd></div>
+              <div><dt>Valeur</dt><dd><Coins n={f.value} /></dd></div>
+              <div><dt>Encombrement</dt><dd>{bulkOf(f.kg)} unités</dd></div>
+            </dl>
             <p className="desc">{speciesOf(f).desc}</p>
             {r.stored ? <p className="ok">Rangé dans la cale.</p> : <p className="warn">Cale pleine : relâché après la photo (le bestiaire en garde la trace).</p>}
           </>
@@ -182,7 +184,14 @@ export function ResultModal() {
             <p className="desc">Astuce : chaque échec tend fortement la ligne. Mieux vaut laisser passer un tour que frapper hors zone.</p>
           </>
         )}
-        {r.stats && <p className="small">Coups critiques {r.stats.crits} · réussis {r.stats.hits} · ratés {r.stats.misses} · {r.stats.seconds.toFixed(1)} s</p>}
+        {r.stats && (
+          <dl className="facts tally">
+            <div><dt>Critiques</dt><dd>{r.stats.crits}</dd></div>
+            <div><dt>Réussis</dt><dd>{r.stats.hits}</dd></div>
+            <div><dt>Ratés</dt><dd>{r.stats.misses}</dd></div>
+            <div><dt>Durée</dt><dd>{r.stats.seconds.toFixed(1).replace('.', ',')} s</dd></div>
+          </dl>
+        )}
         <button className="big" onClick={close}>Continuer</button>
       </div>
     </div>

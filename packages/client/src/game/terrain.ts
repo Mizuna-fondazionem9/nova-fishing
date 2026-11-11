@@ -65,6 +65,22 @@ export class Terrain {
     return this.chunks.size;
   }
 
+  /** Oublie les images des chunks (pas les données de terrain) : ils seront redessinés autour de la caméra. */
+  clearImages(): void {
+    this.chunks.clear();
+  }
+
+  /** Vrai si une image de chunk a été vidée par le navigateur (contexte graphique perdu). */
+  imagesLost(): boolean {
+    for (const c of this.chunks.values()) {
+      const ctx = c.canvas.getContext('2d');
+      if (!ctx || (ctx as CanvasRenderingContext2D & { isContextLost?: () => boolean }).isContextLost?.()) return true;
+      // Un chunk est entièrement opaque : un pixel transparent en son centre signifie qu'il a été effacé.
+      return ctx.getImageData(c.canvas.width >> 1, c.canvas.height >> 1, 1, 1).data[3] === 0;
+    }
+    return false;
+  }
+
   /** Vrai si la tuile est de la terre. Cache léger, utilisable loin de l'écran (recherche de chemin). */
   isLand = (tx: number, ty: number): boolean => {
     const cx = Math.floor(tx / CHUNK);

@@ -312,7 +312,7 @@ async function main(): Promise<void> {
     await p.waitForTimeout(400);
     await p.screenshot({ path: `${SHOTS}/04-bestiaire.png` });
     await p.click('.spcard:not(.unknown)');
-    await p.waitForSelector('table.facts');
+    await p.waitForSelector('dl.facts');
     await p.keyboard.press('Escape');
     await p.click('.nav button:nth-child(3)');
     await p.waitForSelector('.tank .swim canvas');

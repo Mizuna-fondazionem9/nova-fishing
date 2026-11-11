@@ -7,9 +7,9 @@ import {
   type CastResponse, type HookResponse, type ResolveResponse, type SyncResponse, type HitResponse, type Mutation, type Encounter,
 } from '../../../shared/src/index';
 import { Terrain, CHUNK_PX } from './terrain';
-import { boatSprite, shadowFrames, getDecor, SHADOW_FRAMES } from './sprites';
+import { boatSprite, shadowFrames, getDecor, resetSprites, SHADOW_FRAMES } from './sprites';
 import { comboColor, comboTier } from './combo';
-import { sfx, setAmbience, unlockAudio } from './audio';
+import { sfx, setAmbience, unlockAudio, pauseAudio } from './audio';
 import { getState, setState, toast, api, applyMutation, serverNow, type FishStage } from '../store';
 
 const ZOOMS = [1.5, 2, 3, 4];
@@ -104,6 +104,10 @@ export class Game {
   private lightning = 0;
   private nextBolt = 8;
   private shake = 0;
+  private hiddenAt = 0;
+  /** Décalage vertical de la caméra pendant la pêche (pixels d'art), recalculé 4 fois par seconde. */
+  private inset = 0;
+  private insetTimer = 0;
   /** Voile de couleur bref sur tout l'écran (combo). */
   private pulse = { a: 0, color: '#ffe14a' };
   private envTimer = 0;
@@ -254,8 +258,30 @@ export class Game {
       else if (e.key.toLowerCase() === 'm' && !this.fish) setState({ panel: st.panel === 'map' ? null : 'map' });
     });
     this.on(document, 'visibilitychange', () => {
-      if (document.hidden) void this.sync(true);
+      if (document.hidden) {
+        // Arrière-plan : on sauvegarde la position et on coupe le son.
+        this.hiddenAt = performance.now();
+        void this.sync(true);
+        pauseAudio(true);
+        return;
+      }
+      pauseAudio(false);
+      // Retour : sur téléphone, le navigateur a pu vider les images gardées en mémoire (terrain, bateau, ombres).
+      // On les redessine si c'est le cas, ou par précaution après une absence de plus de 5 secondes.
+      const away = performance.now() - this.hiddenAt;
+      if (away > 5000 || this.terrain.imagesLost()) this.restoreGraphics();
+      setTimeout(() => this.terrain.imagesLost() && this.restoreGraphics(), 600);
     });
+    this.on(this.canvas, 'contextrestored', () => this.restoreGraphics());
+  }
+
+  /** Redessine tout ce qui était gardé en mémoire : chunks, sprites, et les réglages du canevas principal. */
+  private restoreGraphics(): void {
+    resetSprites();
+    this.terrain.clearImages();
+    this.resize();
+    this.terrain.build(Math.floor(this.cam.x / CHUNK_PX), Math.floor(this.cam.y / CHUNK_PX));
+    setState({ gfx: getState().gfx + 1 });
   }
 
   private toWorld(ax: number, ay: number): Pt {
@@ -326,9 +352,23 @@ export class Game {
       fx = (fx + this.fish.bx) / 2;
       fy = (fy + this.fish.by) / 2;
     }
+    // Le panneau de pêche couvre le bas de l'écran (un tiers sur téléphone) : on vise le milieu de la zone
+    // restée libre, sinon le poisson et le bouchon peuvent se retrouver cachés derrière le panneau.
+    let shiftY = 0;
+    if (this.fish) {
+      if ((this.insetTimer -= dt) <= 0) {
+        this.insetTimer = 0.25;
+        const panel = document.querySelector('.fishing')?.getBoundingClientRect();
+        const bottom = panel ? window.innerHeight - panel.top : 0;
+        let top = 0;
+        if (window.innerWidth < 760) for (const el of document.querySelectorAll('.hud .card')) top = Math.max(top, el.getBoundingClientRect().bottom);
+        this.inset = (bottom - top) / 2 / this.zoom;
+      }
+      shiftY = this.inset;
+    }
     const k = 1 - Math.exp(-dt * 5);
     this.cam.x += (fx * TILE - this.cam.x) * k;
-    this.cam.y += (fy * TILE - this.cam.y) * k;
+    this.cam.y += (fy * TILE + shiftY - this.cam.y) * k;
     this.updateShadows(dt);
     this.updateFishing(dt, now);
     this.updateHostile(dt);
@@ -448,12 +488,27 @@ export class Game {
     const out: ShadowView[] = [];
     for (let dy = -1; dy <= 1; dy++)
       for (let dx = -1; dx <= 1; dx++) for (const v of this.viewsFor(cx + dx, cy + dy, slot)) if (v.flee > 0 || !consumed.includes(v.sh.key)) out.push(v);
+    // Le poisson au bout de la ligne reste visible quoi qu'il arrive : les ombres sont redistribuées toutes les
+    // 5 minutes, et sans cette ligne la cible disparaissait de l'écran si le changement tombait en pleine pêche.
+    const target = this.fish?.target;
+    if (target && !out.includes(target)) out.push(target);
     if (this.views.size > 40)
       for (const key of this.views.keys()) {
         const [kx, ky, ks] = key.split(',').map(Number);
         if (ks < slot || Math.abs(kx - cx) > 2 || Math.abs(ky - cy) > 2) this.views.delete(key);
       }
     return out;
+  }
+
+  /** Vrai si une ombre peut nager en ligne droite jusqu'à (x1, y1) sans toucher ni frôler la terre. */
+  private clearWater(x0: number, y0: number, x1: number, y1: number): boolean {
+    const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 0.5));
+    for (let i = 1; i <= n; i++) {
+      const x = x0 + ((x1 - x0) * i) / n;
+      const y = y0 + ((y1 - y0) * i) / n;
+      if (this.terrain.blocked(Math.floor(x), Math.floor(y))) return false;
+    }
+    return true;
   }
 
   private updateShadows(dt: number): void {
@@ -466,17 +521,34 @@ export class Game {
       const d = Math.hypot(dx, dy);
       if (d < 0.15) {
         if ((v.wait -= dt) <= 0) {
-          const a = v.rng.next() * Math.PI * 2;
-          const r = (v.sh.sil === 'giant' ? 3 : 2.2) * Math.sqrt(v.rng.next());
-          v.tx = v.sh.x + Math.cos(a) * r;
-          v.ty = v.sh.y + Math.sin(a) * r;
-          v.wait = v.sh.sil === 'small' ? v.rng.next() * 0.6 : 0.5 + v.rng.next() * 2.5;
+          // Nouvelle destination autour du point d'attache : on n'en retient une que si le trajet reste en pleine eau.
+          v.wait = 0.4;
+          for (let essai = 0; essai < 6; essai++) {
+            const a = v.rng.next() * Math.PI * 2;
+            const r = (v.sh.sil === 'giant' ? 3 : 2.2) * Math.sqrt(v.rng.next());
+            const tx = v.sh.x + Math.cos(a) * r;
+            const ty = v.sh.y + Math.sin(a) * r;
+            if (!this.clearWater(v.x, v.y, tx, ty)) continue;
+            v.tx = tx;
+            v.ty = ty;
+            v.wait = v.sh.sil === 'small' ? v.rng.next() * 0.6 : 0.5 + v.rng.next() * 2.5;
+            break;
+          }
         }
       } else {
         v.angle += clamp(angDiff(Math.atan2(dy, dx), v.angle), -3 * dt, 3 * dt);
         const pulse = v.sh.sil === 'cephalo' ? 0.4 + Math.max(0, Math.sin(this.time * 3 + v.sh.seed)) : 1;
-        v.x += Math.cos(v.angle) * sp * pulse * dt;
-        v.y += Math.sin(v.angle) * sp * pulse * dt;
+        const nx = v.x + Math.cos(v.angle) * sp * pulse * dt;
+        const ny = v.y + Math.sin(v.angle) * sp * pulse * dt;
+        // Garde-fou : un virage large ne doit jamais faire passer l'ombre sur la terre.
+        if (this.terrain.blocked(Math.floor(nx), Math.floor(ny))) {
+          v.tx = v.x;
+          v.ty = v.y;
+          v.wait = 0.2;
+        } else {
+          v.x = nx;
+          v.y = ny;
+        }
       }
     }
   }
@@ -518,11 +590,14 @@ export class Game {
 
   private endFishing(flee = true): void {
     if (this.fish && flee) {
+      // Le poisson file à l'opposé du bateau, aussi loin que l'eau libre le permet (jamais à travers une île).
       const v = this.fish.target;
       v.flee = 2.5;
       const a = Math.atan2(v.y - this.boat.y, v.x - this.boat.x);
-      v.tx = v.x + Math.cos(a) * 9;
-      v.ty = v.y + Math.sin(a) * 9;
+      let dist = 9;
+      while (dist > 0 && !this.clearWater(v.x, v.y, v.x + Math.cos(a) * dist, v.y + Math.sin(a) * dist)) dist -= 1;
+      v.tx = v.x + Math.cos(a) * dist;
+      v.ty = v.y + Math.sin(a) * dist;
     }
     this.fish = null;
     setState({ fishing: null });
@@ -553,7 +628,7 @@ export class Game {
     } catch (e) {
       if (this.fish === f) {
         this.endFishing(false);
-        toast('⚠️ ' + (e as Error).message);
+        toast((e as Error).message);
       }
     }
   }
@@ -666,7 +741,7 @@ export class Game {
     } catch (e) {
       if (this.fish === f) {
         this.endFishing(false);
-        toast('⚠️ ' + (e as Error).message);
+        toast((e as Error).message);
       }
     }
   }
@@ -728,7 +803,7 @@ export class Game {
         },
       });
     } catch (e) {
-      toast('⚠️ ' + (e as Error).message);
+      toast((e as Error).message);
     }
     if (this.fish === f) this.endFishing(true);
   }
@@ -757,7 +832,7 @@ export class Game {
     if (!kind || this.hostile) return;
     this.hostile = { id: e.id, kind, x: this.boat.x + Math.cos(e.angle) * e.dist, y: this.boat.y + Math.sin(e.angle) * e.dist, angle: e.angle + Math.PI, mode: 'stalk', t: 0, elapsed: 0, hitDone: false };
     sfx('alarm');
-    toast(`⚠️ ${kind.name} en approche ! Esquivez ses charges ou rejoignez un port.`, 6000);
+    toast(`${kind.name} en approche ! Esquivez ses charges ou rejoignez un port.`, 6000);
   }
 
   private updateHostile(dt: number): void {
@@ -825,7 +900,7 @@ export class Game {
     try {
       const r = await api<HitResponse>('/api/encounter/hit', { id });
       applyMutation(r);
-      toast(`💢 Coque touchée : −${r.damage} PC`);
+      toast(`Coque touchée : −${r.damage} PC`);
       if (r.wrecked) {
         setState({ fade: true });
         this.hostile = null;
@@ -905,6 +980,7 @@ export class Game {
 
   private render(): void {
     const ctx = this.ctx;
+    ctx.imageSmoothingEnabled = false; // remis à chaque image : un contexte restauré par le navigateur repart lissé
     const { vw, vh } = this;
     const sx = this.shake > 0 ? Math.round((Math.random() - 0.5) * 6 * this.shake) : 0;
     const sy = this.shake > 0 ? Math.round((Math.random() - 0.5) * 6 * this.shake) : 0;

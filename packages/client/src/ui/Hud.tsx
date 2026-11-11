@@ -1,10 +1,10 @@
 import { BIOMES, NETS, cargoBulk, gearOf, gearTier, dayKey } from '../../../shared/src/index';
 import { useStore, setState, serverNow, type Panel } from '../store';
 import { sfx, unlockAudio } from '../game/audio';
-import { rt, Bar, fmt } from './common';
+import { rt, Bar, Coins, fmt1 } from './common';
 
-const TOD = { aube: '🌅 Aube', jour: '☀️ Jour', crepuscule: '🌇 Crépuscule', nuit: '🌙 Nuit' };
-const WEATHER = { clair: 'ciel clair', brume: '🌫️ brume', pluie: '🌧️ pluie', orage: '⛈️ orage' };
+const TOD = { aube: 'Aube', jour: 'Jour', crepuscule: 'Crépuscule', nuit: 'Nuit' };
+const WEATHER = { clair: 'Ciel clair', brume: 'Brume', pluie: 'Pluie', orage: 'Orage' };
 
 const open = (panel: Panel) => (): void => {
   unlockAudio();
@@ -28,42 +28,55 @@ export function Hud() {
     <div className="hud">
       <div className="card tl">
         <div className="who">
-          {user?.avatar ? <img src={user.avatar} alt="" /> : <span className="avatar">⚓</span>}
+          {user?.avatar ? <img src={user.avatar} alt="" /> : <span className="avatar">{(user?.name ?? '?').slice(0, 1).toUpperCase()}</span>}
           <b>{user?.name}</b>
         </div>
-        <div className="coins" title="Pièces">🪙 <b data-testid="coins">{fmt(save.coins)}</b></div>
-        <Bar value={save.hull} max={g.hullMax} color={hullRatio < 0.3 ? '#ff5a4a' : hullRatio < 0.6 ? '#f0b429' : '#6fe3a1'} label={`Coque ${Math.round(save.hull)} / ${g.hullMax}`} />
-        <Bar value={bulk} max={g.hold} color={bulk >= g.hold ? '#ff5a4a' : '#5cc8ff'} label={`Cale ${bulk} / ${g.hold}`} />
-        <div className="gearline">🎣 Canne ★{gearTier(g.rod).toFixed(1).replace('.', ',')} · {net ? `🕸️ ${net.name}` : 'sans filet'}</div>
+        <div className="purse"><Coins n={save.coins} testid="coins" /></div>
+        <div className="stat">
+          <span className="k">Coque</span>
+          <Bar value={save.hull} max={g.hullMax} color={hullRatio < 0.3 ? '#ff5a4a' : hullRatio < 0.6 ? '#f0b429' : '#6fe3a1'} />
+          <span className="v">{Math.round(save.hull)}<i>/{g.hullMax}</i></span>
+        </div>
+        <div className="stat">
+          <span className="k">Cale</span>
+          <Bar value={bulk} max={g.hold} color={bulk >= g.hold ? '#ff5a4a' : '#5cc8ff'} />
+          <span className="v">{bulk}<i>/{g.hold}</i></span>
+        </div>
+        <div className="gearline">
+          <span><span className="k">Canne</span> ★{fmt1(gearTier(g.rod))}</span>
+          <span><span className="k">Filet</span> {net ? net.name.replace('Filet ', '') : 'aucun'}</span>
+        </div>
       </div>
 
       <div className="card tr">
         {hud && (
           <>
-            <b className={BIOMES[hud.biome].danger >= 0.4 ? 'hot' : ''}>{BIOMES[hud.biome].name}</b>
-            <span>Niveau régional {hud.level.toFixed(1).replace('.', ',')}</span>
-            <span>X {hud.x} · Y {hud.y}</span>
-            <span>{TOD[hud.tod]} · {WEATHER[hud.weather]}</span>
+            <b className={`biome ${BIOMES[hud.biome].danger >= 0.4 ? 'hot' : ''}`}>{BIOMES[hud.biome].name}</b>
+            <span className="k level">Niveau {fmt1(hud.level)}</span>
+            <span className="coords">X {hud.x} · Y {hud.y}</span>
+            <span className="k">{TOD[hud.tod]} · {WEATHER[hud.weather]}</span>
           </>
         )}
         <div className="row">
-          <button className="icon" onClick={open('map')} aria-label="Carte du monde" title="Carte (M)">🗺️</button>
-          <button className="icon" onClick={() => rt.game?.changeZoom(1)} aria-label="Zoomer" title="Zoomer (+)">＋</button>
-          <button className="icon" onClick={() => rt.game?.changeZoom(-1)} aria-label="Dézoomer" title="Dézoomer (-)">－</button>
+          <button className="mini" onClick={open('map')} aria-label="Carte du monde" title="Carte (M)">Carte</button>
+          <button className="icon" onClick={() => rt.game?.changeZoom(1)} aria-label="Zoomer" title="Zoomer (+)">+</button>
+          <button className="icon" onClick={() => rt.game?.changeZoom(-1)} aria-label="Dézoomer" title="Dézoomer (-)">−</button>
         </div>
       </div>
 
       {!fishing && (
         <div className="context">
-          {hud?.danger && <div className="alert">⚠ Créature hostile ! Éloignez-vous de sa trajectoire.</div>}
+          {hud?.danger && <div className="alert">Créature hostile — éloignez-vous de sa trajectoire</div>}
           {hud?.canCast && (
-            <button className="big pulse" data-testid="cast" onClick={() => rt.game?.action()}>🎣 Lancer la ligne <kbd>Espace</kbd></button>
+            <button className="big pulse" data-testid="cast" onClick={() => rt.game?.action()}>Lancer la ligne <kbd>Espace</kbd></button>
           )}
           {hud?.port && (
-            <button className="big" data-testid="port" onClick={() => { sfx('port'); setState({ panel: 'port' }); }}>⚓ {hud.port.name}</button>
+            <button className="big" data-testid="port" onClick={() => { sfx('port'); setState({ panel: 'port' }); }}>
+              <span className="over">Entrer au port</span>{hud.port.name}
+            </button>
           )}
           {hud?.moving && dest && (
-            <button onClick={() => rt.game?.cancelMove()}>✋ Annuler le cap ({Math.round(dest.x)}, {Math.round(dest.y)})</button>
+            <button onClick={() => rt.game?.cancelMove()}>Annuler le cap <span className="num">{Math.round(dest.x)}, {Math.round(dest.y)}</span></button>
           )}
           {hud && !hud.moving && !hud.canCast && !hud.port && !hud.danger && (
             <div className="tip">Touchez la mer pour naviguer. Approchez-vous d’une ombre, arrêtez-vous, puis lancez.</div>
@@ -73,12 +86,12 @@ export function Hud() {
 
       {!fishing && (
         <nav className="nav">
-          <button onClick={open('ship')}><i>📦</i><span>Cale</span></button>
-          <button onClick={open('bestiary')}><i>📖</i><span>Bestiaire</span></button>
-          <button onClick={open('aquarium')}><i>🐠</i><span>Aquarium</span></button>
-          <button onClick={open('trophies')}><i>🏆</i><span>Trophées</span></button>
-          <button onClick={open('daily')}><i>📅</i><span>Défis</span>{dailyLeft > 0 && <em>{dailyLeft}</em>}</button>
-          <button onClick={open('settings')}><i>⚙️</i><span>Réglages</span></button>
+          <button onClick={open('ship')}>Cale</button>
+          <button onClick={open('bestiary')}>Bestiaire</button>
+          <button onClick={open('aquarium')}>Aquarium</button>
+          <button onClick={open('trophies')}>Trophées</button>
+          <button onClick={open('daily')}>Défis{dailyLeft > 0 && <em>{dailyLeft}</em>}</button>
+          <button onClick={open('settings')}>Réglages</button>
         </nav>
       )}
     </div>

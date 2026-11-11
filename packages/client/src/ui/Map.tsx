@@ -112,12 +112,12 @@ export function MapPanel() {
   };
 
   return (
-    <Modal title="🗺️ Carte du monde" wide>
+    <Modal title="Carte du monde" wide>
       <div className="row between">
-        <span className="small">{hover ? `X ${hover.x} · Y ${hover.y} — ${hover.biome}` : 'Touchez la carte pour fixer un cap.'}</span>
+        <span className="note num">{hover ? `X ${hover.x} · Y ${hover.y} — ${hover.biome}` : 'Touchez la carte pour fixer un cap.'}</span>
         <div className="row">
-          <button className="icon" disabled={si === 0} onClick={() => setSi(si - 1)} aria-label="Zoomer la carte">＋</button>
-          <button className="icon" disabled={si === SCALES.length - 1} onClick={() => setSi(si + 1)} aria-label="Dézoomer la carte">－</button>
+          <button className="icon" disabled={si === 0} onClick={() => setSi(si - 1)} aria-label="Zoomer la carte">+</button>
+          <button className="icon" disabled={si === SCALES.length - 1} onClick={() => setSi(si + 1)} aria-label="Dézoomer la carte">−</button>
         </div>
       </div>
       <canvas ref={canvas} width={SIZE} height={SIZE} className="pix map" onPointerMove={info} onPointerDown={info} onPointerUp={go} />
@@ -128,7 +128,7 @@ export function MapPanel() {
         <span><i style={{ background: '#ffd86a' }} />Port</span>
         <span><i style={{ background: '#ff5cf0' }} />Vous</span>
       </div>
-      <p className="small">Largeur affichée : {SIZE * scale} tuiles. Les très longs trajets se font en plusieurs caps.</p>
+      <p className="note">Largeur affichée : {SIZE * scale} tuiles. Les très longs trajets se font en plusieurs caps.</p>
     </Modal>
   );
 }

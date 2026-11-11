@@ -6,7 +6,7 @@ import {
 } from '../../../shared/src/index';
 import { useStore, setState, getState, portOp, api, serverNow, toast, BASE } from '../store';
 import { setSound, sfx } from '../game/audio';
-import { rt, Modal, Bar, FishIcon, Rarity, Tags, speciesOf, fmt, fmtKg, fmtLen } from './common';
+import { rt, Modal, Bar, Coins, FishIcon, Rarity, Tags, speciesOf, fmt, fmt1, fmtKg, fmtLen } from './common';
 
 /** Empêche les doubles clics pendant qu'une requête est en cours (le serveur protège aussi de son côté). */
 function useBusy(): [boolean, (fn: () => Promise<unknown>) => void] {
@@ -28,15 +28,28 @@ function Tabs<T extends string>({ tabs, value, onChange }: { tabs: [T, string][]
   );
 }
 
+/** Titre de section : petit, en capitales, avec un compteur éventuel à droite. */
+function Section({ title, aside, children }: { title: string; aside?: ReactNode; children: ReactNode }) {
+  return (
+    <section className="block">
+      <h3><span>{title}</span>{aside !== undefined && <small>{aside}</small>}</h3>
+      {children}
+    </section>
+  );
+}
+
 function FishRow({ f, children }: { f: Specimen; children?: ReactNode }) {
   const sp = speciesOf(f);
   return (
     <div className="fishrow">
       <div className="pic"><FishIcon sp={sp} color={f.color} scale={2} /></div>
       <div className="info">
-        <b style={{ color: RARITY_COLORS[sp.rarity] }}>{sp.name}</b> <Tags f={f} />
-        <small>{fmtKg(f.kg)} · {fmtLen(f.len)} · encombrement {bulkOf(f.kg)} · 🪙 {fmt(priceOf(f))}</small>
+        <div className="name"><b style={{ color: RARITY_COLORS[sp.rarity] }}>{sp.name}</b><Tags f={f} /></div>
+        <div className="meta">
+          <span>{fmtKg(f.kg)}</span><span>{fmtLen(f.len)}</span><span>Encombrement {bulkOf(f.kg)}</span>
+        </div>
       </div>
+      <div className="price"><Coins n={priceOf(f)} /></div>
       <div className="actions">{children}</div>
     </div>
   );
@@ -54,12 +67,12 @@ function UpgradeRow({ u }: { u: UpgradeDef }) {
   return (
     <div className="uprow">
       <div className="info">
-        <b>{u.name}</b> <span className="lvl">niv. {lvl}</span>
-        <small>{u.desc}</small>
-        <small className="eff">{u.fmt(u.effect(lvl))}{!max && <> → <b>{u.fmt(u.effect(lvl + 1))}</b></>}</small>
+        <div className="name"><b>{u.name}</b><span className="lvl">Niveau {lvl}</span></div>
+        <p>{u.desc}</p>
+        <div className="eff">{u.fmt(u.effect(lvl))}{!max && <><i className="arrow" aria-label="devient" /><b>{u.fmt(u.effect(lvl + 1))}</b></>}</div>
       </div>
-      <button data-testid={`up-${u.key}`} disabled={busy || max || locked || save.coins < cost} onClick={() => run(async () => { if (await portOp('/api/port/upgrade', { key: u.key })) sfx('coin'); })}>
-        {max ? 'Maximum' : locked ? 'Filet requis' : <>🪙 {fmt(cost)}</>}
+      <button className="buy" data-testid={`up-${u.key}`} disabled={busy || max || locked || save.coins < cost} onClick={() => run(async () => { if (await portOp('/api/port/upgrade', { key: u.key })) sfx('coin'); })}>
+        {max ? 'Maximum' : locked ? 'Filet requis' : <><span className="over">Améliorer</span><Coins n={cost} /></>}
       </button>
     </div>
   );
@@ -73,18 +86,17 @@ function SellTab() {
   const aquaFull = save.aquarium.length >= g.aquarium;
   if (!save.cargo.length) return <p className="empty">La cale est vide. Les poissons capturés apparaîtront ici.</p>;
   return (
-    <>
-      <div className="row between">
-        <span>Cale : {cargoBulk(save)} / {g.hold} unités</span>
-        <button className="big" data-testid="sell-all" disabled={busy} onClick={() => run(async () => { if (await portOp('/api/port/sell', { uids: 'all' })) sfx('coin'); })}>Tout vendre · 🪙 {fmt(total)}</button>
-      </div>
+    <Section title="Cale" aside={`${cargoBulk(save)} / ${g.hold} unités`}>
+      <button className="big wide" data-testid="sell-all" disabled={busy} onClick={() => run(async () => { if (await portOp('/api/port/sell', { uids: 'all' })) sfx('coin'); })}>
+        Tout vendre <Coins n={total} />
+      </button>
       {save.cargo.map((f) => (
         <FishRow key={f.uid} f={f}>
           <button disabled={busy} onClick={() => run(async () => { if (await portOp('/api/port/sell', { uids: [f.uid] })) sfx('coin'); })}>Vendre</button>
-          <button data-testid="keep" disabled={busy || aquaFull} title={aquaFull ? 'Aquarium plein' : 'Exposer dans l’aquarium'} onClick={() => run(() => portOp('/api/port/keep', { uid: f.uid }))}>🐠 Garder</button>
+          <button data-testid="keep" disabled={busy || aquaFull} title={aquaFull ? 'Aquarium plein' : 'Exposer dans l’aquarium'} onClick={() => run(() => portOp('/api/port/keep', { uid: f.uid }))}>Garder</button>
         </FishRow>
       ))}
-    </>
+    </Section>
   );
 }
 
@@ -96,26 +108,32 @@ function YardTab() {
   const cost = Math.ceil(missing * g.repairCost);
   return (
     <>
-      <h3>Réparations</h3>
-      <div className="uprow">
-        <div className="info">
-          <Bar value={save.hull} max={g.hullMax} color="#6fe3a1" label={`Coque ${Math.round(save.hull)} / ${g.hullMax}`} />
-          <small>{missing > 0 ? `Remise à neuf : ${fmt(cost)} pièces (réparation partielle si vous n’avez pas assez).` : 'La coque est en parfait état.'}</small>
-        </div>
-        <button disabled={busy || missing <= 0 || save.coins < g.repairCost} onClick={() => run(() => portOp('/api/port/repair'))}>🛠️ Réparer</button>
-      </div>
-      <h3>Bateau</h3>
-      {UPGRADES.filter((u) => u.group === 'boat').map((u) => <UpgradeRow key={u.key} u={u} />)}
-      <h3>Filets</h3>
-      <p className="small">Un filet capture tout seul de petits poissons communs pendant que vous naviguez (jamais les grosses pièces).</p>
-      {NETS.map((n, i) => n && (
-        <div className="uprow" key={i}>
-          <div className="info"><b>{n.name}</b><small>{n.desc}</small></div>
-          <button disabled={busy || save.net >= i || save.net !== i - 1 || save.coins < n.price} onClick={() => run(async () => { if (await portOp('/api/port/buy-net', { tier: i })) sfx('coin'); })}>
-            {save.net >= i ? 'Possédé' : <>🪙 {fmt(n.price)}</>}
+      <Section title="Réparations">
+        <div className="uprow">
+          <div className="info">
+            <div className="name"><b>Coque</b></div>
+            <Bar value={save.hull} max={g.hullMax} color="#6fe3a1" label={`${Math.round(save.hull)} / ${g.hullMax}`} />
+            <p>{missing > 0 ? 'Réparation partielle si vous n’avez pas assez de pièces.' : 'La coque est en parfait état.'}</p>
+          </div>
+          <button className="buy" disabled={busy || missing <= 0 || save.coins < g.repairCost} onClick={() => run(() => portOp('/api/port/repair'))}>
+            {missing > 0 ? <><span className="over">Réparer</span><Coins n={cost} /></> : 'Intacte'}
           </button>
         </div>
-      ))}
+      </Section>
+      <Section title="Bateau">
+        {UPGRADES.filter((u) => u.group === 'boat').map((u) => <UpgradeRow key={u.key} u={u} />)}
+      </Section>
+      <Section title="Filets">
+        <p className="note">Un filet capture tout seul de petits poissons communs pendant que vous naviguez. Jamais les grosses pièces.</p>
+        {NETS.map((n, i) => n && (
+          <div className="uprow" key={i}>
+            <div className="info"><div className="name"><b>{n.name}</b></div><p>{n.desc}</p></div>
+            <button className="buy" disabled={busy || save.net >= i || save.net !== i - 1 || save.coins < n.price} onClick={() => run(async () => { if (await portOp('/api/port/buy-net', { tier: i })) sfx('coin'); })}>
+              {save.net >= i ? 'Possédé' : <><span className="over">Acheter</span><Coins n={n.price} /></>}
+            </button>
+          </div>
+        ))}
+      </Section>
     </>
   );
 }
@@ -144,16 +162,31 @@ export function PortPanel() {
     return <Modal title="Port"><p className="empty">Vous avez quitté le quai. Revenez à l’arrêt près du ponton pour accéder au port.</p></Modal>;
   }
   return (
-    <Modal title={`⚓ ${hud.port.name}`} wide>
-      <div className="row between"><span className="coins">🪙 <b>{fmt(save.coins)}</b></span></div>
-      <Tabs tabs={[['sell', 'Criée'], ['yard', 'Chantier naval'], ['rod', 'Atelier de pêche'], ['aqua', 'Aquarium']]} value={tab} onChange={setTab} />
+    <Modal
+      title={hud.port.name}
+      wide
+      top={
+        <>
+          <div className="balance"><span className="k">Votre bourse</span><Coins n={save.coins} /></div>
+          <Tabs tabs={[['sell', 'Criée'], ['yard', 'Chantier'], ['rod', 'Atelier'], ['aqua', 'Aquarium']]} value={tab} onChange={setTab} />
+        </>
+      }
+    >
       {tab === 'sell' && <SellTab />}
       {tab === 'yard' && <YardTab />}
-      {tab === 'rod' && UPGRADES.filter((u) => u.group === 'rod').map((u) => <UpgradeRow key={u.key} u={u} />)}
+      {tab === 'rod' && (
+        <Section title="Canne à pêche">
+          {UPGRADES.filter((u) => u.group === 'rod').map((u) => <UpgradeRow key={u.key} u={u} />)}
+        </Section>
+      )}
       {tab === 'aqua' && (
         <>
-          {UPGRADES.filter((u) => u.group === 'aquarium').map((u) => <UpgradeRow key={u.key} u={u} />)}
-          <AquariumList atPort />
+          <Section title="Bassins">
+            {UPGRADES.filter((u) => u.group === 'aquarium').map((u) => <UpgradeRow key={u.key} u={u} />)}
+          </Section>
+          <Section title="Poissons exposés" aside={`${save.aquarium.length} / ${gearOf(save.up).aquarium}`}>
+            <AquariumList atPort />
+          </Section>
         </>
       )}
     </Modal>
@@ -167,27 +200,33 @@ export function ShipPanel() {
   const [busy, run] = useBusy();
   const g = gearOf(save.up);
   return (
-    <Modal title="📦 Cale et équipement" wide>
-      <h3>Cale — {cargoBulk(save)} / {g.hold} unités</h3>
-      {!save.cargo.length && <p className="empty">La cale est vide.</p>}
-      {save.cargo.map((f) => (
-        <FishRow key={f.uid} f={f}>
-          <button disabled={busy} title="Remettre à l’eau pour libérer de la place" onClick={() => run(() => portOp('/api/release', { uid: f.uid, from: 'cargo' }))}>Relâcher</button>
-        </FishRow>
-      ))}
-      <p className="small">La vente, les améliorations et l’aquarium se font au port. En cas de naufrage, la cale est perdue.</p>
-      <h3>Équipement</h3>
-      <table className="facts">
-        <tbody>
-          <tr><th>Canne</th><td>★{gearTier(g.rod).toFixed(1).replace('.', ',')} (puissance {g.rod.power.toFixed(1)}, résistance {g.rod.resistance.toFixed(1)})</td></tr>
-          <tr><th>Ligne</th><td>{g.rod.line} · moulinet ×{g.rod.reel.toFixed(2)}</td></tr>
-          <tr><th>Bateau</th><td>{g.speed.toFixed(1)} tuiles/s · coque {g.hullMax} PC</td></tr>
-          <tr><th>Filet</th><td>{NETS[save.net]?.name ?? 'Aucun'}</td></tr>
-        </tbody>
-      </table>
-      <div className="uplist">
-        {UPGRADES.map((u) => <span key={u.key} className="chip">{u.name} <b>{save.up[u.key] ?? 0}</b></span>)}
-      </div>
+    <Modal title="Cale et équipement" wide>
+      <Section title="Cale" aside={`${cargoBulk(save)} / ${g.hold} unités`}>
+        {!save.cargo.length && <p className="empty">La cale est vide.</p>}
+        {save.cargo.map((f) => (
+          <FishRow key={f.uid} f={f}>
+            <button disabled={busy} title="Remettre à l’eau pour libérer de la place" onClick={() => run(() => portOp('/api/release', { uid: f.uid, from: 'cargo' }))}>Relâcher</button>
+          </FishRow>
+        ))}
+        <p className="note">La vente, les améliorations et l’aquarium se font au port. En cas de naufrage, la cale est perdue.</p>
+      </Section>
+      <Section title="Équipement">
+        <dl className="facts">
+          <div><dt>Canne</dt><dd>★{fmt1(gearTier(g.rod))}</dd></div>
+          <div><dt>Puissance</dt><dd>{fmt1(g.rod.power)}</dd></div>
+          <div><dt>Résistance</dt><dd>{fmt1(g.rod.resistance)}</dd></div>
+          <div><dt>Ligne</dt><dd>{g.rod.line}</dd></div>
+          <div><dt>Vitesse</dt><dd>{fmt1(g.speed)} tuiles/s</dd></div>
+          <div><dt>Coque</dt><dd>{g.hullMax} PC</dd></div>
+          <div><dt>Filet</dt><dd>{NETS[save.net]?.name ?? 'Aucun'}</dd></div>
+          <div><dt>Aquarium</dt><dd>{g.aquarium} places</dd></div>
+        </dl>
+      </Section>
+      <Section title="Niveaux d’amélioration">
+        <div className="uplist">
+          {UPGRADES.map((u) => <span key={u.key} className="chip">{u.name}<b>{save.up[u.key] ?? 0}</b></span>)}
+        </div>
+      </Section>
     </Modal>
   );
 }
@@ -199,7 +238,7 @@ function SpeciesCard({ sp, onPick }: { sp: Species; onPick: (s: Species) => void
   return (
     <button className={`spcard ${entry ? '' : 'unknown'}`} onClick={() => entry && onPick(sp)} disabled={!entry} style={entry ? { borderColor: RARITY_COLORS[sp.rarity] } : undefined}>
       <FishIcon sp={sp} scale={2} hidden={!entry} />
-      <span>{entry ? sp.name : '???'}</span>
+      <span>{entry ? sp.name : 'Inconnu'}</span>
       {entry && <small>×{entry.n}</small>}
     </button>
   );
@@ -213,33 +252,32 @@ export function BestiaryPanel() {
   if (pick) {
     const e = bestiary[pick.id];
     return (
-      <Modal title="📖 Bestiaire" onClose={() => setPick(null)}>
+      <Modal title="Bestiaire" onClose={() => setPick(null)}>
         <div className="showcase"><FishIcon sp={pick} scale={4} animate /></div>
-        <h3 style={{ color: RARITY_COLORS[pick.rarity] }}>{pick.name}</h3>
-        <p className="tags"><Rarity r={pick.rarity} /> <span className="tag">{SILHOUETTE_NAMES[pick.sil]}</span></p>
+        <h3 className="species" style={{ color: RARITY_COLORS[pick.rarity] }}>{pick.name}</h3>
+        <p className="tags"><Rarity r={pick.rarity} /><span className="tag">{SILHOUETTE_NAMES[pick.sil]}</span></p>
         <p className="desc">{pick.desc}</p>
-        <table className="facts">
-          <tbody>
-            <tr><th>Captures</th><td>{e.n}</td></tr>
-            <tr><th>Plus grand spécimen</th><td>{fmtLen(e.maxLen)}</td></tr>
-            <tr><th>Poids record</th><td>{fmtKg(e.maxKg)}</td></tr>
-            <tr><th>Biomes connus</th><td>{e.biomes.map((b) => BIOMES[b].name).join(', ')}</td></tr>
-            <tr><th>Profondeur</th><td>{depthMeters(pick.dmin)} à {depthMeters(pick.dmax)} m</td></tr>
-          </tbody>
-        </table>
-        <button className="big" onClick={() => setPick(null)}>Retour</button>
+        <dl className="facts">
+          <div><dt>Captures</dt><dd>{e.n}</dd></div>
+          <div><dt>Plus grand</dt><dd>{fmtLen(e.maxLen)}</dd></div>
+          <div><dt>Poids record</dt><dd>{fmtKg(e.maxKg)}</dd></div>
+          <div><dt>Profondeur</dt><dd>{depthMeters(pick.dmin)} à {depthMeters(pick.dmax)} m</dd></div>
+          <div className="full"><dt>Biomes connus</dt><dd>{e.biomes.map((b) => BIOMES[b].name).join(', ')}</dd></div>
+        </dl>
+        <button className="big wide" onClick={() => setPick(null)}>Retour</button>
       </Modal>
     );
   }
   return (
-    <Modal title="📖 Bestiaire" wide>
-      <p>Espèces découvertes : <b>{known}</b> / {SPECIES.length}</p>
-      <Bar value={known} max={SPECIES.length} color="#a05cf0" />
+    <Modal
+      title="Bestiaire"
+      wide
+      top={<div className="balance"><span className="k">Espèces découvertes</span><b className="num">{known} / {SPECIES.length}</b><Bar value={known} max={SPECIES.length} color="#a05cf0" /></div>}
+    >
       {groups.map(([b, list]) => (
-        <section key={b}>
-          <h3>{BIOMES[b].name} <small>{list.filter((s) => bestiary[s.id]).length} / {list.length}</small></h3>
+        <Section key={b} title={BIOMES[b].name} aside={`${list.filter((s) => bestiary[s.id]).length} / ${list.length}`}>
           <div className="spgrid">{list.map((sp) => <SpeciesCard key={sp.id} sp={sp} onPick={setPick} />)}</div>
-        </section>
+        </Section>
       ))}
     </Modal>
   );
@@ -270,10 +308,12 @@ export function AquariumPanel() {
   const hud = useStore((s) => s.hud);
   const cap = gearOf(save.up).aquarium;
   return (
-    <Modal title="🐠 Aquarium" wide>
+    <Modal title="Aquarium" wide>
       <Tank fish={save.aquarium} />
-      <p>Emplacements : <b>{save.aquarium.length}</b> / {cap} <span className="small">— agrandissable au port, onglet Aquarium.</span></p>
-      <AquariumList atPort={!!hud?.port} />
+      <Section title="Poissons exposés" aside={`${save.aquarium.length} / ${cap}`}>
+        <AquariumList atPort={!!hud?.port} />
+        <p className="note">Les bassins s’agrandissent au port, onglet Aquarium.</p>
+      </Section>
     </Modal>
   );
 }
@@ -285,30 +325,40 @@ export function TrophiesPanel() {
   const got = TROPHIES.filter((t) => save.trophies[t.id]).length;
   const st = save.stats;
   return (
-    <Modal title="🏆 Trophées" wide>
-      <p>Débloqués : <b>{got}</b> / {TROPHIES.length}</p>
-      <Bar value={got} max={TROPHIES.length} color="#f0b429" />
+    <Modal
+      title="Trophées"
+      wide
+      top={<div className="balance"><span className="k">Débloqués</span><b className="num">{got} / {TROPHIES.length}</b><Bar value={got} max={TROPHIES.length} color="#f0b429" /></div>}
+    >
       <div className="trophies">
         {TROPHIES.map((t) => {
           const at = save.trophies[t.id];
           return (
             <div key={t.id} className={`trophy ${at ? 'got' : ''}`}>
-              <i>{at ? '🏆' : '🔒'}</i>
-              <div><b>{t.name}</b><small>{t.desc}</small>{at && <small className="date">Obtenu le {new Date(at).toLocaleDateString('fr-FR')}</small>}</div>
+              <i className="medal" aria-hidden="true" />
+              <div>
+                <b>{t.name}</b>
+                <p>{t.desc}</p>
+                {at && <small className="date">Obtenu le {new Date(at).toLocaleDateString('fr-FR')}</small>}
+              </div>
             </div>
           );
         })}
       </div>
-      <h3>Statistiques</h3>
-      <table className="facts">
-        <tbody>
-          <tr><th>Poissons capturés</th><td>{fmt(st.caught)}</td><th>Échappés</th><td>{fmt(st.escaped)}</td></tr>
-          <tr><th>Vendus</th><td>{fmt(st.sold)}</td><th>Gains</th><td>🪙 {fmt(st.earned)}</td></tr>
-          <tr><th>Distance</th><td>{fmt(st.dist)} tuiles</td><th>Naufrages</th><td>{st.wrecks}</td></tr>
-          <tr><th>Plus gros poisson</th><td>{st.maxKg ? fmtKg(st.maxKg) : '—'}</td><th>Coups critiques</th><td>{fmt(st.crits)}</td></tr>
-          <tr><th>Biomes</th><td>{st.biomes.length} / {BIOME_IDS.length}</td><th>Ports visités</th><td>{st.ports.length}</td></tr>
-        </tbody>
-      </table>
+      <Section title="Statistiques">
+        <dl className="facts">
+          <div><dt>Captures</dt><dd>{fmt(st.caught)}</dd></div>
+          <div><dt>Échappés</dt><dd>{fmt(st.escaped)}</dd></div>
+          <div><dt>Vendus</dt><dd>{fmt(st.sold)}</dd></div>
+          <div><dt>Gains</dt><dd><Coins n={st.earned} /></dd></div>
+          <div><dt>Distance</dt><dd>{fmt(st.dist)} tuiles</dd></div>
+          <div><dt>Naufrages</dt><dd>{st.wrecks}</dd></div>
+          <div><dt>Plus gros poisson</dt><dd>{st.maxKg ? fmtKg(st.maxKg) : '—'}</dd></div>
+          <div><dt>Coups critiques</dt><dd>{fmt(st.crits)}</dd></div>
+          <div><dt>Biomes</dt><dd>{st.biomes.length} / {BIOME_IDS.length}</dd></div>
+          <div><dt>Ports visités</dt><dd>{st.ports.length}</dd></div>
+        </dl>
+      </Section>
     </Modal>
   );
 }
@@ -320,18 +370,18 @@ export function DailyPanel() {
   const daily = useStore((s) => s.daily);
   const today = save.daily.day === dayKey(serverNow());
   return (
-    <Modal title="📅 Défis du jour">
-      <p className="small">Trois défis renouvelés chaque jour à minuit (UTC). La récompense grandit avec votre bestiaire.</p>
+    <Modal title="Défis du jour">
+      <p className="note">Trois défis renouvelés chaque jour à minuit (UTC). La récompense grandit avec votre bestiaire.</p>
       {daily.map((c) => {
         const done = today && save.daily.done.includes(c.id);
         const prog = done ? c.goal : today ? save.daily.prog[c.id] ?? 0 : 0;
         return (
           <div key={c.id} className={`trophy ${done ? 'got' : ''}`}>
-            <i>{done ? '✅' : '🎯'}</i>
+            <i className="medal" aria-hidden="true" />
             <div>
               <b>{c.label}</b>
               <Bar value={prog} max={c.goal} color="#a05cf0" label={`${Math.floor(prog)} / ${c.goal}`} />
-              <small>Récompense : 🪙 {fmt(c.reward)}</small>
+              <div className="reward"><span className="k">{done ? 'Récompense reçue' : 'Récompense'}</span><Coins n={c.reward} /></div>
             </div>
           </div>
         );
@@ -364,35 +414,39 @@ export function SettingsPanel() {
       await api('/api/logout', {});
       location.href = BASE + '/';
     } catch (e) {
-      toast('⚠️ ' + (e as Error).message);
+      toast((e as Error).message);
     }
   };
   return (
-    <Modal title="⚙️ Réglages">
+    <Modal title="Réglages">
       <div className="uprow">
-        <div className="info"><b>Sons et ambiance</b><small>Vagues, touches, combats.</small></div>
-        <button data-testid="sound" onClick={toggle} aria-pressed={sound}>{sound ? '🔊 Activés' : '🔇 Coupés'}</button>
+        <div className="info"><div className="name"><b>Sons et ambiance</b></div><p>Vagues, touches, combats.</p></div>
+        <button className="buy" data-testid="sound" onClick={toggle} aria-pressed={sound}>{sound ? 'Activés' : 'Coupés'}</button>
       </div>
       <div className="uprow">
-        <div className="info"><b>Zoom</b><small><span className="touch-only">Pincez à deux doigts.</span><span className="pc-only">Molette, ou touches + et −.</span></small></div>
+        <div className="info">
+          <div className="name"><b>Zoom</b></div>
+          <p><span className="touch-only">Pincez à deux doigts.</span><span className="pc-only">Molette, ou touches + et −.</span></p>
+        </div>
         <div className="row">
-          <button className="icon" onClick={() => rt.game?.changeZoom(-1)}>－</button>
-          <button className="icon" onClick={() => rt.game?.changeZoom(1)}>＋</button>
+          <button className="icon" onClick={() => rt.game?.changeZoom(-1)} aria-label="Dézoomer">−</button>
+          <button className="icon" onClick={() => rt.game?.changeZoom(1)} aria-label="Zoomer">+</button>
         </div>
       </div>
       <div className="uprow">
-        <div className="info"><b>{user?.name}</b><small>Progression sauvegardée sur votre compte Discord.</small></div>
-        <button data-testid="logout" onClick={() => void logout()}>Se déconnecter</button>
+        <div className="info"><div className="name"><b>{user?.name}</b></div><p>Progression sauvegardée sur votre compte Discord.</p></div>
+        <button className="buy" data-testid="logout" onClick={() => void logout()}>Se déconnecter</button>
       </div>
-      <h3>Commandes</h3>
-      <ul className="help">
-        <li><b>Naviguer</b> : touchez ou cliquez la mer.<span className="pc-only"> <kbd>Échap</kbd> annule le cap.</span></li>
-        <li><b>Pêcher</b> : arrêtez-vous près d’une ombre, puis <span className="pc-only"><kbd>Espace</kbd> ou </span>le bouton « Lancer ».</li>
-        <li><b>Ferrer</b> : attendez que le bouchon plonge franchement, puis <span className="pc-only"><kbd>Espace</kbd> ou </span>le bouton « Ferrer ».</li>
-        <li><b>Combat</b> : frappez quand le curseur traverse la zone verte ; le centre doré est critique. Enchaînez les critiques pour faire monter le combo.</li>
-        <li><b>Carte</b> : <span className="pc-only"><kbd>M</kbd> ou </span>le bouton 🗺️. Touchez la carte pour fixer un cap.</li>
-      </ul>
-      <p className="small">Monde n° {seed} · {hud?.fps ?? '—'} images/s · {getState().save ? `${Object.keys(getState().save!.bestiary).length} espèces` : ''}</p>
+      <Section title="Commandes">
+        <ul className="help">
+          <li><b>Naviguer</b>Touchez ou cliquez la mer.<span className="pc-only"> <kbd>Échap</kbd> annule le cap.</span></li>
+          <li><b>Pêcher</b>Arrêtez-vous près d’une ombre, puis <span className="pc-only"><kbd>Espace</kbd> ou </span>le bouton « Lancer la ligne ».</li>
+          <li><b>Ferrer</b>Attendez que le bouchon plonge franchement, puis <span className="pc-only"><kbd>Espace</kbd> ou </span>le bouton « Ferrer ».</li>
+          <li><b>Combattre</b>Frappez quand le curseur traverse la zone verte ; le centre doré est critique. Enchaînez les critiques pour faire monter le combo.</li>
+          <li><b>Carte</b>Le bouton « Carte »<span className="pc-only"> ou la touche <kbd>M</kbd></span>. Touchez la carte pour fixer un cap.</li>
+        </ul>
+      </Section>
+      <p className="note num">Monde n° {seed} · {hud?.fps ?? '—'} images/s · {getState().save ? `${Object.keys(getState().save!.bestiary).length} espèces` : ''}</p>
     </Modal>
   );
 }

@@ -76,7 +76,7 @@ export class Game {
   /** Trophées + événements de récompense (module NovaBot), dans la transaction en cours. */
   private finish(save: Save, tx: Tx, notes: string[]): void {
     for (const t of evalTrophies(save, this.now())) {
-      notes.push(`🏆 Trophée débloqué : ${t.name}`);
+      notes.push(`Trophée débloqué : ${t.name}`);
       tx.reward(`trophy:${t.id}`, 'trophy', { trophy: t.id, name: t.name });
     }
   }
@@ -118,14 +118,14 @@ export class Game {
     const tile = tileAt(this.seed, Math.floor(x), Math.floor(y));
     if (!save.stats.biomes.includes(tile.biome)) {
       noteBiome(save, tile.biome);
-      notes.push(`🧭 Nouveau biome découvert : ${BIOMES[tile.biome].name}`);
+      notes.push(`Nouveau biome découvert : ${BIOMES[tile.biome].name}`);
     }
     const port = portInRange(this.seed, x, y);
     if (port) {
       save.lastPort = port.id;
       if (!save.stats.ports.includes(port.id)) {
         if (save.stats.ports.length < 500) save.stats.ports.push(port.id);
-        notes.push(`⚓ Nouveau port : ${port.name}`);
+        notes.push(`Nouveau port : ${port.name}`);
       }
     }
     if (save.net > 0 && dist > 0.2) save.netProgress += dist * g.netEff * NETS[save.net]!.yield;
@@ -159,7 +159,7 @@ export class Game {
       save.stats.netted++;
       got.push(spec);
     }
-    if (got.length) notes.push(`🕸️ Filet relevé : ${got.map((s) => SPECIES_BY_ID[s.sp].name).join(', ')}`);
+    if (got.length) notes.push(`Filet relevé : ${got.map((s) => SPECIES_BY_ID[s.sp].name).join(', ')}`);
     return got;
   }
 
@@ -313,7 +313,7 @@ export class Game {
       const r = applyCatch(save, s.spec, replay.crits, now);
       noteBiome(save, s.spec.biome);
       for (const c of bumpDaily(save, { kind: 'catch', sp: s.sp, kg: s.spec.kg, biome: s.spec.biome }, now))
-        notes.push(`✅ Défi réussi : ${c.label} (+${c.reward} pièces)`);
+        notes.push(`Défi réussi : ${c.label} (+${c.reward} pièces)`);
       if (s.sp.rarity >= 4) tx.reward(`capture:${s.sp.id}`, 'capture', { species: s.sp.id, name: s.sp.name, kg: s.spec.kg, rarity: s.sp.rarity });
       if (!r.stored) notes.push('Cale pleine : le poisson a été relâché après la photo.');
       this.finish(save, tx, notes);
@@ -339,7 +339,7 @@ export class Game {
         this.encounters.delete(playerId);
         this.fishing.delete(playerId);
         save.syncAt = now;
-        notes.push('💥 Naufrage ! La cargaison est perdue, vous êtes remorqué au port le plus proche.');
+        notes.push('Naufrage ! La cargaison est perdue, vous êtes remorqué au port le plus proche.');
       }
       this.finish(save, tx, notes);
       return { ...this.mutation(save, notes), wrecked, damage };
@@ -370,8 +370,8 @@ export class Game {
     return this.atPort(playerId, (save, notes) => {
       const r = opSell(save, uids, from);
       if (r.ok) {
-        notes.push(`💰 ${r.count} poisson${r.count > 1 ? 's' : ''} vendu${r.count > 1 ? 's' : ''} : +${r.gain} pièces`);
-        for (const c of bumpDaily(save, { kind: 'sell', gain: r.gain }, this.now())) notes.push(`✅ Défi réussi : ${c.label} (+${c.reward} pièces)`);
+        notes.push(`${r.count} poisson${r.count > 1 ? 's' : ''} vendu${r.count > 1 ? 's' : ''} : +${r.gain} pièces`);
+        for (const c of bumpDaily(save, { kind: 'sell', gain: r.gain }, this.now())) notes.push(`Défi réussi : ${c.label} (+${c.reward} pièces)`);
       }
       return r;
     });
@@ -381,7 +381,7 @@ export class Game {
     return this.atPort(playerId, (save, notes) => {
       if (!Object.hasOwn(UPGRADE_BY_KEY, key)) return { ok: false, error: 'Amélioration inconnue.' };
       const r = opUpgrade(save, key as UpgradeKey);
-      if (r.ok) notes.push(`🔧 ${UPGRADE_BY_KEY[key as UpgradeKey].name} : niveau ${r.level}`);
+      if (r.ok) notes.push(`${UPGRADE_BY_KEY[key as UpgradeKey].name} : niveau ${r.level}`);
       return r;
     });
   }
@@ -389,7 +389,7 @@ export class Game {
   buyNet(playerId: string, tier: number): Promise<Mutation> {
     return this.atPort(playerId, (save, notes) => {
       const r = opBuyNet(save, tier);
-      if (r.ok) notes.push(`🕸️ ${NETS[tier]!.name} acheté et équipé`);
+      if (r.ok) notes.push(`${NETS[tier]!.name} acheté et équipé`);
       return r;
     });
   }
@@ -397,7 +397,7 @@ export class Game {
   repair(playerId: string): Promise<Mutation> {
     return this.atPort(playerId, (save, notes) => {
       const r = opRepair(save);
-      if (r.ok) notes.push(`🛠️ Coque réparée : +${r.repaired} PC pour ${r.cost} pièces`);
+      if (r.ok) notes.push(`Coque réparée : +${r.repaired} PC pour ${r.cost} pièces`);
       return r;
     });
   }

@@ -131,7 +131,8 @@ export class App {
     res.setHeader('Referrer-Policy', 'same-origin');
     res.setHeader(
       'Content-Security-Policy',
-      `default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; connect-src 'self'; base-uri 'self'; frame-ancestors ${this.opts.frameAncestors}`,
+      // Les polices sont celles du site NovaBot (Google Fonts) : seules exceptions à « tout vient d'ici ».
+      `default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; base-uri 'self'; frame-ancestors ${this.opts.frameAncestors}`,
     );
     if (this.opts.prod) res.setHeader('Strict-Transport-Security', 'max-age=31536000');
     const cookiesOut: string[] = [];

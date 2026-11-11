@@ -48,6 +48,8 @@ export interface AppState {
   result: CatchResult | null;
   sound: boolean;
   fade: boolean;
+  /** Augmente quand les images doivent être redessinées (retour d'arrière-plan). */
+  gfx: number;
 }
 
 let state: AppState = {
@@ -61,6 +63,7 @@ let state: AppState = {
     }
   })(),
   fade: false,
+  gfx: 0,
 };
 const listeners = new Set<() => void>();
 
@@ -152,7 +155,7 @@ export async function portOp(path: string, body: unknown = {}): Promise<boolean>
     applyMutation(await api<Mutation>(path, body));
     return true;
   } catch (e) {
-    toast('⚠️ ' + (e as Error).message);
+    toast((e as Error).message);
     return false;
   }
 }
