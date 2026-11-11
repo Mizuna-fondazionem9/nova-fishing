@@ -100,6 +100,11 @@ export interface AppOptions {
   frameAncestors: string;
   /** Origine publique attendue pour les requêtes qui modifient l'état (protection CSRF). */
   origin: string;
+  /**
+   * Préfixe public du jeu ('' ou '/fishing'). Les requêtes sont acceptées avec ou sans ce préfixe
+   * (selon que le relais en amont le retire ou non) ; redirections, cookies et page d'accueil le portent toujours.
+   */
+  basePath?: string;
   log?: (msg: string) => void;
 }
 
@@ -118,20 +123,23 @@ export class App {
   handle = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     const started = Date.now();
     const url = new URL(req.url ?? '/', 'http://local');
+    const base = this.opts.basePath ?? '';
+    if (base && (url.pathname === base || url.pathname.startsWith(base + '/'))) url.pathname = url.pathname.slice(base.length) || '/';
     const fwd = String(req.headers['x-forwarded-for'] ?? '').split(',')[0].trim();
     const ip = fwd || req.socket.remoteAddress || '?';
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Referrer-Policy', 'same-origin');
     res.setHeader(
       'Content-Security-Policy',
-      `default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors ${this.opts.frameAncestors}`,
+      `default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; connect-src 'self'; base-uri 'self'; frame-ancestors ${this.opts.frameAncestors}`,
     );
     if (this.opts.prod) res.setHeader('Strict-Transport-Security', 'max-age=31536000');
     const cookiesOut: string[] = [];
     const ctx: Ctx = {
       req, res, url, ip, cookies: parseCookies(req.headers.cookie), body: {},
       setCookie: (name, value, o = {}) => {
-        let c = `${name}=${encodeURIComponent(value)}; Path=${o.path ?? '/'}; SameSite=${o.sameSite ?? 'Lax'}`;
+        const path = (base + (o.path ?? '/')).replace(/(.)\/$/, '$1');
+        let c = `${name}=${encodeURIComponent(value)}; Path=${path}; SameSite=${o.sameSite ?? 'Lax'}`;
         if (o.maxAge !== undefined) c += `; Max-Age=${Math.floor(o.maxAge)}`;
         if (o.httpOnly !== false) c += '; HttpOnly';
         if (o.secure ?? this.opts.prod) c += '; Secure';
@@ -140,7 +148,8 @@ export class App {
       },
       redirect: (location) => {
         res.statusCode = 302;
-        res.setHeader('Location', location);
+        // Les redirections internes ('/…') restent sous le préfixe public ; les adresses complètes (Discord) sont laissées telles quelles.
+        res.setHeader('Location', location.startsWith('/') && !location.startsWith('//') ? base + location : location);
         res.end();
       },
     };
@@ -199,7 +208,10 @@ export class App {
       stat = await fs.stat(file).catch(() => null);
       if (!stat) throw new HttpError(404, 'Client non construit : lancez « npm run build ».');
     }
-    const etag = `"${stat.size.toString(16)}-${Math.floor(stat.mtimeMs).toString(16)}"`;
+    const base = this.opts.basePath ?? '';
+    // La page d'accueil annonce le préfixe au navigateur : toutes ses adresses relatives en découlent.
+    const page = file.endsWith('index.html') ? Buffer.from((await fs.readFile(file, 'utf8')).replace('<base href="/" />', `<base href="${base}/" />`)) : null;
+    const etag = `"${stat.size.toString(16)}-${Math.floor(stat.mtimeMs).toString(16)}${page ? '-' + base.length.toString(16) : ''}"`;
     res.setHeader('ETag', etag);
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Content-Type', MIME[extname(file)] ?? 'application/octet-stream');
@@ -208,9 +220,13 @@ export class App {
       res.end();
       return;
     }
-    res.setHeader('Content-Length', stat.size);
+    res.setHeader('Content-Length', page ? page.length : stat.size);
     if (head) {
       res.end();
+      return;
+    }
+    if (page) {
+      res.end(page);
       return;
     }
     await new Promise<void>((resolve, reject) => {

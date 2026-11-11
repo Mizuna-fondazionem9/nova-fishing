@@ -4,6 +4,7 @@
 //
 // Usage : npm run test:e2e        (CHROME=/chemin/vers/chrome pour choisir le navigateur)
 import { spawn, execFileSync, type ChildProcess } from 'node:child_process';
+import { createServer, request } from 'node:http';
 import { existsSync, mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -11,7 +12,36 @@ import assert from 'node:assert/strict';
 import { chromium, type Page } from 'playwright';
 
 const PORT = 4311;
-const URL = `http://localhost:${PORT}`;
+// E2E_BASE=/fishing : le jeu est joué à travers un relais qui imite le site (http://localhost:4312/fishing).
+// E2E_STRIP=1 : le relais retire le préfixe avant de transmettre (les deux façons de relayer sont prises en charge).
+const BASE_PATH = process.env.E2E_BASE ?? '';
+const PROXY_PORT = 4312;
+const URL = BASE_PATH ? `http://localhost:${PROXY_PORT}${BASE_PATH}` : `http://localhost:${PORT}`;
+/** Requêtes arrivées au « site » en dehors du préfixe : il ne doit y en avoir aucune. */
+const leaks: string[] = [];
+
+function startProxy(): Promise<() => Promise<void>> {
+  const proxy = createServer((req, res) => {
+    const url = req.url ?? '/';
+    if (url !== BASE_PATH && !url.startsWith(BASE_PATH + '/') && !url.startsWith(BASE_PATH + '?')) {
+      leaks.push(`${req.method} ${url}`);
+      res.writeHead(404, { 'content-type': 'text/plain' });
+      res.end('page du site, pas du jeu');
+      return;
+    }
+    const path = process.env.E2E_STRIP ? url.slice(BASE_PATH.length) || '/' : url;
+    const up = request({ host: '127.0.0.1', port: PORT, path, method: req.method, headers: { ...req.headers, 'x-forwarded-for': req.socket.remoteAddress ?? '' } }, (r) => {
+      res.writeHead(r.statusCode ?? 502, r.headers);
+      r.pipe(res);
+    });
+    up.on('error', () => {
+      if (!res.headersSent) res.writeHead(502);
+      res.end();
+    });
+    req.pipe(up);
+  });
+  return new Promise((resolve) => proxy.listen(PROXY_PORT, () => resolve(() => new Promise<void>((r) => { proxy.closeAllConnections(); proxy.close(() => r()); }))));
+}
 const SHOTS = 'tests/e2e/shots';
 const store = join(mkdtempSync(join(tmpdir(), 'nf-e2e-')), 'store.json');
 const chrome = process.env.CHROME ?? ['/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser'].find(existsSync);
@@ -19,10 +49,10 @@ const step = (m: string): void => console.log(`  ✓ ${m}`);
 
 let server: ChildProcess | null = null;
 async function startServer(): Promise<void> {
-  server = spawn('node', ['dist/server/index.js'], { env: { ...process.env, PORT: String(PORT), DEV_AUTH: '1', MEMORY_STORE_FILE: store, NODE_ENV: 'development' }, stdio: 'inherit' });
+  server = spawn('node', ['dist/server/index.js'], { env: { ...process.env, PORT: String(PORT), DEV_AUTH: '1', MEMORY_STORE_FILE: store, NODE_ENV: 'development', PUBLIC_URL: URL }, stdio: 'inherit' });
   for (let i = 0; i < 50; i++) {
     try {
-      if ((await fetch(`${URL}/health`)).ok) return;
+      if ((await fetch(`http://127.0.0.1:${PORT}/health`)).ok) return;
     } catch {
       /* pas encore prêt */
     }
@@ -190,6 +220,8 @@ async function main(): Promise<void> {
   mkdirSync(SHOTS, { recursive: true });
   execFileSync('node', ['scripts/build.mjs'], { stdio: 'inherit' });
   await startServer();
+  const stopProxy = BASE_PATH ? await startProxy() : null;
+  if (BASE_PATH) console.log(`  (jeu servi sous ${URL}${process.env.E2E_STRIP ? ', préfixe retiré par le relais' : ''})`);
   const browser = await chromium.launch({ executablePath: chrome, args: ['--no-sandbox'] });
   try {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
@@ -313,9 +345,12 @@ async function main(): Promise<void> {
     await m.waitForTimeout(400);
     await m.screenshot({ path: `${SHOTS}/07-mobile-trophees.png` });
     step('téléphone : navigation au toucher et menus');
+    assert.deepEqual(leaks, [], 'le jeu ne doit rien demander en dehors de son préfixe');
+    if (BASE_PATH) step(`aucune requête hors de ${BASE_PATH}`);
     console.log('\nParcours complet : OK');
   } finally {
     await browser.close();
+    await stopProxy?.();
     await stopServer();
   }
 }

@@ -23,7 +23,7 @@ export interface Built {
 }
 
 export function buildServer(cfg: Config, store: Store, log: (m: string) => void = console.log): Built {
-  const app = new App({ prod: cfg.prod, staticDir: cfg.clientDir || null, frameAncestors: cfg.frameAncestors, origin: new URL(cfg.publicUrl).origin, log });
+  const app = new App({ prod: cfg.prod, staticDir: cfg.clientDir || null, frameAncestors: cfg.frameAncestors, origin: new URL(cfg.publicUrl).origin, basePath: cfg.basePath, log });
   const game = new Game(store, { seed: cfg.worldSeed });
   const auth = new Auth(cfg, store, () => newSave(cfg.worldSeed, Date.now()));
   const authLimiter = new RateLimiter(10, 0.2); // connexions : 10 d'affilée puis 1 toutes les 5 s par IP

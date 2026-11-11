@@ -20,8 +20,10 @@ async function main(): Promise<void> {
   const built = buildServer(cfg, store, log);
   await new Promise<void>((resolve, reject) => {
     built.server.once('error', reject);
-    built.server.listen(cfg.port, '0.0.0.0', resolve);
+    // Sans hôte précisé, Node écoute en IPv6 et IPv4 à la fois : nécessaire pour le réseau privé de Railway.
+    built.server.listen(cfg.port, resolve);
   });
+  log(`Adresse publique : ${cfg.publicUrl}${cfg.basePath ? ` (préfixe ${cfg.basePath})` : ''}`);
   log(`Prêt sur le port ${cfg.port} (${cfg.prod ? 'production' : 'développement'}, monde ${cfg.worldSeed}, ${cfg.databaseUrl ? `PostgreSQL schéma ${cfg.dbSchema}` : 'stockage mémoire'})`);
 
   let closing = false;

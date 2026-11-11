@@ -554,3 +554,52 @@ test('limitation de débit : une rafale de requêtes est freinée', async () => 
   assert.ok(codes.includes(429), 'aucune requête freinée');
   assert.ok(codes.filter((c) => c === 400).length >= 20, 'les premières requêtes doivent passer');
 });
+
+test('préfixe /fishing : routes, redirections, cookies et page d’accueil restent sous le préfixe', async () => {
+  const { mkdtempSync, copyFileSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const dir = mkdtempSync(join(tmpdir(), 'nf-client-'));
+  copyFileSync('packages/client/index.html', join(dir, 'index.html'));
+  const env = { DEV_AUTH: '1', CLIENT_DIR: dir, DISCORD_CLIENT_ID: 'client-id', DISCORD_CLIENT_SECRET: 'secret-discord', DISCORD_AUTHORIZE_URL: 'https://discord.test/authorize' };
+
+  const { base, cfg } = await startApp({ ...env, PUBLIC_URL: 'https://novabot-hub.fr/fishing/' });
+  assert.equal(cfg.basePath, '/fishing');
+  assert.equal(cfg.discord.redirectUri, 'https://novabot-hub.fr/fishing/auth/discord/callback');
+  const jar = new Jar();
+  // Le relais peut transmettre le chemin complet ou retirer le préfixe : les deux formes répondent.
+  assert.equal((await get(base, '/fishing/health', jar)).status, 200);
+  assert.equal((await get(base, '/health', jar)).status, 200);
+  // Connexion : la redirection et le cookie restent sous /fishing.
+  const login = await get(base, '/fishing/auth/dev/login?name=Prefixe', jar);
+  assert.equal(login.status, 302);
+  assert.equal(login.headers.get('location'), '/fishing/');
+  assert.match(jar.raw.find((c) => c.startsWith('nf_sid='))!, /; Path=\/fishing;/);
+  assert.equal((await get(base, '/fishing/api/me', jar)).status, 200);
+  assert.equal((await get(base, '/api/me', jar)).status, 200);
+  assert.equal((await post(base, '/fishing/api/sync', jar, { x: 0, y: 0 })).status, 200);
+  // Discord : l'adresse de retour porte le préfixe, le cookie temporaire aussi, l'adresse externe n'est pas touchée.
+  const oauth = await get(base, '/fishing/auth/discord/login', new Jar());
+  const loc = new URL(oauth.headers.get('location')!);
+  assert.equal(loc.origin + loc.pathname, 'https://discord.test/authorize');
+  assert.equal(loc.searchParams.get('redirect_uri'), 'https://novabot-hub.fr/fishing/auth/discord/callback');
+  assert.match(oauth.headers.getSetCookie().find((c) => c.startsWith('nf_oauth='))!, /; Path=\/fishing\/auth;/);
+  // Page : avec ou sans barre finale, et pour toute adresse interne, la balise <base> annonce /fishing/.
+  for (const path of ['/fishing', '/fishing/', '/fishing/une/page', '/']) {
+    const r = await get(base, path, jar);
+    assert.equal(r.status, 200, path);
+    assert.match(await r.text(), /<base href="\/fishing\/" \/>/, path);
+  }
+
+  // Sans préfixe (domaine dédié) : comportement inchangé.
+  const root = await startApp({ ...env, PUBLIC_URL: 'https://peche.exemple.fr' });
+  assert.equal(root.cfg.basePath, '');
+  const jar2 = new Jar();
+  const login2 = await get(root.base, '/auth/dev/login?name=Racine', jar2);
+  assert.equal(login2.headers.get('location'), '/');
+  assert.match(jar2.raw.find((c) => c.startsWith('nf_sid='))!, /; Path=\/;/);
+  assert.match(await (await get(root.base, '/', jar2)).text(), /<base href="\/" \/>/);
+  assert.match((await get(root.base, '/fishing/api/me', jar2)).headers.get('content-type')!, /text\/html/, 'sans préfixe configuré, /fishing/api n’est pas l’API');
+
+  assert.throws(() => loadConfig({ PUBLIC_URL: 'https://exemple.fr/pas valide' } as NodeJS.ProcessEnv), /PUBLIC_URL/);
+});

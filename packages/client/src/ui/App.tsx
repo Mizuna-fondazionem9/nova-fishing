@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useStore, getState, setState } from '../store';
+import { useStore, getState, setState, BASE } from '../store';
 import { Game } from '../game/game';
 import { rt } from './common';
 import { Hud } from './Hud';
@@ -28,12 +28,12 @@ function Login() {
       <p className="tagline">Prenez la mer. Repérez les ombres. Ferrez au bon moment.</p>
       {err && <p className="error">{err}</p>}
       {discord ? (
-        <a className="btn discord" href="/auth/discord/login">Se connecter avec Discord</a>
+        <a className="btn discord" href={`${BASE}/auth/discord/login`}>Se connecter avec Discord</a>
       ) : (
         <p className="error">La connexion Discord n’est pas encore configurée sur ce serveur.</p>
       )}
       {dev && (
-        <form className="dev" onSubmit={(e) => { e.preventDefault(); location.href = `/auth/dev/login?name=${encodeURIComponent(name)}`; }}>
+        <form className="dev" onSubmit={(e) => { e.preventDefault(); location.href = `${BASE}/auth/dev/login?name=${encodeURIComponent(name)}`; }}>
           <small>Mode développement</small>
           <div className="row">
             <input value={name} maxLength={24} onChange={(e) => setName(e.target.value)} aria-label="Nom du joueur de test" />

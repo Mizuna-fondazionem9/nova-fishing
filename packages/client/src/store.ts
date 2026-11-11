@@ -98,6 +98,18 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Préfixe d'adresse du jeu : '' à la racine d'un domaine, '/fishing' quand il est servi sous novabot-hub.fr/fishing.
+ * Le serveur l'indique dans la balise <base> de la page ; tout le client s'y réfère.
+ */
+export const BASE = ((): string => {
+  try {
+    return new URL(document.baseURI).pathname.replace(/\/+$/, '');
+  } catch {
+    return '';
+  }
+})();
+
 let clockOffset = 0;
 /** Heure du serveur (ms) : sert aux créneaux d'ombres, à la météo et au cycle jour/nuit. */
 export const serverNow = (): number => Date.now() + clockOffset;
@@ -105,7 +117,7 @@ export const serverNow = (): number => Date.now() + clockOffset;
 export async function api<T>(path: string, body?: unknown, opts: { keepalive?: boolean } = {}): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(path, {
+    res = await fetch(BASE + path, {
       method: body === undefined ? 'GET' : 'POST',
       headers: body === undefined ? {} : { 'Content-Type': 'application/json', 'X-NF-Client': '1' },
       body: body === undefined ? undefined : JSON.stringify(body),
