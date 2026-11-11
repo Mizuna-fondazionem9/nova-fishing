@@ -5,7 +5,7 @@ import {
   type Specimen, type Species, type UpgradeDef,
 } from '../../../shared/src/index';
 import { useStore, setState, getState, portOp, api, serverNow, toast, BASE } from '../store';
-import { setSound, sfx, unlockAudio } from '../game/audio';
+import { setSound, sfx, unlockAudio, testAudio } from '../game/audio';
 import { rt, Modal, Bar, Coins, FishIcon, Rarity, Tags, speciesOf, fmt, fmt1, fmtKg, fmtLen } from './common';
 
 /** Empêche les doubles clics pendant qu'une requête est en cours (le serveur protège aussi de son côté). */
@@ -237,13 +237,13 @@ function SpeciesCard({ sp, onPick }: { sp: Species; onPick: (s: Species) => void
   const entry = useStore((s) => s.save!.bestiary[sp.id]);
   return (
     <button className={`spcard ${entry ? '' : 'unknown'}`} onClick={() => onPick(sp)} style={entry ? { borderColor: RARITY_COLORS[sp.rarity] } : undefined}>
-      <FishIcon sp={sp} scale={3} hidden={!entry} />
+      <div className="specimen-art"><FishIcon sp={sp} scale={3} hidden={!entry} fit /></div>
       <div className="sp-conditions">
         {sp.prefs.time && <span role="img" aria-label={`Moment favorable : ${sp.prefs.time}`} title={`Moment favorable : ${sp.prefs.time}`}>{({ aube: '🌅', jour: '☀️', crepuscule: '🌇', nuit: '🌙' } as Record<string, string>)[sp.prefs.time] ?? '🕒'}</span>}
         {sp.prefs.weather && <span role="img" aria-label={`Météo favorable : ${sp.prefs.weather}`} title={`Météo favorable : ${sp.prefs.weather}`}>{({ clair: '☀️', pluie: '🌧️', orage: '⛈️', brume: '🌫️', brouillard: '🌫️', nuageux: '☁️' } as Record<string, string>)[sp.prefs.weather] ?? '☁️'}</span>}
       </div>
-      <strong>{entry ? sp.name : '?????'}</strong>
-      {entry && <small>×{entry.n}</small>}
+      <div className="specimen-caption"><strong>{entry ? sp.name : '?????'}</strong>
+      {entry && <small>×{entry.n}</small>}</div>
     </button>
   );
 }
@@ -414,6 +414,15 @@ export function DailyPanel() {
 // ---------- Réglages ----------
 
 export function SettingsPanel() {
+  const [audioResult, setAudioResult] = useState('');
+  const [audioTesting, setAudioTesting] = useState(false);
+  const checkAudio = async (reset = false) => {
+    if (audioTesting) return;
+    setAudioTesting(true);
+    setAudioResult('Test en cours…');
+    try { setAudioResult(await testAudio(reset)); }
+    finally { setAudioTesting(false); }
+  };
   const sound = useStore((s) => s.sound);
   const user = useStore((s) => s.user);
   const hud = useStore((s) => s.hud);
@@ -444,7 +453,11 @@ export function SettingsPanel() {
         <div className="info"><div className="name"><b>Sons et ambiance</b></div><p>Vagues, touches, combats.</p></div>
         <button className="buy" data-testid="sound" onClick={toggle} aria-pressed={sound}>{sound ? 'Activés' : 'Coupés'}</button>
       </div>
-      <button disabled={!sound} onClick={() => { unlockAudio(); sfx('crit', 7); }}>♫ Tester le son</button>
+      <div className="row">
+        <button disabled={!sound || audioTesting} onClick={() => void checkAudio()}>♫ Tester le son</button>
+        <button disabled={!sound || audioTesting} onClick={() => void checkAudio(true)}>Réinitialiser le son</button>
+      </div>
+      {audioResult && <p role="status" className="note">{audioResult}</p>}
       <div className="uprow">
         <div className="info">
           <div className="name"><b>Zoom</b></div>

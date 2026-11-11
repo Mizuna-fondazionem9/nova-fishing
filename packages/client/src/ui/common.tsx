@@ -25,7 +25,7 @@ export function Coins({ n, testid }: { n: number; testid?: string }) {
   );
 }
 
-export function FishIcon({ sp, color = 0, scale = 2, animate = false, hidden = false }: { sp: Species; color?: number; scale?: number; animate?: boolean; hidden?: boolean }) {
+export function FishIcon({ sp, color = 0, scale = 2, animate = false, hidden = false, fit = false }: { sp: Species; color?: number; scale?: number; animate?: boolean; hidden?: boolean; fit?: boolean }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const gfx = useStore((s) => s.gfx);
   useEffect(() => {
@@ -33,18 +33,28 @@ export function FishIcon({ sp, color = 0, scale = 2, animate = false, hidden = f
     let frame = 0;
     const draw = (): void => {
       const s = fishSprite(sp, color, frame);
-      c.width = s.width;
-      c.height = s.height;
+      let x = 0, y = 0, w = s.width, h = s.height;
+      if (fit) {
+        const pixels = s.getContext('2d')!.getImageData(0, 0, w, h).data;
+        let left = w, top = h, right = -1, bottom = -1;
+        for (let py = 0; py < h; py++) for (let px = 0; px < w; px++) {
+          if (pixels[(py * w + px) * 4 + 3] > 0) { left = Math.min(left, px); right = Math.max(right, px); top = Math.min(top, py); bottom = Math.max(bottom, py); }
+        }
+        if (right >= left) { x = left; y = top; w = right - left + 1; h = bottom - top + 1; }
+      }
+      c.width = w;
+      c.height = h;
       const ctx = c.getContext('2d')!;
       ctx.clearRect(0, 0, c.width, c.height);
-      ctx.drawImage(s, 0, 0);
+      ctx.drawImage(s, x, y, w, h, 0, 0, w, h);
       if (hidden) {
         ctx.globalCompositeOperation = 'source-in';
         ctx.fillStyle = '#4a5580';
         ctx.fillRect(0, 0, c.width, c.height);
       }
-      c.style.width = `${s.width * scale}px`;
-      c.style.height = `${s.height * scale}px`;
+      const factor = fit ? Math.min(132 / w, 62 / h) : scale;
+      c.style.width = `${w * factor}px`;
+      c.style.height = `${h * factor}px`;
     };
     draw();
     if (!animate) return;
@@ -53,7 +63,7 @@ export function FishIcon({ sp, color = 0, scale = 2, animate = false, hidden = f
       draw();
     }, 380);
     return () => clearInterval(id);
-  }, [sp, color, scale, animate, hidden, gfx]);
+  }, [sp, color, scale, animate, hidden, gfx, fit]);
   return <canvas ref={ref} className="pix" />;
 }
 
