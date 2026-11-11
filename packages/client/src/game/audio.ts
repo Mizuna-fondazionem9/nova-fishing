@@ -1,4 +1,4 @@
-// Sons synthétisés : ambiance marine, impacts spray/scratch pour les combos.
+// Sons synthétisés : ambiance marine, signature mélodique progressive pour les combos.
 // Aucun extrait de la référence commerciale n’est distribué.
 
 let ctx: BaseAudioContext | null = null;
@@ -161,31 +161,29 @@ function mallet(freq: number, dur: number, vol: number, delay = 0, echoSend = 0.
 const semitones = (n: number): number => Math.pow(2, n / 12);
 const RE = 293.66; // ré : la tonique du jeu
 
-/** Attaque spray / scratch : souffle résonant, pitch plongeant et accent de palier. */
+/** Signature mélodique ascendante : timbre rond, quinte et résolution aux paliers.
+ * Hauteurs bornées : les longues séries ne deviennent pas stridentes.
+ */
 function crit(streak: number): void {
-  if (!ctx || !master || !enabled || !noiseData) return;
-  const t = ctx.currentTime;
-  const tier = Math.min(8, Math.floor((streak - 1) / 2));
-  const src = ctx.createBufferSource();
-  src.buffer = noiseData;
-  const filter = ctx.createBiquadFilter();
-  filter.type = 'bandpass';
-  filter.Q.value = 3;
-  filter.frequency.setValueAtTime(900 + tier * 190, t);
-  filter.frequency.exponentialRampToValueAtTime(4200 + tier * 220, t + 0.035);
-  filter.frequency.exponentialRampToValueAtTime(460 + tier * 80, t + 0.21);
-  const gain = ctx.createGain();
-  gain.gain.setValueAtTime(0.0001, t);
-  gain.gain.linearRampToValueAtTime(0.32, t + 0.006);
-  gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.25);
-  src.connect(filter).connect(gain).connect(master);
-  src.start(t); src.stop(t + 0.27);
-  src.onended = () => { src.disconnect(); filter.disconnect(); gain.disconnect(); };
-  note(150 + tier * 16, 0.16, { vol: 0.2, attack: 0.003, slide: -95 });
-  note(580 + tier * 100, 0.18, { type: 'sawtooth', vol: 0.045, slide: -360, attack: 0.004 });
-  if (streak % 5 === 0) {
-    wash(0.32, 2600, 0.14, 'bandpass', 0.004, 0.08);
-    [0, 7, 12].forEach((n, i) => note(440 * semitones(n), 0.22, { type: 'triangle', vol: 0.09, delay: 0.07 + i * 0.055 }));
+  const n = Math.max(1, Math.floor(Number.isFinite(streak) ? streak : 1));
+  const melody = [0, 2, 4, 7, 9, 12, 14, 16];
+  const step = Math.min(n - 1, melody.length - 1);
+  const f = 392 * semitones(melody[step]);
+  const voice = (hz: number, delay = 0, volume = 0.16): void => {
+    note(hz, 0.48, { vol: volume, attack: 0.008, delay, echo: 0.18 });
+    note(hz * 2, 0.18, { type: 'sine', vol: volume * 0.18, attack: 0.005, delay });
+    note(hz / 2, 0.25, { type: 'triangle', vol: volume * 0.22, attack: 0.008, delay });
+  };
+  voice(f);
+  // Une assise douce et brève, sans bruit blanc ni dent de scie.
+  note(98, 0.12, { vol: 0.065, attack: 0.006, slide: -24 });
+  if (n >= 3) voice(f * 0.75, 0.025, 0.045);
+  if (n % 5 === 0) {
+    // Un petit accord majeur reconnaissable ponctue chaque série de cinq.
+    [0, 4, 7, 12].forEach((st, i) => voice(392 * semitones(st), 0.06 + i * 0.065, 0.085));
+  } else if (n > melody.length) {
+    // Au sommet : réponse mélodique alternée, pas d'escalade dans le suraigu.
+    voice(784 * semitones(n % 2 ? 7 : 4), 0.085, 0.07);
   }
 }
 
