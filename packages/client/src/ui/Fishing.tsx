@@ -151,7 +151,7 @@ export function FishingOverlay() {
         <div className="waitbox">
           <p className="hint">
             {stage === 'casting' && 'La ligne file…'}
-            {stage === 'waiting' && <>Silhouette : <b>{sil ? SILHOUETTE_NAMES[sil] : '?'}</b>. Patience : attendez que le bouchon <b>plonge franchement</b>. Les petites secousses sont des feintes.</>}
+            {stage === 'waiting' && <>{sil==='giant'&&<span className="presence">Une présence immense glisse sous la coque… </span>}Silhouette : <b>{sil ? SILHOUETTE_NAMES[sil] : '?'}</b>. Patience : attendez que le bouchon <b>plonge franchement</b>. Les petites secousses sont des feintes.</>}
             {stage === 'bitten' && <b className="bite">ÇA MORD ! FERREZ !</b>}
             {stage === 'hooking' && 'Ferrage…'}
           </p>
@@ -192,7 +192,8 @@ export function ResultModal() {
   const f = r.specimen;
   return (
     <div className="overlay">
-      <div className="modal result">
+      <div className={`modal result ${r.outcome==='win'&&f&&speciesOf(f).rarity>=4?'rare-capture':''}`}>
+        {r.outcome==='win'&&f&&speciesOf(f).rarity>=4&&<div className="rare-banner"><span>✦</span><b>{speciesOf(f).ancient?'Une mémoire des océans':'Une rencontre exceptionnelle'}</b><small>{r.first?'Première découverte dans votre carnet':'Un nouvel instant à conserver'}</small></div>}
         {r.outcome === 'win' && f ? (
           <>
             <h2 style={{ color: RARITY_COLORS[speciesOf(f).rarity] }}>Capture !</h2>

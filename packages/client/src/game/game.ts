@@ -2,7 +2,7 @@
 // Le rendu se fait à la résolution « pixel art » puis est agrandi sans lissage par le navigateur.
 import {
   TILE, CHUNK, CELL, Rng, hash2, clamp, tileAt, getPort, portInRange, daylight, timeOfDay, weatherAt, spawnShadows, slotOf,
-  nearbyTreasures, findPath, gearOf, Combat, HOSTILE_BY_ID,
+  nearbyLandmarks, SPECIES_BY_ID, nearbyTreasures, findPath, gearOf, Combat, HOSTILE_BY_ID,
   type Pt, type Shadow, type BiteScript, type Port, type Weather, type Hostile, type Silhouette,
   type CastResponse, type HookResponse, type ResolveResponse, type SyncResponse, type HitResponse, type Mutation, type Encounter,
 } from '../../../shared/src/index';
@@ -416,6 +416,7 @@ export class Game {
           port: this.boat.speed < 0.5 ? portInRange(this.seed, this.boat.x, this.boat.y) : null,
           moving: this.boat.path.length > 0, canCast: !this.fish && !this.hostile && !!this.castTarget(),
           tod: timeOfDay(serverNow()), weather: this.weather, danger: !!this.hostile, fps: this.fps,
+          landmark: nearbyLandmarks(this.seed,this.boat.x,this.boat.y).find(p=>Math.hypot(p.x-this.boat.x,p.y-this.boat.y)<8),
           treasure: nearbyTreasures(this.seed,this.boat.x,this.boat.y,serverNow()).find(t=>Math.hypot(t.x-this.boat.x,t.y-this.boat.y)<5 && !getState().save?.treasures?.includes(t.id)),
         },
       });
@@ -427,7 +428,7 @@ export class Game {
     const b = this.boat;
     const save = getState().save;
     if (!save) return;
-    const g = gearOf(save.up,save.vessel);
+    const g = gearOf(save.up,save.vessel,save.kit);
     let target = 0;
     if (b.path.length && !this.fish) {
       const wp = b.path[0];
@@ -795,7 +796,7 @@ export class Game {
     try {
       const r = await api<ResolveResponse>('/api/fishing/resolve', { sid: f.sid, taps: f.taps, end: c.tick });
       applyMutation(r);
-      sfx(r.outcome === 'win' ? 'win' : 'lose');
+      sfx(r.outcome === 'win' ? (r.specimen && SPECIES_BY_ID[r.specimen.sp].rarity>=4 ? 'reveal' : 'win') : 'lose');
       setState({
         result: {
           outcome: r.outcome, specimen: r.specimen, stored: r.stored, record: r.record, first: r.first,
@@ -1078,6 +1079,27 @@ export class Game {
 
     };
 
+    const drawLandmarks=():void=>{
+      for(const p of nearbyLandmarks(this.seed,b.x,b.y)) {
+        const px=X(p.x),py=Y(p.y);if(px< -60||py< -60||px>vw+60||py>vh+60)continue;
+        ctx.save();ctx.translate(px,py);
+        if(p.kind==='wreck') {
+          ctx.fillStyle='#795236';ctx.fillRect(-12,-3,24,7);ctx.fillRect(-4,-15,3,20);ctx.fillStyle='#c1a675';ctx.fillRect(-1,-13,9,5);ctx.fillRect(5,4,7,2);
+        } else if(p.kind==='sanctuary') {
+          ctx.fillStyle='#547c91';ctx.fillRect(-15,5,30,5);
+          for(const x of [-10,0,10]){ctx.fillStyle='#9ab3b0';ctx.fillRect(x-2,-15,5,22);ctx.fillStyle='#d6edc1';ctx.fillRect(x-1,-12,2,2);}
+        } else if(p.kind==='lagoon') {
+          ctx.globalAlpha=.35;ctx.fillStyle='#7ee8c3';ctx.beginPath();ctx.ellipse(0,0,25,16,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
+          ctx.fillStyle='#c4dcbc';for(const x of [-17,14]){ctx.fillRect(x,-9,5,2);ctx.fillRect(x+2,-11,2,6);}
+        } else {
+          ctx.fillStyle='#6b3a49';ctx.fillRect(-12,-3,24,9);ctx.fillStyle='#f3a06a';ctx.fillRect(-6,-2,12,2);
+          for(let i=0;i<4;i++){ctx.globalAlpha=.35+(Math.sin(t*3+i)+1)*.2;ctx.fillStyle='#ffd197';ctx.beginPath();ctx.arc(Math.sin(t+i)*7,-5-((t*7+i*5)%25),2,0,Math.PI*2);ctx.fill();}
+        }
+        ctx.restore();
+        if(Math.hypot(p.x-b.x,p.y-b.y)<22){ctx.font='8px monospace';ctx.textAlign='center';ctx.fillStyle='#f2e1ba';ctx.fillText(p.name,px,py+20);}
+      }
+    };
+
     // Ports : ponton, cabane, phare, nom
     const lights: [number, number][] = [];
     for (const p of this.portsNear(this.cam.x / TILE, this.cam.y / TILE)) {
@@ -1293,6 +1315,7 @@ export class Game {
     drawShadows(true);
     drawHostile();
     drawTreasures();
+    drawLandmarks();
     if (dark > 0.15) {
       ctx.globalCompositeOperation = 'lighter';
       const glow = (gx: number, gy: number, r: number, a: number): void => {

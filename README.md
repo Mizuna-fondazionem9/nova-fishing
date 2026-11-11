@@ -262,3 +262,9 @@ POST /internal/rewards/ack   {"ids": ["…"], "status": "synced"}
 Les mers abritent des préhistoriques mythiques à plaques osseuses, de grands animaux (dont les orques) et des coquillages. Des grandes îles rares, loin de Port-Nova, sont traversées de rivières : cherchez-y les koïs, les crevettes et les crustacés d'eau douce. Les coffres dorés se récupèrent en approchant puis en cliquant « Ouvrir le coffre ».
 
 Au port, l'onglet **Compagnon & flotte** permet d'adopter un chat pêcheur, de récupérer ses prises, d'acheter ou équiper un bateau et d'en modifier la couleur ou la taille visuelle. Le chat reste au port où il est installé et stocke au maximum six petites prises. Les modèles changent réellement vitesse, stockage et coque ; les peintures et la taille d'affichage sont cosmétiques. Les tarifs et limites sont détaillés dans `BALANCING.md`.
+
+### Carnet de l'explorateur
+
+Les contrats et le matériel spécialisé sont accessibles au **port → Capitainerie**. Le nouveau bouton **Carnet** rassemble épaves, sanctuaires, lagons et sources volcaniques. Les découvertes sont marquées sur la carte ; les fragments d'épave permettent de révéler de nouvelles destinations. L'aquarium possède un nom, des décors de collection et une prise à l'honneur. Les captures légendaires et préhistoriques bénéficient d'une présentation et d'une signature sonore dédiées.
+
+Voir [le guide du carnet](docs/carnet-explorateur.md) pour les activités, les limites de récompense et les compromis des équipements. Parcours visuel local : `npm run build && npm run test:e2e:adventure` (Chrome/Chromium requis).
