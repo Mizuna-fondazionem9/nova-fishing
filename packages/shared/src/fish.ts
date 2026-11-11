@@ -96,11 +96,12 @@ function weightOf(sp: Species, tile: Tile, tod: TimeOfDay, weather: Weather): nu
 }
 
 /** Tire une espèce pour une tuile. Si `sil` est fourni, seules les espèces de cette silhouette sont candidates. */
-export function pickSpecies(rng: Rng, tile: Tile, tod: TimeOfDay, weather: Weather, sil?: Silhouette): Species | null {
+export function pickSpecies(rng: Rng, tile: Tile, tod: TimeOfDay, weather: Weather, sil?: Silhouette, excludeCrabs = false): Species | null {
   const items: Species[] = [];
   const weights: number[] = [];
   for (const sp of SPECIES) {
     if (sil && sp.sil !== sil) continue;
+    if (excludeCrabs && sp.sil === 'crab') continue;
     const w = weightOf(sp, tile, tod, weather);
     if (w > 0) {
       items.push(sp);
@@ -139,7 +140,7 @@ export const shadowKey = (cx: number, cy: number, slot: number, idx: number): st
  * le serveur les recalcule pour vérifier qu'un lancer vise une ombre qui existe vraiment.
  * Seule la SILHOUETTE est publique : l'espèce exacte est tirée côté serveur avec un sel secret.
  */
-export function spawnShadows(seed: number, cx: number, cy: number, slot: number): Shadow[] {
+function rawShadows(seed: number, cx: number, cy: number, slot: number): Shadow[] {
   const out: Shadow[] = [];
   const base = hashN(seed, cx, cy, slot);
   const n = 2 + (base % 4);
@@ -159,6 +160,28 @@ export function spawnShadows(seed: number, cx: number, cy: number, slot: number)
     });
   }
   return out;
+}
+
+/** Un minimum de 22 tuiles entre crabes, y compris aux frontières des chunks.
+ * Priorité déterministe : même verdict sur le client et le serveur, sans état partagé.
+ * Les candidats écartés deviennent des poissons : on conserve le nombre d'ombres.
+ */
+export const CRAB_SPACING = 22;
+export function spawnShadows(seed: number, cx: number, cy: number, slot: number): Shadow[] {
+  const raw = rawShadows(seed,cx,cy,slot);
+  if (!raw.some(s => s.sil === 'crab')) return raw;
+  const neighbors: Shadow[] = [];
+  for (let dy=-1;dy<=1;dy++) for (let dx=-1;dx<=1;dx++)
+    neighbors.push(...rawShadows(seed,cx+dx,cy+dy,slot).filter(s => s.sil === 'crab'));
+  const priority = (s: Shadow) => hashN(seed,s.cx,s.cy,slot,s.idx,717);
+  return raw.flatMap(s => {
+    if (s.sil !== 'crab' || !neighbors.some(o => o.key !== s.key && Math.hypot(o.x-s.x,o.y-s.y)<CRAB_SPACING &&
+        (priority(o)<priority(s) || (priority(o)===priority(s) && o.key<s.key)))) return [s];
+    const rng = new Rng(hashN(seed,s.cx,s.cy,slot,s.idx,818));
+    const tile = tileAt(seed,Math.floor(s.x),Math.floor(s.y));
+    const sp = pickSpecies(rng,tile,timeOfDay(slot*SLOT_MS),weatherAt(seed,slot*SLOT_MS,s.x,s.y),undefined,true);
+    return sp ? [{...s,sil:sp.sil,school:sp.sil==='small' ? rng.int(1,5) : 1}] : [];
+  });
 }
 
 /** Côté serveur : espèce réelle d'une ombre, parmi celles qui partagent sa silhouette. */

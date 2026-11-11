@@ -116,6 +116,7 @@ function CrabGauge() {
   const f = rt.game?.fish;
   const c = f?.combat;
   if (!f || !c) return null;
+  const target = { id:c.targetId, x:c.targetX, y:c.targetY, radius:c.targetRadius };
   const ready = f.stage === 'fight' && c.tick >= c.targetAt && c.state === 'run';
   const perfect = (c.tick - c.targetAt) * 1000 / 60 <= c.perfectMs;
   return <div className="fight crab-fight" data-frame={frame}>
@@ -124,12 +125,15 @@ function CrabGauge() {
     <div className="meters"><label>Fatigue du crabe</label><div className="bar"><div style={{ width: `${100*c.fish/c.p.stamina}%`, background: '#5cc8ff' }} /></div><label>Résistance de la ligne</label><div className="bar"><div style={{ width: `${100*c.line/c.p.line}%`, background: '#6fe3a1' }} /></div></div>
     <div className={`crab-board ${c.streak >= 7 ? 'rainbow' : ''}`} data-testid="crab-board" onPointerDown={e => {
       e.preventDefault(); e.stopPropagation(); unlockAudio();
+      // Masquer immédiatement la cible validée, sans attendre le prochain rendu.
+      const shown = e.currentTarget.querySelector<HTMLElement>('.crab-target');
       const r = e.currentTarget.getBoundingClientRect();
       rt.game?.tapFight((e.clientX-r.left)/r.width, (e.clientY-r.top)/r.height);
+      if (shown && (c.targetId !== target.id || c.state !== 'run')) shown.style.visibility = 'hidden';
     }}>
       {f.stage === 'countdown' && <span className="crab-ready">Prêt…</span>}
-      {ready && <button key={c.targetId} className={`crab-target ${perfect ? 'perfect' : ''}`} aria-label="Attraper le crabe" style={{ left: `${c.targetX*100}%`, top: `${c.targetY*100}%`, width: `${c.targetRadius*200}%`, height: `${c.targetRadius*200}%` }} onClick={e => {
-        if (e.detail === 0) { unlockAudio(); rt.game?.tapFight(c.targetX,c.targetY); }
+      {ready && <button key={target.id} className={`crab-target ${perfect ? 'perfect' : ''}`} aria-label="Attraper le crabe" style={{ left: `${target.x*100}%`, top: `${target.y*100}%`, width: `${target.radius*200}%`, height: `${target.radius*200}%` }} onClick={e => {
+        if (e.detail === 0) { unlockAudio(); rt.game?.tapFight(target.x,target.y); }
       }}><span>🦀</span></button>}
     </div>
     <div className="crab-feedback" role="status">{f.flash && performance.now()-f.flash.at < 650 ? f.flash.text : c.streak >= 2 ? `COMBO ×${c.streak}` : 'Visez vite et juste !'}</div>

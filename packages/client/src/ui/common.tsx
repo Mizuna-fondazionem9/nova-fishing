@@ -52,7 +52,7 @@ export function FishIcon({ sp, color = 0, scale = 2, animate = false, hidden = f
         ctx.fillStyle = '#4a5580';
         ctx.fillRect(0, 0, c.width, c.height);
       }
-      const factor = fit ? Math.min(132 / w, 62 / h) : scale;
+      const factor = fit ? Math.min((sp.shape === 'crab' ? 76 : 132) / w, (sp.shape === 'crab' ? 38 : 62) / h) : sp.shape === 'crab' ? Math.min(scale,2.5) : scale;
       c.style.width = `${w * factor}px`;
       c.style.height = `${h * factor}px`;
     };
