@@ -5,6 +5,8 @@ export interface Config {
   port: number;
   prod: boolean;
   publicUrl: string;
+  /** Préfixe déduit de PUBLIC_URL : '' pour https://jeu.exemple, '/fishing' pour https://exemple/fishing. */
+  basePath: string;
   databaseUrl: string | null;
   databaseSsl: boolean;
   dbSchema: string;
@@ -33,6 +35,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const publicUrl = (need('PUBLIC_URL') || `http://localhost:${port}`).replace(/\/+$/, '');
   if (prod && !publicUrl.startsWith('https://')) errors.push('PUBLIC_URL doit commencer par https:// en production');
 
+  let basePath = '';
+  try {
+    basePath = new URL(publicUrl).pathname.replace(/\/+$/, '');
+  } catch {
+    errors.push('PUBLIC_URL n’est pas une adresse valide');
+  }
+  if (basePath && !/^(\/[A-Za-z0-9_-]+)+$/.test(basePath)) errors.push('PUBLIC_URL : le chemin ne peut contenir que des lettres, chiffres, - et _');
+
   const databaseUrl = env.DATABASE_URL?.trim() || null;
   if (prod && !databaseUrl) errors.push('DATABASE_URL est obligatoire en production');
 
@@ -49,7 +59,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   if (!Number.isInteger(worldSeed) || worldSeed <= 0 || worldSeed > 2 ** 31) errors.push('WORLD_SEED doit être un entier positif');
 
   const cfg: Config = {
-    port, prod, publicUrl, databaseUrl, databaseSsl: env.DATABASE_SSL === '1', dbSchema, worldSeed, sessionSecret,
+    port, prod, publicUrl, basePath, databaseUrl, databaseSsl: env.DATABASE_SSL === '1', dbSchema, worldSeed, sessionSecret,
     discord: {
       clientId: need('DISCORD_CLIENT_ID'),
       clientSecret: need('DISCORD_CLIENT_SECRET'),

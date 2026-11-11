@@ -4,7 +4,7 @@ import {
   bulkOf, cargoBulk, dayKey, depthMeters, gearOf, gearTier, priceOf, upgradeCost,
   type Specimen, type Species, type UpgradeDef,
 } from '../../../shared/src/index';
-import { useStore, setState, getState, portOp, api, serverNow, toast } from '../store';
+import { useStore, setState, getState, portOp, api, serverNow, toast, BASE } from '../store';
 import { setSound, sfx } from '../game/audio';
 import { rt, Modal, Bar, FishIcon, Rarity, Tags, speciesOf, fmt, fmtKg, fmtLen } from './common';
 
@@ -362,7 +362,7 @@ export function SettingsPanel() {
     try {
       await rt.game?.sync();
       await api('/api/logout', {});
-      location.href = '/';
+      location.href = BASE + '/';
     } catch (e) {
       toast('⚠️ ' + (e as Error).message);
     }

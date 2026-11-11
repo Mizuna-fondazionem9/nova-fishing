@@ -1,13 +1,13 @@
 import { createRoot } from 'react-dom/client';
 import './styles.css';
 import { App } from './ui/App';
-import { api, loadMe, setState, getState } from './store';
+import { api, loadMe, setState, getState, BASE } from './store';
 import { setSound } from './game/audio';
 
 async function boot(): Promise<void> {
   setSound(getState().sound);
   const auth = new URLSearchParams(location.search).get('auth');
-  if (auth) history.replaceState(null, '', '/');
+  if (auth) history.replaceState(null, '', BASE + '/');
   try {
     setState({ loadText: 'Connexion au serveur…', loadPct: 0.1 });
     const cfg = await api<{ devAuth: boolean; discord: boolean }>('/api/config');
