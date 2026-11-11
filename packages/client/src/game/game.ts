@@ -14,7 +14,7 @@ import { getState, setState, toast, api, applyMutation, serverNow, type FishStag
 
 const ZOOMS = [1.5, 2, 3, 4];
 export const CAST_RANGE = 8;
-const SPEED: Record<Silhouette, number> = { small: 1.3, long: 1, massive: 0.55, shark: 0.9, ray: 0.6, cephalo: 0.7, giant: 0.35 };
+const SPEED: Record<Silhouette, number> = { crab: 0.45, small: 1.3, long: 1, massive: 0.55, shark: 0.9, ray: 0.6, cephalo: 0.7, giant: 0.35 };
 
 interface ShadowView {
   sh: Shadow;
@@ -57,7 +57,7 @@ export interface Fishing {
   dip: number;
   dipUntil: number;
   combat: Combat | null;
-  taps: number[];
+  taps: (number | { tick: number; x: number; y: number })[];
   fightT0: number;
   flash: { text: string; kind: string; at: number } | null;
   /** Série de critiques en cours (à partir de 2), et l'instant du dernier coup pour rejouer l'animation. */
@@ -746,14 +746,14 @@ export class Game {
     }
   }
 
-  private tapFight(): void {
+  tapFight(x?: number, y?: number): void {
     const f = this.fish;
     if (!f?.combat || f.stage !== 'fight') return;
     const c = f.combat;
     const tick = c.tick;
-    const r = c.tap();
+    const r = c.tap(x, y);
     if (r === 'locked') return;
-    f.taps.push(tick);
+    f.taps.push(c.p.mode === 'crab' ? { tick, x: x!, y: y! } : tick);
     // Série de coups critiques : 1 pour un critique isolé, puis 2, 3... tant qu'ils s'enchaînent.
     const streak = r === 'crit' ? c.streak : 0;
     const text = r === 'crit' ? (streak >= 2 ? `CRITIQUE ×${streak} !` : 'CRITIQUE !') : r === 'hit' ? 'Touché !' : 'Raté !';

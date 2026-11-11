@@ -603,3 +603,34 @@ test('préfixe /fishing : routes, redirections, cookies et page d’accueil rest
 
   assert.throws(() => loadConfig({ PUBLIC_URL: 'https://exemple.fr/pas valide' } as NodeJS.ProcessEnv), /PUBLIC_URL/);
 });
+
+test('crabes : mode transmis, coordonnées invalides refusées et prise validée côté serveur', async () => {
+  const r = await rig('crabes');
+  await r.patch(s => { s.up.rodPower = 20; s.up.rodRes = 20; s.up.line = 20; s.up.precision = 10; });
+  const used = new Set<string>();
+  let rejected = false, caught = false;
+  for (let n = 0; n < 12 && !caught; n++) {
+    const sh = (await r.shadowsNear(used)).find(sh => sh.sil === 'crab');
+    assert.ok(sh, 'une ombre de crabe doit apparaître près du départ');
+    used.add(sh.key);
+    const cast = await castAt(r, sh);
+    if (cast.script.biteAt === null) { await r.game.cancel(r.id,cast.sid); continue; }
+    r.clock.t += cast.script.biteAt + 100;
+    const hook = await r.game.hook(r.id,cast.sid,cast.script.biteAt + 100);
+    assert.equal(hook.combat?.mode,'crab');
+    assert.ok(hook.combat!.crabPrecision! > 0);
+    const bot = simulateBot(hook.combat!, BOTS.parfait, new Rng(42));
+    const end = Math.round(bot.seconds*60);
+    r.clock.t += Math.ceil(bot.seconds*1000) + 1300;
+    if (!rejected) {
+      assert.equal(await status(r.game.resolve(r.id,cast.sid,[{tick:1,x:NaN,y:0.5}],end)),400);
+      rejected = true; continue;
+    }
+    const result = await r.game.resolve(r.id,cast.sid,bot.taps,end);
+    assert.equal(result.outcome,'win');
+    assert.equal(SPECIES_BY_ID[result.specimen!.sp].sil,'crab');
+    assert.ok(result.save.bestiary[result.specimen!.sp]);
+    caught = true;
+  }
+  assert.ok(caught && rejected);
+});

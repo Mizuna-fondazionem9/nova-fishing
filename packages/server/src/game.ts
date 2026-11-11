@@ -7,7 +7,7 @@ import {
   dayKey, opSell, opUpgrade, opBuyNet, opRepair, opKeep, opRelease, applyDamage, holdFree, bulkOf, regionBonus,
   SPECIES, SPECIES_BY_ID, HOSTILES, HOSTILE_BY_ID, BIOMES, NETS, NET_COOLDOWN_MS, NET_DISTANCE, RARITY_WEIGHT,
   MAX_COMBAT_TICKS, TICK_HZ, CHUNK, UPGRADE_BY_KEY,
-  type Save, type Specimen, type Species, type BiteScript, type CombatParams, type Shadow, type UpgradeKey, type Op,
+  type CombatTap, type Save, type Specimen, type Species, type BiteScript, type CombatParams, type Shadow, type UpgradeKey, type Op,
   type MeResponse, type Mutation, type SyncResponse, type CastResponse, type HookResponse, type ResolveResponse, type HitResponse, type Encounter,
 } from '../../shared/src/index';
 import { HttpError } from './http';
@@ -253,6 +253,7 @@ export class Game {
       s.state = 'fight';
       s.hookAt = now;
       s.combat = makeCombatParams(fightStats(s.sp, s.spec), gearOf(save.up).rod, this.randomSeed());
+      if (s.sp.sil === 'crab') { s.combat.mode = 'crab'; s.combat.crabPrecision = gearOf(save.up).rod.precision; s.combat.aggr = 0; }
       return { verdict, combat: s.combat };
     }
     this.fishing.delete(playerId);
@@ -290,8 +291,12 @@ export class Game {
       throw new HttpError(400, 'Résultat de combat invalide.');
     let prev = 0;
     for (const t of taps) {
-      if (!Number.isInteger(t) || t < prev || t > MAX_COMBAT_TICKS) throw new HttpError(400, 'Résultat de combat invalide.');
-      prev = t;
+      const crab = s.combat?.mode === 'crab';
+      const tick = crab && t && typeof t === 'object' ? t.tick : t;
+      if (!Number.isInteger(tick) || tick < prev || tick > (end as number) ||
+          (crab && (!t || typeof t !== 'object' || !Number.isFinite(t.x) || !Number.isFinite(t.y) || t.x < 0 || t.x > 1 || t.y < 0 || t.y > 1)) ||
+          (!crab && typeof t !== 'number')) throw new HttpError(400, 'Résultat de combat invalide.');
+      prev = tick;
     }
     const realMs = now - s.hookAt;
     const simMs = ((end as number) / TICK_HZ) * 1000;
@@ -299,7 +304,7 @@ export class Game {
     // ni être rendu des minutes après sa fin.
     const tooFast = simMs > realMs + 750;
     const tooLate = realMs > simMs + 45_000;
-    const replay = replayCombat(s.combat!, taps as number[], end as number);
+    const replay = replayCombat(s.combat!, taps as CombatTap[], end as number);
     const win = replay.state === 'win' && !tooFast && !tooLate;
 
     return this.store.withSave(playerId, (save, tx) => {

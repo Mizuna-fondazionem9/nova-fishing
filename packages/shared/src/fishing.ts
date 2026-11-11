@@ -77,6 +77,8 @@ export function judgeHook(script: BiteScript, elapsedMs: number): HookVerdict {
 
 export interface CombatParams {
   seed: number;
+  mode?: 'crab';
+  crabPrecision?: number;
   profile: CursorProfile;
   /** Vitesse du curseur en longueurs de jauge par seconde. */
   speed: number;
@@ -124,6 +126,18 @@ const LOCK_TICKS = 3;
 const GRACE_TICKS = 6;
 
 export class Combat {
+  targetX = 0.5;
+  targetY = 0.5;
+  targetAt = 0;
+  targetId = 0;
+  get targetRadius(): number { return 0.075 + Math.min(0.25, Math.max(0, this.p.crabPrecision ?? 0)) * 0.08; }
+  get perfectMs(): number { return 230 * (1 + 2 * Math.min(0.25, Math.max(0, this.p.crabPrecision ?? 0))); }
+  private crabTarget(initial = false): void {
+    this.targetX = 0.14 + this.rng.next() * 0.72;
+    this.targetY = 0.14 + this.rng.next() * 0.72;
+    this.targetAt = this.tick + (initial ? 0 : Math.round(12 + this.rng.next() * 18));
+    this.targetId++;
+  }
   tick = 0;
   phase: number;
   pos = 0;
@@ -157,6 +171,7 @@ export class Combat {
     this.line = p.line;
     this.zoneC = this.newZone();
     this.nextRush = this.rushDelay();
+    if (p.mode === 'crab') this.crabTarget(true);
   }
 
   private rushDelay(): number {
@@ -186,6 +201,12 @@ export class Combat {
   step(): void {
     if (this.state !== 'run') return;
     this.tick++;
+    if (this.p.mode === 'crab' && this.tick > this.targetAt + 66) {
+      this.misses++; this.streak = 0; this.comboN = 0;
+      this.line -= this.p.missTension;
+      this.last = 'miss';
+      this.crabTarget();
+    }
     if (this.lock > 0) this.lock--;
     if (this.grace > 0) this.grace--;
     if (this.p.profile === 'erratic' && --this.erraticLeft <= 0) {
@@ -207,14 +228,16 @@ export class Combat {
     }
   }
 
-  tap(): TapResult {
+  tap(x?: number, y?: number): TapResult {
     if (this.state !== 'run' || this.lock > 0) return 'locked';
-    const d = Math.abs(this.pos - this.zoneC);
-    if (d > this.p.zone / 2 && this.grace > 0) return 'locked';
+    const crab = this.p.mode === 'crab';
+    if (crab && (this.tick < this.targetAt || !Number.isFinite(x) || !Number.isFinite(y))) return 'locked';
+    const d = crab ? (Math.hypot(x! - this.targetX, y! - this.targetY) <= this.targetRadius ? 0 : 1) : Math.abs(this.pos - this.zoneC);
+    if (!crab && d > this.p.zone / 2 && this.grace > 0) return 'locked';
     this.lock = LOCK_TICKS;
     let res: TapResult;
     if (d <= this.p.zone / 2) {
-      const crit = d <= (this.p.zone * this.p.crit) / 2;
+      const crit = crab ? (this.tick - this.targetAt) * 1000 / TICK_HZ <= this.perfectMs : d <= (this.p.zone * this.p.crit) / 2;
       res = crit ? 'crit' : 'hit';
       if (crit) this.crits++;
       else this.hits++;
@@ -224,6 +247,7 @@ export class Combat {
       const combo = 1 + this.p.combo * 0.06 * Math.min(this.comboN - 1, 5);
       this.fish -= this.p.hit * (crit ? this.p.critMult : 1) * combo;
       this.zoneC = this.newZone();
+      if (crab) this.crabTarget();
       if (this.fish <= 0) {
         this.fish = 0;
         this.state = 'win';
@@ -244,6 +268,7 @@ export class Combat {
   }
 }
 
+export type CombatTap = number | { tick: number; x: number; y: number };
 export interface ReplayResult {
   state: 'run' | 'win' | 'lose';
   tick: number;
@@ -253,13 +278,17 @@ export interface ReplayResult {
 }
 
 /** Rejoue un combat à partir des ticks d'appui (triés). C'est le verdict du serveur. */
-export function replayCombat(p: CombatParams, taps: readonly number[], endTick: number): ReplayResult {
+export function replayCombat(p: CombatParams, taps: readonly CombatTap[], endTick: number): ReplayResult {
   const c = new Combat(p);
   const max = Math.min(Math.max(0, endTick), MAX_COMBAT_TICKS);
   let i = 0;
+  const tickOf = (t: CombatTap) => typeof t === 'number' ? t : t.tick;
   for (;;) {
-    while (i < taps.length && taps[i] <= c.tick) {
-      if (taps[i] === c.tick) c.tap();
+    while (i < taps.length && tickOf(taps[i]) <= c.tick) {
+      const t = taps[i];
+      if (tickOf(t) === c.tick) {
+        if (typeof t === 'number') c.tap(); else c.tap(t.x, t.y);
+      }
       i++;
     }
     if (c.state !== 'run' || c.tick >= max) break;
@@ -285,15 +314,31 @@ export const BOTS: Record<'debutant' | 'moyen' | 'expert' | 'parfait', BotSkill>
   parfait: { sigma: 0, attend: 1, react: 0 },
 };
 
-export function simulateBot(p: CombatParams, skill: BotSkill, rng: Rng): { win: boolean; seconds: number; taps: number[] } {
+export function simulateBot(p: CombatParams, skill: BotSkill, rng: Rng): { win: boolean; seconds: number; taps: CombatTap[] } {
   const c = new Combat(p);
-  const taps: number[] = [];
+  const taps: CombatTap[] = [];
   let react = 0;
   let err = 0;
   const resample = (): void => {
     err = rng.gauss() * skill.sigma * p.speed * c.speedMul();
   };
   resample();
+  if (p.mode === 'crab') {
+    let attempted = -1;
+    while (c.state === 'run') {
+      c.step();
+      const reaction = Math.max(1, skill.react + Math.round(Math.abs(rng.gauss()) * skill.sigma * 60));
+      if (c.tick >= c.targetAt + reaction && attempted !== c.targetId && c.state === 'run') {
+        attempted = c.targetId;
+        if (!rng.chance(skill.attend)) continue;
+        const x = c.targetX + rng.gauss() * skill.sigma;
+        const y = c.targetY + rng.gauss() * skill.sigma;
+        const tap = { tick:c.tick,x,y };
+        taps.push(tap); c.tap(x,y);
+      }
+    }
+    return { win:c.state === 'win', seconds:c.tick/TICK_HZ, taps };
+  }
   while (c.state === 'run') {
     const prev = c.pos;
     c.step();
