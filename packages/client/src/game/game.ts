@@ -1039,7 +1039,7 @@ export class Game {
     const drawShadows = (deepOnly = false): void => {
     const views = this.activeViews();
     for (const v of views) {
-      const deep = v.sh.biome === 'deep' || v.sh.biome === 'abyss';
+      const deep = ['deep','abyss','volcanic','spectral'].includes(v.sh.biome);
       if (deepOnly !== deep) continue;
       const px = X(v.x);
       const py = Y(v.y);
@@ -1183,7 +1183,8 @@ export class Game {
       if (f.stage === 'bitten') ctx.drawImage(dec.alert, bx - 2, by - 18 + Math.round(Math.sin(t * 20) * 1.5));
     }
 
-    // Créature hostile
+    // Hostiles rendus après le voile nocturne pour rester repérables.
+    const drawHostile = (): void => {
     const h = this.hostile;
     if (h) {
       const hx = X(h.x);
@@ -1201,7 +1202,9 @@ export class Game {
         ctx.drawImage(dec.alert, hx - 2, hy - 24);
       }
       const kind: Silhouette = h.kind.id === 'calmar_furieux' ? 'cephalo' : h.kind.id === 'serpent_de_mer' ? 'long' : 'shark';
-      const frames = shadowFrames(kind);
+      const biome = tileAt(this.seed,Math.floor(h.x),Math.floor(h.y)).biome;
+      const bright = ['deep','abyss','volcanic','spectral'].includes(biome) || this.light < 0.5;
+      const frames = shadowFrames(kind,bright);
       const fr = frames[Math.floor(t * (h.mode === 'charge' ? 18 : 8)) % SHADOW_FRAMES];
       const sc = kind === 'shark' ? 1.5 : kind === 'long' ? 2.4 : 2.2;
       ctx.save();
@@ -1215,6 +1218,8 @@ export class Game {
       ctx.fillStyle = '#ff3b30';
       ctx.fillRect(hx + Math.round(Math.cos(h.angle) * 9) - 1, hy + Math.round(Math.sin(h.angle) * 9) - 1, 2, 2);
     }
+
+    };
 
     // Bateau
     const save = getState().save;
@@ -1274,6 +1279,7 @@ export class Game {
     }
     // En profondeur : silhouettes lumineuses après le voile de nuit.
     drawShadows(true);
+    drawHostile();
     if (dark > 0.15) {
       ctx.globalCompositeOperation = 'lighter';
       const glow = (gx: number, gy: number, r: number, a: number): void => {

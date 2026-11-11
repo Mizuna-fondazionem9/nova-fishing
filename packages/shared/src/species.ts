@@ -157,6 +157,9 @@ export const SPECIES: Species[] = [
 
 // Trois espèces propres à chacun des huit biomes, également visibles au bestiaire.
 const CRAB_ZONES: [BiomeId, string[], string, number][] = [
+  ['volcanic', ['Crabe de basalte', 'Crabe des braises', 'Crabe obsidienne'], '#aa4938 #ffc17d #462834', 9],
+  ['crystal', ['Crabe de quartz', 'Crabe opalin', 'Crabe saphir'], '#65bccc #e1ffff #3e608d', 7],
+  ['spectral', ['Crabe ectoplasme', 'Crabe des âmes', 'Crabe du voile'], '#77b79c #dcffde #3a5c65', 12],
   ['coastal', ['Crabe vert', 'Étrille des quais', 'Tourteau côtier'], '#80914b #d6c88b #384c32', 1.5],
   ['tropical', ['Crabe cocotier', 'Crabe violoniste', 'Crabe de mangrove'], '#ce7840 #f2c27a #813f28', 3],
   ['reef', ['Crabe porcelaine', 'Crabe des coraux', 'Crabe arlequin'], '#c85a6a #f4d0be #66365c', 4],
@@ -173,6 +176,26 @@ for (const [biome, names, colors, tier] of CRAB_ZONES) names.forEach((name, i) =
     { bite: 'franc', aggr: 0, stam: 1.3, pow: 1.1, focus: 'ruse' }));
 });
 
+// Faune des provinces fantastiques : quatre espèces propres et deux formes régionales.
+const BIOME_FANTASY_NAMES: Partial<Record<BiomeId,string>> = {volcanic:'l’océan volcanique',crystal:'la mer de cristal',spectral:'la mer spectrale'};
+const FANTASY_FISH: [BiomeId, string, string, number, [string,string,string,string]][] = [
+  ['volcanic','brasier','#cd5c43 #ffd091 #612438',8,['Gobie de lave','Anguille de basalte','Raie des braises','Dragon des fumerolles']],
+  ['crystal','quartz','#65bcca #ebffff #405a96',6,['Aiguille de quartz','Raie de cristal','Poisson-prisme','Gardien opalin']],
+  ['spectral','voile','#7cc4a7 #e3ffdc #3b526e',11,['Lanterne spectrale','Ruban fantôme','Raie du voile','Dévoreur des brumes']],
+];
+for (const [biome, suffix, colors, tier, names] of FANTASY_FISH) {
+  names.forEach((name,i) => SPECIES.push(S(`poisson_${biome}_${['a','b','c','d'][i]}`,name,
+    `Une créature des eaux de ${BIOME_FANTASY_NAMES[biome] ?? biome}, aux reflets surnaturels.`,biome,0,1,
+    i===2 ? 'ray' : i===3 ? 'giant' : i===1 ? 'long' : 'small',15+i*35,50+i*100,3+i*35,
+    i,tier+i*2,i===2?'ray':i===3?'serpent':i===1?'eel':'deep',colors,{stam:1.15,pow:1.1,pattern:'bands'})));
+  for (const [baseId,label,rarity] of [['bar','Bar',0],['calmar','Calmar',1]] as const) {
+    const base=SPECIES.find(s=>s.id===baseId)!;
+    SPECIES.push({...base,id:`${baseId}_${suffix}`,name:`${label} ${suffix}`,desc:`Une forme régionale de ${base.name.toLowerCase()}, adaptée à ces eaux extraordinaires.`,
+      biomes:[biome],dmin:0,dmax:1,colors:colors.split(' ') as [string,string,string],tier:tier+rarity,rarity,
+      value:Math.round(5*Math.pow(tier+rarity,1.55)*RARITY_VALUE[rarity]),prefs:{},pattern:'spots'});
+  }
+}
+
 export const SPECIES_BY_ID: Record<string, Species> = Object.fromEntries(SPECIES.map((s) => [s.id, s]));
 
 /** Créatures hostiles : elles attaquent le bateau, on ne les pêche pas. */
@@ -186,8 +209,8 @@ export interface Hostile {
   persist: number;
 }
 export const HOSTILES: Hostile[] = [
-  { id: 'maraudeur', name: 'Requin maraudeur', biomes: ['tropical', 'temperate', 'reef', 'polar'], speed: 5.2, damage: 14, persist: 26 },
-  { id: 'calmar_furieux', name: 'Calmar furieux', biomes: ['deep', 'abyss', 'polar'], speed: 5.8, damage: 20, persist: 30 },
+  { id: 'maraudeur', name: 'Requin maraudeur', biomes: ['tropical', 'temperate', 'reef', 'polar', 'volcanic', 'crystal'], speed: 5.2, damage: 14, persist: 26 },
+  { id: 'calmar_furieux', name: 'Calmar furieux', biomes: ['deep', 'abyss', 'polar', 'spectral'], speed: 5.8, damage: 20, persist: 30 },
   { id: 'serpent_de_mer', name: 'Serpent de mer', biomes: ['mystic', 'abyss'], speed: 6.6, damage: 28, persist: 34 },
 ];
 export const HOSTILE_BY_ID: Record<string, Hostile> = Object.fromEntries(HOSTILES.map((h) => [h.id, h]));

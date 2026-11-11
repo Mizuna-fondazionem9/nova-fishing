@@ -6,6 +6,9 @@ import { makeCanvas, rgb, mix, getDecor, type Spr } from './sprites';
 export const CHUNK_PX = CHUNK * TILE;
 
 const PAL: Record<BiomeId, string[]> = {
+  volcanic: ['#e87f69','#c95651','#a33942','#7c273a','#531e32'],
+  crystal: ['#b1f0ec','#79dfe3','#54bdcf','#3895bc','#296b99'],
+  spectral: ['#7ac7a4','#489b8e','#2d756e','#205453','#163b43'],
   coastal: ['#6fd3c9', '#46b3c2', '#2f93b8', '#2577a6', '#1d5f8f'],
   tropical: ['#63dcd0', '#33c0cf', '#1aa0c8', '#1482b8', '#0f66a0'],
   reef: ['#7fe6d0', '#4fd0c4', '#2fb4c0', '#2496b4', '#1b7aa3'],

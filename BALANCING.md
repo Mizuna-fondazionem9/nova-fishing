@@ -182,3 +182,11 @@ l'évite en changeant de cap.
 2. `npm run balance` pour voir les tableaux.
 3. `npm test` : les tests d'équilibrage échouent si un débutant ne réussit plus les sardines, si l'habileté ne
    compte plus, ou si la canne de départ capture une créature de haut niveau.
+
+### Ajustement crabes et provinces fantastiques
+
+- Fenêtre parfaite de base : **280 ms**, allongée par les guides de précision jusqu'à 420 ms. Le moteur à 60 Hz conserve sa résolution de 16,7 ms.
+- Usure passive : retour au calcul normal de la ligne, sans réduction de 30 %. Les cibles agrandies et les corrections de positionnement restent présentes.
+- Océan volcanique, Mer de cristal et Mer spectrale : provinces au-delà de 900 tuiles du port de départ, sans changement des terres ni des ports. Leurs niveaux régionaux utilisent la progression existante par distance.
+- Chaque province ajoute quatre espèces propres, deux formes régionales et trois crabes. Difficulté de référence des poissons : cristal 6–12, volcanique 8–14, spectral 11–17, avant modificateurs régionaux et individuels.
+- Espacement déterministe des crabes conservé, y compris entre chunks. Hostiles existants étendus à ces provinces, avec les mêmes règles d'esquive.
