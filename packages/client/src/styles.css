@@ -414,3 +414,5 @@ button:focus-visible, input:focus-visible { outline: 3px solid #efd595; outline-
 @media(max-height:640px) { .crab-board { width: min(100%,240px); } .crab-fight { padding: 10px; gap: 6px; } }
 @media(prefers-reduced-motion:reduce) { .gauge.rainbow::after, .crab-board.rainbow::after { animation: none; } }
 .crab-board { pointer-events: auto; }
+/* La cible ne doit jamais hériter du déplacement des boutons au toucher. */
+button.crab-target, button.crab-target:hover:not(:disabled), button.crab-target:active:not(:disabled) { transform: translate(-50%,-50%); transition: none; touch-action: none; }

@@ -301,22 +301,28 @@ const fishCache = new Map<string, Spr>();
 
 /** Illustration d'une espèce. `color` = variante (0 normal, 1 albinos, 2 mélanique, 3 doré, 4 irisé). */
 function crabSprite(cols: [string, string, string], frame: number): Spr {
-  const [canvas, c] = makeCanvas(44, 30);
+  const [canvas, c] = makeCanvas(32, 24);
   c.fillStyle = cols[2];
-  for (let side of [-1, 1]) {
-    for (let leg = 0; leg < 4; leg++) {
-      const x = side < 0 ? 5 : 30;
-      c.fillRect(x, 15 + leg * 3, 9, 2);
-      c.fillRect(side < 0 ? x - 2 : x + 7, 17 + leg * 3 + frame % 2, 3, 3);
+  // Pattes articulées et pinces ouvertes : corps compact, pas une grosse brique.
+  for (const side of [-1,1]) {
+    for (let leg=0;leg<3;leg++) {
+      const y=13+leg*3, shift=frame%2;
+      c.fillRect(side<0?5:23,y,4,2);
+      c.fillRect(side<0?3:26,y+1+shift,3,2);
     }
-    c.fillStyle = cols[0];
-    c.fillRect(side < 0 ? 3 : 33, 5, 8, 9);
-    c.fillRect(side < 0 ? 1 : 39, 2, 4, 7);
-    c.fillStyle = cols[2];
+    c.fillStyle=cols[0];
+    c.fillRect(side<0?5:23,8,4,5);
+    c.fillRect(side<0?2:26,4,5,5);
+    c.fillRect(side<0?1:29,2,2,4);
+    c.fillRect(side<0?5:25,2,2,3);
+    c.fillStyle=cols[2];
   }
-  c.fillStyle = cols[0]; c.fillRect(12, 11, 20, 15); c.fillRect(15, 8, 14, 4);
-  c.fillStyle = cols[1]; c.fillRect(15, 12, 12, 3);
-  c.fillStyle = '#142330'; c.fillRect(16, 7, 3, 4); c.fillRect(25, 7, 3, 4);
+  c.fillRect(10,9,12,11);
+  c.fillStyle=cols[0]; c.fillRect(9,10,14,7); c.fillRect(11,8,10,11);
+  c.fillStyle=cols[1]; c.fillRect(11,10,9,2); c.fillRect(12,12,3,1);
+  c.fillStyle=cols[2]; c.fillRect(11,18,10,2);
+  c.fillRect(11,6,2,3); c.fillRect(19,6,2,3);
+  c.fillStyle='#edf4df'; c.fillRect(11,6,1,1); c.fillRect(19,6,1,1);
   return canvas;
 }
 
@@ -360,12 +366,13 @@ const SH: Record<Silhouette, { L: number; W: number; amp: number; size: number }
   giant: { L: 64, W: 10, amp: 3, size: 80 },
 };
 
-export function shadowFrames(kind: Silhouette): Spr[] {
-  let frames = shadowCache.get(kind);
+export function shadowFrames(kind: Silhouette, luminous = false): Spr[] {
+  const cacheKey = luminous ? `${kind}:light` : kind;
+  let frames = shadowCache.get(cacheKey);
   if (frames) return frames;
   frames = [];
   const p = SH[kind];
-  const col = '#06182b';
+  const col = luminous ? '#8fc7d2' : '#06182b';
   for (let f = 0; f < SHADOW_FRAMES; f++) {
     const ph = (f / SHADOW_FRAMES) * Math.PI * 2;
     const g = new Grid(p.size, p.size);
@@ -407,7 +414,7 @@ export function shadowFrames(kind: Silhouette): Spr[] {
     }
     frames.push(g.toCanvas());
   }
-  shadowCache.set(kind, frames);
+  shadowCache.set(cacheKey, frames);
   return frames;
 }
 

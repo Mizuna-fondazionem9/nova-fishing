@@ -130,8 +130,8 @@ export class Combat {
   targetY = 0.5;
   targetAt = 0;
   targetId = 0;
-  get targetRadius(): number { return 0.075 + Math.min(0.25, Math.max(0, this.p.crabPrecision ?? 0)) * 0.08; }
-  get perfectMs(): number { return 230 * (1 + 2 * Math.min(0.25, Math.max(0, this.p.crabPrecision ?? 0))); }
+  get targetRadius(): number { return 0.095 + Math.min(0.25, Math.max(0, this.p.crabPrecision ?? 0)) * 0.08; }
+  get perfectMs(): number { return 340 * (1 + 2 * Math.min(0.25, Math.max(0, this.p.crabPrecision ?? 0))); }
   private crabTarget(initial = false): void {
     this.targetX = 0.14 + this.rng.next() * 0.72;
     this.targetY = 0.14 + this.rng.next() * 0.72;
@@ -221,7 +221,7 @@ export class Combat {
     this.warn = this.rush === 0 && this.nextRush <= TICK_HZ / 2;
     this.phase = (this.phase + (this.p.speed * this.speedMul()) / TICK_HZ) % 2;
     this.pos = this.phase < 1 ? this.phase : 2 - this.phase;
-    this.line -= (this.p.drain * (this.rush > 0 ? 1.8 : 1)) / TICK_HZ;
+    this.line -= (this.p.drain * (this.p.mode === 'crab' ? 0.7 : this.rush > 0 ? 1.8 : 1)) / TICK_HZ;
     if (this.line <= 0 || this.tick >= MAX_COMBAT_TICKS) {
       this.line = 0;
       this.state = 'lose';

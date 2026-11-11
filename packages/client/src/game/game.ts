@@ -1036,16 +1036,19 @@ export class Game {
       }
 
     // Ombres des poissons
+    const drawShadows = (deepOnly = false): void => {
     const views = this.activeViews();
     for (const v of views) {
+      const deep = v.sh.biome === 'deep' || v.sh.biome === 'abyss';
+      if (deepOnly !== deep) continue;
       const px = X(v.x);
       const py = Y(v.y);
       if (px < -50 || py < -50 || px > vw + 50 || py > vh + 50) continue;
-      const frames = shadowFrames(v.sh.sil);
+      const frames = shadowFrames(v.sh.sil,deep);
       const fast = this.fish?.target === v && (this.fish.stage === 'fight' || this.fish.stage === 'countdown');
       const fr = frames[Math.floor(t * (fast ? 16 : 5 + SPEED[v.sh.sil] * 4) + v.sh.seed) % SHADOW_FRAMES];
       const scale = v.sh.sil === 'giant' ? 0.9 + v.sh.size * 0.5 : 0.8 + v.sh.size * 0.45;
-      const alpha = clamp(0.5 - v.sh.depth * 0.2, 0.25, 0.5) * Math.min(1, (t - v.born) * 0.8 + 0.05) * (v.flee > 0 ? Math.min(1, v.flee) : 1);
+      const alpha = (deep ? 0.65 : clamp(0.5 - v.sh.depth * 0.2, 0.25, 0.5)) * Math.min(1, (t - v.born) * 0.8 + 0.05) * (v.flee > 0 ? Math.min(1, v.flee) : 1);
       const n = v.sh.school;
       for (let i = 0; i < n; i++) {
         const oa = i * 2.4 + t * 0.6;
@@ -1060,6 +1063,9 @@ export class Game {
         ctx.restore();
       }
     }
+
+    };
+    drawShadows();
 
     // Ports : ponton, cabane, phare, nom
     const lights: [number, number][] = [];
@@ -1266,6 +1272,8 @@ export class Game {
       ctx.fillStyle = `rgba(8,14,48,${Math.min(0.75, night)})`;
       ctx.fillRect(0, 0, vw, vh);
     }
+    // En profondeur : silhouettes lumineuses après le voile de nuit.
+    drawShadows(true);
     if (dark > 0.15) {
       ctx.globalCompositeOperation = 'lighter';
       const glow = (gx: number, gy: number, r: number, a: number): void => {
