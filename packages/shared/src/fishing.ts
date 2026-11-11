@@ -116,9 +116,12 @@ export function makeCombatParams(f: FightStats, rod: RodStats, seed: number): Co
 }
 
 export type TapResult = 'crit' | 'hit' | 'miss' | 'locked';
-/** Temps mort après un appui : le poisson se reprend (réussite) ou la ligne claque (échec). */
-const LOCK_HIT = 36;
-const LOCK_MISS = 24;
+// Anti-rebond : 3 ticks (50 ms), imperceptible. Il n'absorbe que les doubles déclenchements matériels
+// (toucher + clic simulé) ; il ne bloque jamais un appui volontaire.
+const LOCK_TICKS = 3;
+// Juste après un coup réussi la zone se déplace : pendant 6 ticks (0,1 s), un appui qui tomberait à côté
+// est ignoré sans pénalité (double-clic involontaire). Un appui DANS la nouvelle zone compte normalement.
+const GRACE_TICKS = 6;
 
 export class Combat {
   tick = 0;
@@ -130,6 +133,9 @@ export class Combat {
   state: 'run' | 'win' | 'lose' = 'run';
   lock = 0;
   comboN = 0;
+  /** Coups critiques enchaînés (remis à zéro par un coup simple ou raté). Sert aux effets, pas au calcul. */
+  streak = 0;
+  private grace = 0;
   /** Ticks restants de « rush » du poisson (curseur plus rapide, ligne qui s'use plus vite). */
   rush = 0;
   /** Vrai pendant la demi-seconde qui précède un rush : l'interface l'annonce. */
@@ -181,6 +187,7 @@ export class Combat {
     if (this.state !== 'run') return;
     this.tick++;
     if (this.lock > 0) this.lock--;
+    if (this.grace > 0) this.grace--;
     if (this.p.profile === 'erratic' && --this.erraticLeft <= 0) {
       this.erraticMul = this.rng.pick([0.6, 1, 1.45]);
       this.erraticLeft = Math.round((0.9 + this.rng.next() * 0.8) * TICK_HZ);
@@ -203,13 +210,16 @@ export class Combat {
   tap(): TapResult {
     if (this.state !== 'run' || this.lock > 0) return 'locked';
     const d = Math.abs(this.pos - this.zoneC);
-    this.lock = d <= this.p.zone / 2 ? LOCK_HIT : LOCK_MISS;
+    if (d > this.p.zone / 2 && this.grace > 0) return 'locked';
+    this.lock = LOCK_TICKS;
     let res: TapResult;
     if (d <= this.p.zone / 2) {
       const crit = d <= (this.p.zone * this.p.crit) / 2;
       res = crit ? 'crit' : 'hit';
       if (crit) this.crits++;
       else this.hits++;
+      this.streak = crit ? this.streak + 1 : 0;
+      this.grace = GRACE_TICKS;
       this.comboN++;
       const combo = 1 + this.p.combo * 0.06 * Math.min(this.comboN - 1, 5);
       this.fish -= this.p.hit * (crit ? this.p.critMult : 1) * combo;
@@ -222,6 +232,7 @@ export class Combat {
       res = 'miss';
       this.misses++;
       this.comboN = 0;
+      this.streak = 0;
       this.line -= this.p.missTension;
       if (this.line <= 0) {
         this.line = 0;

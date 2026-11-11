@@ -36,7 +36,7 @@ interface Particle {
   vy: number;
   life: number;
   max: number;
-  kind: 'wake' | 'ring' | 'splash';
+  kind: 'wake' | 'ring' | 'splash' | 'spark';
 }
 
 export interface Fishing {
@@ -671,10 +671,30 @@ export class Game {
     const r = c.tap();
     if (r === 'locked') return;
     f.taps.push(tick);
-    f.flash = { text: r === 'crit' ? 'CRITIQUE !' : r === 'hit' ? 'Touché !' : 'Raté !', kind: r, at: performance.now() };
-    sfx(r);
-    if (r === 'miss') this.shake = 0.5;
-    else for (let i = 0; i < (r === 'crit' ? 8 : 4); i++) this.particles.push({ x: f.bx, y: f.by, vx: (Math.random() - 0.5) * 3, vy: (Math.random() - 0.5) * 3, life: 0.45, max: 0.45, kind: 'splash' });
+    // Série de coups critiques : 1 pour un critique isolé, puis 2, 3... tant qu'ils s'enchaînent.
+    const streak = r === 'crit' ? c.streak : 0;
+    const text = r === 'crit' ? (streak >= 2 ? `CRITIQUE ×${streak} !` : 'CRITIQUE !') : r === 'hit' ? 'Touché !' : 'Raté !';
+    f.flash = { text, kind: r, at: performance.now() };
+    sfx(r, streak);
+    if (r === 'miss') {
+      this.shake = 0.5;
+      return;
+    }
+    const burst = (n: number, kind: 'splash' | 'spark', speed: number, life: number): void => {
+      for (let i = 0; i < n; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const v = speed * (0.4 + Math.random() * 0.6);
+        this.particles.push({ x: f.bx, y: f.by, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life, max: life, kind });
+      }
+    };
+    burst(r === 'crit' ? 8 : 4, 'splash', 2, 0.45);
+    // À partir de deux critiques d'affilée : gerbe d'étincelles dorées et ondes, de plus en plus amples (plafond à 6).
+    const power = Math.min(streak, 6);
+    if (power >= 2) {
+      burst(4 * power, 'spark', 2 + power * 0.7, 0.45 + power * 0.07);
+      this.ring(f.bx, f.by, 0.5 + power * 0.1);
+    }
+    if (power >= 4) this.ring(f.bx, f.by, 1.2);
   }
 
   private async finishFight(): Promise<void> {
@@ -1022,8 +1042,8 @@ export class Game {
         ctx.stroke();
       } else {
         ctx.globalAlpha = k * (p.kind === 'wake' ? 0.6 : 0.95);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(px, py, p.kind === 'wake' ? 2 : 1, p.kind === 'wake' ? 2 : 2);
+        ctx.fillStyle = p.kind === 'spark' ? (k > 0.5 ? '#fff3a8' : '#ffc93a') : '#ffffff';
+        ctx.fillRect(px, py, p.kind === 'splash' ? 1 : 2, 2);
       }
     }
     ctx.globalAlpha = 1;

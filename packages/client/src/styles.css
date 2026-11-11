@@ -95,14 +95,19 @@ canvas.world { position: fixed; left: 0; top: 0; image-rendering: pixelated; ima
 .bite { color: #ffe14a !important; font-size: 20px; animation: pulse 0.3s infinite; display: inline-block; }
 .meters { width: 100%; display: grid; grid-template-columns: auto 1fr; gap: 4px 8px; align-items: center; font-size: 11px; color: var(--dim); text-align: left; }
 .gauge { position: relative; width: 100%; height: 34px; background: linear-gradient(180deg, #3a1218, #5a1a22); border: 2px solid #8a2a34; border-radius: 8px; overflow: hidden; }
+.gauge.s2 { border-color: #b8943a; box-shadow: 0 0 10px rgba(255, 225, 74, 0.4); }
+.gauge.s3 { border-color: #d4ad3f; box-shadow: 0 0 16px rgba(255, 225, 74, 0.55); }
+.gauge.s4 { border-color: #ecc548; box-shadow: 0 0 24px rgba(255, 225, 74, 0.72); }
+.gauge.s5 { border-color: #ffe14a; box-shadow: 0 0 34px rgba(255, 225, 74, 0.95), inset 0 0 14px rgba(255, 225, 74, 0.3); }
+.gauge.s4 .crit, .gauge.s5 .crit { box-shadow: 0 0 16px #ffe98a; }
 .gauge.warn { border-color: var(--gold); }
 .gauge.rush { border-color: #ff5a4a; box-shadow: 0 0 18px rgba(255, 90, 74, 0.8); animation: shake 0.12s infinite; }
-.gauge.locked .cursor { opacity: 0.45; }
 @keyframes shake { 50% { transform: translateX(2px); } }
 .gauge .zone { position: absolute; top: 0; bottom: 0; background: linear-gradient(180deg, #4fd08a, #2f9a62); }
 .gauge .crit { position: absolute; top: 0; bottom: 0; background: linear-gradient(180deg, #ffe98a, #f0b429); box-shadow: 0 0 8px #ffe98a; }
 .gauge .cursor { position: absolute; top: -2px; bottom: -2px; width: 5px; margin-left: -2.5px; background: #fff; box-shadow: 0 0 6px #fff, 0 0 0 1px #000; }
-.fight .flash { height: 22px; font-size: 18px; font-weight: 700; }
+.fight .flash { height: 22px; font-size: 18px; font-weight: 700; transition: transform 0.08s; }
+.fight .serie { height: 18px; font-weight: 700; color: #ffe14a; text-shadow: 0 0 10px rgba(255, 225, 74, 0.8); letter-spacing: 0.04em; }
 .flash.crit { color: #ffe14a; } .flash.hit { color: var(--ok); } .flash.miss { color: var(--bad); }
 .fight .count { height: 18px; font-weight: 700; color: var(--gold); }
 

@@ -200,12 +200,20 @@ async function fishOnce(p: Page, tried: Set<string>): Promise<string> {
       const f = nf.game.fish;
       if (!f || nf.getState().result) return;
       const c = f.combat;
-      if (nf.getState().fishing === 'fight' && c && c.lock === 0 && Math.abs(c.pos - c.zoneC) < c.p.zone * 0.2)
+      if (nf.getState().fishing === 'fight' && c && c.lock === 0 && Math.abs(c.pos - c.zoneC) < c.p.zone * 0.13)
         window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ' }));
       requestAnimationFrame(loop);
     };
     requestAnimationFrame(loop);
   });
+  if (tried.size === 1) {
+    // Série de coups critiques : on attend le troisième d'affilée pour photographier l'effet.
+    const serie = await p.waitForFunction(() => ((window as any).__nf.game.fish?.combat?.streak ?? 0) >= 3, null, { timeout: 20_000, polling: 16 }).then(() => true, () => false);
+    if (serie) {
+      await p.waitForTimeout(120);
+      await p.screenshot({ path: `${SHOTS}/serie-critique.png` });
+    }
+  }
   await p.waitForSelector('.modal.result', { timeout: 150_000 });
   const win = await p.evaluate(() => (window as any).__nf.getState().result?.outcome === 'win');
   await p.waitForTimeout(400);

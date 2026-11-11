@@ -14,6 +14,7 @@ function Gauge() {
   const flash = useRef<HTMLDivElement>(null);
   const wrap = useRef<HTMLDivElement>(null);
   const count = useRef<HTMLDivElement>(null);
+  const serie = useRef<HTMLDivElement>(null);
   useEffect(() => {
     let raf = 0;
     const tick = (): void => {
@@ -30,7 +31,11 @@ function Gauge() {
         const lr = c.line / p.line;
         lineBar.current!.style.width = `${lr * 100}%`;
         lineBar.current!.style.background = lr < 0.3 ? '#ff5a4a' : lr < 0.6 ? '#f0b429' : '#6fe3a1';
-        wrap.current!.className = `gauge ${c.rush > 0 ? 'rush' : c.warn ? 'warn' : ''} ${c.lock > 0 ? 'locked' : ''}`;
+        // Série de critiques : la jauge s'illumine un peu plus à chaque coup (5 paliers).
+        const palier = Math.min(c.streak, 5);
+        wrap.current!.className = `gauge ${c.rush > 0 ? 'rush' : c.warn ? 'warn' : ''} ${palier >= 2 ? `s${palier}` : ''}`;
+        serie.current!.textContent = c.streak >= 2 ? `✦ Série critique ×${c.streak} ✦` : '';
+        serie.current!.style.fontSize = `${11 + palier}px`;
         const left = f.fightT0 - performance.now();
         count.current!.textContent = left > 0 ? (left > 700 ? 'Prêt…' : 'Combattez !') : c.rush > 0 ? '⚠ Il s’emballe !' : c.warn ? '⚠ Attention…' : '';
         const fl = f.flash;
@@ -38,6 +43,7 @@ function Gauge() {
         flash.current!.textContent = fl && age < 600 ? fl.text : '';
         flash.current!.className = `flash ${fl?.kind ?? ''}`;
         flash.current!.style.opacity = String(Math.max(0, 1 - age / 600));
+        flash.current!.style.transform = `scale(${fl?.kind === 'crit' ? 1 + 0.09 * Math.min(c.streak, 6) : 1})`;
       }
       raf = requestAnimationFrame(tick);
     };
@@ -48,6 +54,7 @@ function Gauge() {
     <div className="fight">
       <div className="flash" ref={flash} />
       <div className="count" ref={count} />
+      <div className="serie" ref={serie} />
       <div className="meters">
         <label>🐟 Fatigue du poisson</label>
         <div className="bar"><div ref={fishBar} style={{ background: '#5cc8ff' }} /></div>

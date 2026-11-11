@@ -45,7 +45,10 @@ Simulation à pas fixe de 60 Hz, identique sur le client et le serveur (le serve
 | Coup critique | tiers central de la zone : dégâts ×1,75 |
 | Bonus de série | `1 + récupération × 0,06 × min(série − 1 ; 5)` |
 | Coup raté | ligne `− (4 + 0,9 · puissance) / moulinet` ; la série retombe à zéro |
-| Verrou | 14 ticks (0,23 s) après chaque appui : marteler ne sert à rien |
+| Entre deux appuis | aucun temps mort. Seul un anti-rebond de 3 ticks (50 ms) absorbe les doubles déclenchements matériels |
+| Double-clic | pendant 6 ticks (0,1 s) après un coup réussi, un appui hors de la nouvelle zone est ignoré sans pénalité ; un appui dans la zone compte |
+| Marteler | ne sert à rien : hors de ces 0,1 s, chaque appui hors zone est un coup raté |
+| Série critique | compteur des critiques enchaînés, remis à zéro par un coup simple ou raté. Purement visuel et sonore : aucun effet sur les dégâts |
 
 Profils de curseur : `regular` (constant), `accel` (lent au départ de chaque passage, rapide à la fin),
 `oscillating` (vitesse sinusoïdale, période 1,7 s), `erratic` (paliers ×0,6 / ×1 / ×1,45 tirés toutes les 0,9 à 1,7 s —
@@ -82,26 +85,31 @@ après la fenêtre fait fuir le poisson.
 
 | Espèce | Tier | Débutant | Moyen | Expert | Parfait |
 |---|---|---|---|---|---|
-| Sardine | 1 | 97 % (14 s) | 100 % (9 s) | 100 % (7 s) | 100 % (6 s) |
-| Maquereau | 1,6 | 65 % (19 s) | 98 % (12 s) | 100 % (8 s) | 100 % (7 s) |
-| Bar | 2,6 | 16 % | 69 % (16 s) | 100 % (12 s) | 100 % (12 s) |
-| Lieu jaune | 3 | 7 % | 51 % | 87 % (14 s) | 94 % |
-| Cabillaud | 4 | 1 % | 15 % | 57 % (17 s) | 62 % |
-| Congre | 5 | 0 % | 0 % | 7 % | 15 % |
-| Barracuda | 6 | 0 % | 0 % | 17 % | 36 % |
+| Sardine | 1 | 96 % (14 s) | 100 % (8 s) | 100 % (6 s) | 100 % (6 s) |
+| Maquereau | 1,6 | 60 % (19 s) | 99 % (11 s) | 100 % (7 s) | 100 % (7 s) |
+| Bar | 2,6 | 14 % | 71 % (16 s) | 100 % (11 s) | 100 % (10 s) |
+| Lieu jaune | 3 | 7 % | 54 % | 97 % (12 s) | 99 % |
+| Cabillaud | 4 | 1 % | 20 % | 64 % (16 s) | 74 % |
+| Congre | 5 | 0 % | 0 % | 25 % | 34 % |
+| Barracuda | 6 | 0 % | 0 % | 40 % | 58 % |
 | Mérou et au-delà | ≥ 8 | 0 % | 0 % | 0 % | 0 % |
 
-La canne de départ vaut ★1,6 (le niveau où un poisson a autant de puissance que la canne a de résistance, `(résistance / 6,5)^(1/0,92)`) : un expert monte jusqu'au tier 4 à 6 (2,5 à 4 fois sa canne), personne ne capture
+La canne de départ vaut ★1,6 (le niveau où un poisson a autant de puissance que la canne a de résistance,
+`(résistance / 6,5)^(1/0,92)`) : un expert monte jusqu'au tier 4 à 6 (2,5 à 4 fois sa canne), personne ne capture
 un tier 8 ou plus.
+
+Depuis la suppression du temps mort entre deux appuis, l'adresse compte davantage : les chiffres des débutants
+n'ont pas bougé, ceux des experts ont monté sur les poissons rapides (congre 7 → 25 %, barracuda 17 → 40 %). Le mur
+d'équipement, lui, est resté au même endroit.
 
 ### Canne niveau 5 (les six améliorations de canne à 5)
 
-Débutant : bar 86 %, cabillaud 41 %. Expert : congre et barracuda 99 %, mérou 32 %, espadon 37 %, thon rouge 0 %.
+Débutant : bar 88 %, cabillaud 37 %. Expert : congre et barracuda 100 %, mérou 43 %, espadon 56 %, thon rouge 0 %.
 
 ### Canne niveau 80
 
-Expert : requin fantôme (tier 23) 99 %, léviathan (tier 30) 46 %. Moyen : calmar géant 68 %, requin fantôme 4 %.
-Débutant : thon rouge 27 %, calmar géant 14 %.
+Expert : requin fantôme (tier 23) 97 %, léviathan (tier 30) 62 %. Moyen : calmar géant 65 %, requin fantôme 7 %.
+Débutant : thon rouge 32 %, calmar géant 11 %.
 
 ## Améliorations
 
