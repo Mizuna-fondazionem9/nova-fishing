@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import type { AddressInfo } from 'node:net';
 import {
   newSave, migrateSave, startPort, spawnShadows, slotOf, findPath, isLand, simulateBot, BOTS, Rng, priceOf, upgradeCost,
-  SPECIES_BY_ID, NETS, CHUNK, gearOf, type Shadow, type Save,
+  nearbyTreasures, CAT_INTERVAL, SPECIES_BY_ID, NETS, CHUNK, gearOf, type Shadow, type Save,
 } from '../packages/shared/src/index';
 import { loadConfig, type Config } from '../packages/server/src/config';
 import { buildServer, type Built } from '../packages/server/src/app';
@@ -633,4 +633,46 @@ test('crabes : mode transmis, coordonnées invalides refusées et prise validée
     caught = true;
   }
   assert.ok(caught && rejected);
+});
+
+
+test('extension : achats à quai, chat sans double récupération et coffres sans double crédit', async () => {
+  const r=await rig('maritime');
+  await r.patch(s=>{s.coins=100000;});
+  const before=await r.save();
+  const adoption=await r.game.maritime(r.id,'cat-buy','');
+  assert.equal(adoption.save.coins,before.coins-1500);
+  assert.equal(await status(r.game.maritime(r.id,'cat-buy','')),400);
+  r.clock.t+=CAT_INTERVAL*10;
+  const claims=await Promise.allSettled([r.game.maritime(r.id,'cat-claim',''),r.game.maritime(r.id,'cat-claim','')]);
+  assert.equal(claims.filter(r=>r.status==='fulfilled').length,1);
+  assert.equal((await r.save()).cargo.length,6);
+  const fleet=await r.game.maritime(r.id,'vessel','trawler');
+  assert.equal(fleet.save.vessel,'trawler');
+  assert.equal(gearOf(fleet.save.up,fleet.save.vessel).hold,40);
+  const chest=nearbyTreasures(SEED,fleet.save.x,fleet.save.y,r.clock.t)[0];assert.ok(chest);
+  assert.equal(await status(r.game.openTreasure(r.id,chest.id)),409);
+  await r.patch(s=>{s.x=chest.x;s.y=chest.y;});
+  const coins=(await r.save()).coins;
+  const opened=await Promise.allSettled([r.game.openTreasure(r.id,chest.id),r.game.openTreasure(r.id,chest.id)]);
+  assert.equal(opened.filter(r=>r.status==='fulfilled').length,1);
+  assert.equal((await r.save()).coins,coins+chest.coins);
+  assert.equal(await status(r.game.maritime(r.id,'paint','2')),409);
+});
+test('extension HTTP : adoption avec valeur vide acceptée, progression persistante',async()=>{
+  const {base,built}=await startApp({DEV_AUTH:'1'});
+  const jar=new Jar();await get(base,'/auth/dev/login?name=Maritime',jar);
+  const me=await (await get(base,'/api/me',jar)).json() as {user:{id:string}};
+  await built.store.withSave(me.user.id,s=>{s.coins=5000;});
+  const result=await post(base,'/api/port/maritime',jar,{action:'cat-buy',value:''});
+  assert.equal(result.status,200);
+  const body=await result.json() as {save:Save};assert.ok(body.save.cat);assert.equal(body.save.coins,3500);
+  const persisted=await (await get(base,'/api/me',jar)).json() as {save:Save};assert.ok(persisted.save.cat);
+});
+test('extension : une ancienne position sur terre est récupérée sans perte',async()=>{
+  const r=await rig('recuperation');const p=startPort(SEED);
+  await r.patch(s=>{s.x=p.ix;s.y=p.iy;s.coins=1234;s.hull=77;});
+  const result=await r.game.me(r.id);
+  assert.ok(!isLand(SEED,Math.floor(result.save.x),Math.floor(result.save.y)));
+  assert.equal(result.save.coins,1234);assert.equal(result.save.hull,77);
 });

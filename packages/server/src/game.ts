@@ -2,10 +2,11 @@
 // Le client affiche et anime ; il ne fixe jamais lui-même une récompense.
 import { randomInt, randomUUID } from 'node:crypto';
 import {
-  Rng, tileAt, isLand, portInRange, spawnShadows, speciesForShadow, slotOf, rollSpecimen, fightStats, makeBiteScript,
+  Rng, tileAt, isLand, startPort, portInRange, spawnShadows, speciesForShadow, slotOf, rollSpecimen, fightStats, makeBiteScript,
   judgeHook, makeCombatParams, replayCombat, gearOf, applyCatch, noteBiome, evalTrophies, bumpDaily, dailyChallenges,
   dayKey, opSell, opUpgrade, opBuyNet, opRepair, opKeep, opRelease, applyDamage, holdFree, bulkOf, regionBonus,
   SPECIES, SPECIES_BY_ID, HOSTILES, HOSTILE_BY_ID, BIOMES, NETS, NET_COOLDOWN_MS, NET_DISTANCE, RARITY_WEIGHT,
+  maritimeOp, nearbyTreasures,
   MAX_COMBAT_TICKS, TICK_HZ, CHUNK, UPGRADE_BY_KEY,
   type CombatTap, type Save, type Specimen, type Species, type BiteScript, type CombatParams, type Shadow, type UpgradeKey, type Op,
   type MeResponse, type Mutation, type SyncResponse, type CastResponse, type HookResponse, type ResolveResponse, type HitResponse, type Encounter,
@@ -96,6 +97,17 @@ export class Game {
     if (!p) throw new HttpError(401, 'Joueur introuvable.');
     // À la (re)connexion, l'horloge de déplacement repart de zéro : pas de « crédit de distance » accumulé hors ligne.
     const save = await this.store.withSave(playerId, (s) => {
+      // Une nouvelle grande île peut recouvrir une ancienne position sauvegardée.
+      // Replacer sur l'eau proche sans pénalité ni remise à zéro de progression.
+      if(isLand(this.seed,Math.floor(s.x),Math.floor(s.y))) {
+        let found=false;
+        for(let radius=1;radius<=120&&!found;radius++) for(let i=0;i<16&&!found;i++) {
+          const x=Math.floor(s.x+Math.cos(i*Math.PI/8)*radius)+0.5;
+          const y=Math.floor(s.y+Math.sin(i*Math.PI/8)*radius)+0.5;
+          if(!isLand(this.seed,Math.floor(x),Math.floor(y))) {s.x=x;s.y=y;found=true;}
+        }
+        if(!found) {const p=startPort(this.seed);s.x=p.x+0.5;s.y=p.y+0.5;}
+      }
       s.syncAt = this.now();
       return s;
     });
@@ -108,7 +120,7 @@ export class Game {
     const now = this.now();
     const dt = Math.max(0, (now - save.syncAt) / 1000);
     const dist = Math.hypot(x - save.x, y - save.y);
-    const g = gearOf(save.up);
+    const g = gearOf(save.up,save.vessel);
     const allowed = g.speed * Math.min(dt, 120) * 1.25 + 2;
     save.syncAt = now;
     if (dist > allowed || isLand(this.seed, Math.floor(x), Math.floor(y))) return false;
@@ -225,7 +237,7 @@ export class Game {
       const pick = speciesForShadow(rng, this.seed, shadow);
       if (!pick) throw new HttpError(409, 'Rien ne mord ici.');
       const spec = rollSpecimen(rng, pick.sp, pick.tile.level, pick.tile.biome, now, randomUUID());
-      const script = makeBiteScript(rng, pick.sp, gearOf(save.up).rod.reel);
+      const script = makeBiteScript(rng, pick.sp, gearOf(save.up,save.vessel).rod.reel);
       const s: FishingSession = { sid: randomUUID(), key, sp: pick.sp, spec, script, createdAt: this.now(), state: 'wait', hookAt: 0, combat: null };
       return s;
     });
@@ -252,8 +264,8 @@ export class Game {
       const save = (await this.store.getPlayer(playerId))!.save;
       s.state = 'fight';
       s.hookAt = now;
-      s.combat = makeCombatParams(fightStats(s.sp, s.spec), gearOf(save.up).rod, this.randomSeed());
-      if (s.sp.sil === 'crab') { s.combat.mode = 'crab'; s.combat.crabPrecision = gearOf(save.up).rod.precision; s.combat.aggr = 0; }
+      s.combat = makeCombatParams(fightStats(s.sp, s.spec), gearOf(save.up,save.vessel).rod, this.randomSeed());
+      if (s.sp.sil === 'crab') { s.combat.mode = 'crab'; s.combat.crabPrecision = gearOf(save.up,save.vessel).rod.precision; s.combat.aggr = 0; }
       return { verdict, combat: s.combat };
     }
     this.fishing.delete(playerId);
@@ -368,6 +380,30 @@ export class Game {
       if (!r.ok) throw new HttpError(400, r.error); // l'exception annule toute la transaction
       this.finish(save, tx, notes);
       return this.mutation(save, notes);
+    });
+  }
+
+  maritime(playerId:string, action:string, value:string): Promise<Mutation> {
+    return this.atPort(playerId,(save,notes)=> {
+      const port=portInRange(this.seed,save.x,save.y)!;
+      const r=maritimeOp(save,action,value,port.id,this.now(),this.seed);
+      if(r.ok) notes.push(r.message);
+      return r;
+    });
+  }
+
+  async openTreasure(playerId:string,id:string): Promise<Mutation> {
+    if(this.fishing.has(playerId) || this.encounters.has(playerId)) throw new HttpError(409,'Impossible pendant une pêche ou une attaque.');
+    return this.store.withSave(playerId,(save,tx)=> {
+      const now=this.now();
+      const treasure=nearbyTreasures(this.seed,save.x,save.y,now).find(t=>t.id===id);
+      if(!treasure || Math.hypot(treasure.x-save.x,treasure.y-save.y)>5) throw new HttpError(409,'Approchez-vous du coffre.');
+      const claims=save.treasures ?? [];
+      if(claims.includes(id)) throw new HttpError(409,'Ce coffre est déjà ouvert.');
+      save.treasures=claims.filter(k=>k.slice(0,10)>=dayKey(now-86400000));
+      save.treasures.push(id); save.coins+=treasure.coins; save.stats.earned+=treasure.coins;
+      const notes=[`Trésor ouvert : +${treasure.coins} pièces !`];
+      this.finish(save,tx,notes); return this.mutation(save,notes);
     });
   }
 

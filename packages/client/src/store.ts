@@ -16,6 +16,7 @@ export interface Hud {
   weather: Weather;
   danger: boolean;
   fps: number;
+  treasure?: { id:string; coins:number };
 }
 
 export type FishStage = null | 'casting' | 'waiting' | 'bitten' | 'hooking' | 'countdown' | 'fight' | 'resolving';

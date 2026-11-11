@@ -88,7 +88,7 @@ export function fightStats(sp: Species, spec: Pick<Specimen, 'len' | 'tough' | '
 function weightOf(sp: Species, tile: Tile, tod: TimeOfDay, weather: Weather): number {
   if (!sp.biomes.includes(tile.biome)) return 0;
   if (tile.depth < sp.dmin - 0.05 || tile.depth > sp.dmax + 0.05) return 0;
-  let w = RARITY_WEIGHT[sp.rarity];
+  let w = RARITY_WEIGHT[sp.rarity] * (sp.ancient ? 0.18 : 1);
   if (sp.rarity >= 2) w *= 1 + 0.6 * regionBonus(tile.level);
   if (sp.prefs.time) w *= sp.prefs.time === tod ? 2.5 : 0.35;
   if (sp.prefs.weather) w *= sp.prefs.weather === weather ? 2.5 : 0.5;

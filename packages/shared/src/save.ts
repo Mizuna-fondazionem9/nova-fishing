@@ -6,7 +6,7 @@ import { SPECIES, SPECIES_BY_ID, type Species } from './species';
 import { bulkOf, priceOf, type Specimen } from './fish';
 import { gearOf, gearTier, upgradeCost, zeroLevels, NETS, UPGRADE_BY_KEY, type Levels, type UpgradeKey } from './gear';
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 export interface BestiaryEntry {
   n: number;
@@ -43,6 +43,13 @@ export interface DailyState {
 }
 
 export interface Save {
+  vessel?: string;
+  vessels?: string[];
+  paint?: number;
+  paints?: number[];
+  boatSize?: number;
+  cat?: { port: string; at: number; sequence: number };
+  treasures?: string[];
   v: number;
   x: number;
   y: number;
@@ -69,6 +76,7 @@ export function newSave(seed: number, now: number): Save {
   const p = startPort(seed);
   const up = zeroLevels();
   return {
+    vessel:'skiff',vessels:['skiff'],paint:0,paints:[0],boatSize:1,treasures:[],
     v: SAVE_VERSION, x: p.x + 0.5, y: p.y + 0.5, lastPort: p.id, coins: 40, hull: gearOf(up).hullMax, up, net: 0,
     cargo: [], aquarium: [], bestiary: {},
     stats: { caught: 0, escaped: 0, sold: 0, earned: 0, dist: 0, wrecks: 0, crits: 0, legend: 0, myth: 0, maxKg: 0, underdog: 0, biomes: [], ports: [p.id], netted: 0 },
@@ -92,7 +100,7 @@ export type Op<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 const fail = (error: string): { ok: false; error: string } => ({ ok: false, error });
 
 export const cargoBulk = (s: Save): number => s.cargo.reduce((a, c) => a + bulkOf(c.kg), 0);
-export const holdFree = (s: Save): number => gearOf(s.up).hold - cargoBulk(s);
+export const holdFree = (s: Save): number => gearOf(s.up,s.vessel).hold - cargoBulk(s);
 
 // ---------- Défis du jour (renouvelés chaque jour, récompense bornée) ----------
 
@@ -230,7 +238,7 @@ export function applyCatch(s: Save, spec: Specimen, crits: number, now: number):
   s.stats.maxKg = Math.max(s.stats.maxKg, spec.kg);
   if (sp.rarity === 4) s.stats.legend++;
   if (sp.rarity === 5) s.stats.myth++;
-  s.stats.underdog = Math.max(s.stats.underdog, Math.round((sp.tier / gearTier(gearOf(s.up).rod)) * 100) / 100);
+  s.stats.underdog = Math.max(s.stats.underdog, Math.round((sp.tier / gearTier(gearOf(s.up,s.vessel).rod)) * 100) / 100);
   const stored = bulkOf(spec.kg) <= holdFree(s);
   if (stored) s.cargo.push(spec);
   return { stored, record, first };
@@ -268,10 +276,10 @@ export function opUpgrade(s: Save, key: UpgradeKey): Op<{ cost: number; level: n
   if (key === 'nets' && s.net === 0) return fail('Achetez d’abord un filet.');
   const cost = upgradeCost(key, level);
   if (s.coins < cost) return fail('Pas assez de pièces.');
-  const hullBefore = gearOf(s.up).hullMax;
+  const hullBefore = gearOf(s.up,s.vessel).hullMax;
   s.coins -= cost;
   s.up[key] = level + 1;
-  if (key === 'hull') s.hull += gearOf(s.up).hullMax - hullBefore;
+  if (key === 'hull') s.hull += gearOf(s.up,s.vessel).hullMax - hullBefore;
   return { ok: true, cost, level: level + 1 };
 }
 
@@ -287,7 +295,7 @@ export function opBuyNet(s: Save, tier: number): Op<{ cost: number }> {
 }
 
 export function opRepair(s: Save): Op<{ cost: number; repaired: number }> {
-  const g = gearOf(s.up);
+  const g = gearOf(s.up,s.vessel);
   const missing = Math.max(0, g.hullMax - s.hull);
   if (missing <= 0) return fail('La coque est intacte.');
   const affordable = Math.floor(s.coins / g.repairCost);
@@ -302,7 +310,7 @@ export function opRepair(s: Save): Op<{ cost: number; repaired: number }> {
 export function opKeep(s: Save, uid: string): Op {
   const i = s.cargo.findIndex((c) => c.uid === uid);
   if (i < 0) return fail('Ce poisson n’est pas dans la cale.');
-  if (s.aquarium.length >= gearOf(s.up).aquarium) return fail('L’aquarium est plein.');
+  if (s.aquarium.length >= gearOf(s.up,s.vessel).aquarium) return fail('L’aquarium est plein.');
   s.aquarium.push(s.cargo.splice(i, 1)[0]);
   return { ok: true };
 }
@@ -324,7 +332,7 @@ export function applyShipwreck(s: Save, seed: number): void {
   s.x = p.x + 0.5;
   s.y = p.y + 0.5;
   s.lastPort = p.id;
-  s.hull = Math.round(gearOf(s.up).hullMax * 0.4);
+  s.hull = Math.round(gearOf(s.up,s.vessel).hullMax * 0.4);
   s.stats.wrecks++;
   s.netProgress = 0;
 }

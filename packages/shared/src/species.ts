@@ -1,5 +1,5 @@
 // Base des espèces. Les identifiants sont STABLES : ne jamais les renommer (sauvegardes, bestiaire).
-import type { BiomeId, TimeOfDay, Weather } from './world';
+import { BIOME_IDS, type BiomeId, type TimeOfDay, type Weather } from './world';
 
 export type Silhouette = 'small' | 'long' | 'massive' | 'shark' | 'ray' | 'cephalo' | 'giant' | 'crab';
 export const SILHOUETTE_NAMES: Record<Silhouette, string> = {
@@ -25,7 +25,7 @@ export type BiteStyle = 'franc' | 'prudent' | 'joueur' | 'vorace' | 'timide';
 export type Focus = 'endurant' | 'puissant' | 'vif' | 'ruse';
 export type Shape =
   | 'fusi' | 'slim' | 'deep' | 'eel' | 'bill' | 'tuna' | 'shark' | 'ray' | 'flat'
-  | 'crab' | 'octo' | 'squid' | 'whale' | 'serpent' | 'angler' | 'moon' | 'seahorse';
+  | 'shell' | 'shrimp' | 'crab' | 'octo' | 'squid' | 'whale' | 'serpent' | 'angler' | 'moon' | 'seahorse';
 
 export interface Species {
   id: string;
@@ -54,6 +54,7 @@ export interface Species {
   prefs: { time?: TimeOfDay; weather?: Weather };
   shape: Shape;
   colors: [string, string, string];
+  ancient?: boolean;
   pattern: 'none' | 'stripes' | 'spots' | 'bands';
 }
 
@@ -157,6 +158,7 @@ export const SPECIES: Species[] = [
 
 // Trois espèces propres à chacun des huit biomes, également visibles au bestiaire.
 const CRAB_ZONES: [BiomeId, string[], string, number][] = [
+  ['river', ['Écrevisse des îles', 'Écrevisse bleue', 'Crabe d’eau douce'], '#8b7952 #dfce8b #3b5841', 2],
   ['volcanic', ['Crabe de basalte', 'Crabe des braises', 'Crabe obsidienne'], '#aa4938 #ffc17d #462834', 9],
   ['crystal', ['Crabe de quartz', 'Crabe opalin', 'Crabe saphir'], '#65bccc #e1ffff #3e608d', 7],
   ['spectral', ['Crabe ectoplasme', 'Crabe des âmes', 'Crabe du voile'], '#77b79c #dcffde #3a5c65', 12],
@@ -195,6 +197,37 @@ for (const [biome, suffix, colors, tier, names] of FANTASY_FISH) {
       value:Math.round(5*Math.pow(tier+rarity,1.55)*RARITY_VALUE[rarity]),prefs:{},pattern:'spots'});
   }
 }
+
+// Fossiles vivants : une chance minuscule dans toutes les mers, jamais dans les rivières.
+const seas = BIOME_IDS.filter(b=>b!=='river');
+for (const [id,name,shape,tier] of [
+  ['dunkleosteus','Dunkléostéus','deep',23], ['xiphactinus','Xiphactinus','fusi',20],
+  ['leedsichthys','Leedsichthys','whale',28], ['helicoprion','Hélicoprion','shark',25],
+  ['saurichthys','Saurichthys','bill',18],
+] as [string,string,Shape,number][]) {
+  const sp=S(id,name,'Un survivant préhistorique rarissime : des plaques osseuses affleurent sous ses écailles.',seas.join(' '),0,1,'giant',120,650,1500,5,tier,shape,'#71897c #e8ddbf #354f55',{stam:1.3,pow:1.2,pattern:'bands'});
+  sp.ancient=true; SPECIES.push(sp);
+}
+for (const [id,name,biomes,shape,tier,lmax,kg,colors] of [
+  ['orque','Orque','polar temperate deep','whale',16,900,6000,'#21313e #f2eee1 #102232'],
+  ['narval','Narval','polar','bill',14,550,1600,'#879fa8 #f0eddb #4e697c'],
+  ['dugong','Dugong','tropical reef','whale',6,350,450,'#95a69f #e4e0c7 #5d7879'],
+  ['tortue_marine','Tortue marine','coastal tropical reef temperate','moon',5,140,180,'#668d58 #d0c77c #354b3f'],
+  ['beluga','Béluga','polar crystal','whale',12,500,1300,'#d7e5df #ffffff #8eaab5'],
+  ['baleine_boreale','Baleine boréale','polar deep','whale',20,1400,18000,'#508e9b #d4e3d9 #294e6d'],
+] as [string,string,string,Shape,number,number,number,string][]) SPECIES.push(S(id,name,'Une rencontre majestueuse, à observer aussi dans votre carnet de bord.',biomes,0,1,'massive',lmax*0.45,lmax,kg,3,tier,shape,colors,{stam:1.2,pattern:'spots'}));
+const shellDefs: [string,string,string][] = [
+  ['moule','Moule','coastal temperate'],['palourde','Palourde','coastal tropical'],
+  ['huitre','Huître','reef temperate'],['coquille_saint_jacques','Coquille Saint-Jacques','polar deep'],
+  ['moule_de_braise','Moule de braise','volcanic'],['palourde_opaline','Palourde opaline','crystal mystic'],
+  ['coquillage_spectral','Coquillage spectral','spectral abyss'],
+];
+for (const [id,name,biomes] of shellDefs) SPECIES.push(S(id,name,'Un coquillage des fonds, à remonter délicatement.',biomes,0,1,'small',4,15,0.3,0,1.5,'shell','#8b749b #e7d6b5 #4e536f',{stam:0.7,pow:0.8}));
+for (const [id,name,shape,rarity,tier] of [
+  ['koi_kohaku','Koï kohaku','fusi',1,2.5],['koi_showa','Koï showa','deep',2,4],
+  ['carpe_doree','Carpe dorée','deep',0,2],['perche_insulaire','Perche insulaire','fusi',0,1.5],
+  ['crevette_douce','Crevette d’eau douce','shrimp',0,1],['crevette_jade','Crevette de jade','shrimp',1,2],
+] as [string,string,Shape,number,number][]) SPECIES.push(S(id,name,'Un habitant des rivières qui traversent les grandes îles.', 'river',0,1,'small',4,shape==='shrimp'?10:60,shape==='shrimp'?0.04:4,rarity,tier,shape,'#d78b64 #f5f0d8 #547f6d',{pattern:'spots'}));
 
 export const SPECIES_BY_ID: Record<string, Species> = Object.fromEntries(SPECIES.map((s) => [s.id, s]));
 

@@ -71,13 +71,22 @@ export interface Gear {
 export type Levels = Record<UpgradeKey, number>;
 export const zeroLevels = (): Levels => Object.fromEntries(UPGRADE_KEYS.map((k) => [k, 0])) as Levels;
 
-export function gearOf(up: Levels): Gear {
+export const VESSELS = [
+  {id:'skiff',name:'Barque Nova',price:0,speed:1,hold:1,hull:1,desc:'Polyvalente et légère.'},
+  {id:'cutter',name:'Cotre rapide',price:2500,speed:1.18,hold:0.85,hull:0.9,desc:'Plus rapide, mais moins de cale et une coque légère.'},
+  {id:'sailboat',name:'Grand voilier',price:8000,speed:1.05,hold:1.35,hull:0.95,desc:'Une grande cale et une bonne allure, coque un peu plus fragile.'},
+  {id:'trawler',name:'Bateau de pêche',price:25000,speed:0.78,hold:2,hull:1.4,desc:'Double stockage et coque robuste, vitesse réduite.'},
+] as const;
+export const PAINTS = ['#e4d3a1','#b15f50','#5792aa','#658d66','#9c78b9','#343d55'];
+
+export function gearOf(up: Levels, vessel = 'skiff'): Gear {
+  const model = VESSELS.find(v=>v.id===vessel) ?? VESSELS[0];
   const e = (k: UpgradeKey): number => UPGRADE_BY_KEY[k].effect(up[k] ?? 0);
   return {
-    speed: e('speed'),
+    speed: e('speed')*model.speed,
     accel: e('accel'),
-    hullMax: e('hull'),
-    hold: e('hold'),
+    hullMax: Math.round(e('hull')*model.hull),
+    hold: Math.max(1,Math.round(e('hold')*model.hold)),
     netEff: e('nets'),
     repairCost: e('repair'),
     aquarium: e('aquarium'),

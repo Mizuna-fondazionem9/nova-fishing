@@ -2,7 +2,7 @@
 // Le rendu se fait à la résolution « pixel art » puis est agrandi sans lissage par le navigateur.
 import {
   TILE, CHUNK, CELL, Rng, hash2, clamp, tileAt, getPort, portInRange, daylight, timeOfDay, weatherAt, spawnShadows, slotOf,
-  findPath, gearOf, Combat, HOSTILE_BY_ID,
+  nearbyTreasures, findPath, gearOf, Combat, HOSTILE_BY_ID,
   type Pt, type Shadow, type BiteScript, type Port, type Weather, type Hostile, type Silhouette,
   type CastResponse, type HookResponse, type ResolveResponse, type SyncResponse, type HitResponse, type Mutation, type Encounter,
 } from '../../../shared/src/index';
@@ -416,6 +416,7 @@ export class Game {
           port: this.boat.speed < 0.5 ? portInRange(this.seed, this.boat.x, this.boat.y) : null,
           moving: this.boat.path.length > 0, canCast: !this.fish && !this.hostile && !!this.castTarget(),
           tod: timeOfDay(serverNow()), weather: this.weather, danger: !!this.hostile, fps: this.fps,
+          treasure: nearbyTreasures(this.seed,this.boat.x,this.boat.y,serverNow()).find(t=>Math.hypot(t.x-this.boat.x,t.y-this.boat.y)<5 && !getState().save?.treasures?.includes(t.id)),
         },
       });
     }
@@ -426,7 +427,7 @@ export class Game {
     const b = this.boat;
     const save = getState().save;
     if (!save) return;
-    const g = gearOf(save.up);
+    const g = gearOf(save.up,save.vessel);
     let target = 0;
     if (b.path.length && !this.fish) {
       const wp = b.path[0];
@@ -1067,6 +1068,16 @@ export class Game {
     };
     drawShadows();
 
+    const drawTreasures = (): void => {
+    for(const chest of nearbyTreasures(this.seed,b.x,b.y,serverNow())) {
+      if(getState().save?.treasures?.includes(chest.id)) continue;
+      const cx=X(chest.x),cy=Y(chest.y);
+      ctx.fillStyle='#533923'; ctx.fillRect(cx-5,cy-4,11,8);
+      ctx.fillStyle='#daab50'; ctx.fillRect(cx-5,cy-4,11,2); ctx.fillRect(cx-1,cy-2,3,5);
+    }
+
+    };
+
     // Ports : ponton, cabane, phare, nom
     const lights: [number, number][] = [];
     for (const p of this.portsNear(this.cam.x / TILE, this.cam.y / TILE)) {
@@ -1224,7 +1235,7 @@ export class Game {
     // Bateau
     const save = getState().save;
     const hullLv = save?.up.hull ?? 0;
-    const spr = boatSprite(hullLv >= 20 ? 2 : hullLv >= 5 ? 1 : 0);
+    const spr = boatSprite(hullLv >= 20 ? 2 : hullLv >= 5 ? 1 : 0,save?.vessel,save?.paint);
     ctx.save();
     ctx.translate(X(b.x), Y(b.y) + Math.round(Math.sin(t * 2.2) * 0.8));
     ctx.globalAlpha = 0.25;
@@ -1234,6 +1245,7 @@ export class Game {
     ctx.fill();
     ctx.globalAlpha = 1;
     ctx.rotate(b.angle + Math.sin(t * 1.7) * 0.03);
+    ctx.scale(save?.boatSize ?? 1,save?.boatSize ?? 1);
     ctx.drawImage(spr, -spr.width / 2, -spr.height / 2);
     ctx.restore();
 
@@ -1280,6 +1292,7 @@ export class Game {
     // En profondeur : silhouettes lumineuses après le voile de nuit.
     drawShadows(true);
     drawHostile();
+    drawTreasures();
     if (dark > 0.15) {
       ctx.globalCompositeOperation = 'lighter';
       const glow = (gx: number, gy: number, r: number, a: number): void => {

@@ -86,6 +86,8 @@ export function buildServer(cfg: Config, store: Store, log: (m: string) => void 
   });
   api('/api/port/upgrade', (id, { body }) => game.upgrade(id, str(body.key, 'key', 20)));
   api('/api/port/buy-net', (id, { body }) => game.buyNet(id, num(body.tier, 'tier', 1, 10)));
+  api('/api/port/maritime', (id,{body}) => game.maritime(id,str(body.action,'action',20),typeof body.value==='string' && body.value ? str(body.value,'value',30) : ''));
+  api('/api/treasure/open', (id,{body})=>game.openTreasure(id,str(body.id,'id',50)));
   api('/api/port/repair', (id) => game.repair(id));
   api('/api/port/keep', (id, { body }) => game.keep(id, str(body.uid, 'uid', 40)));
   api('/api/release', (id, { body }) => game.release(id, str(body.uid, 'uid', 40), from(body.from)));

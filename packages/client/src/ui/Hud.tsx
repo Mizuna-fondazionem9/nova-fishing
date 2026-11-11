@@ -1,5 +1,5 @@
 import { BIOMES, NETS, cargoBulk, gearOf, gearTier, dayKey } from '../../../shared/src/index';
-import { useStore, setState, serverNow, type Panel } from '../store';
+import { useStore, setState, serverNow, portOp, type Panel } from '../store';
 import { sfx, unlockAudio } from '../game/audio';
 import { rt, Bar, Coins, fmt1 } from './common';
 
@@ -30,7 +30,7 @@ export function Hud() {
   const user = useStore((s) => s.user);
   const fishing = useStore((s) => s.fishing);
   const daily = useStore((s) => s.daily);
-  const g = gearOf(save.up);
+  const g = gearOf(save.up,save.vessel);
   const bulk = cargoBulk(save);
   const dest = rt.game?.boat.dest ?? null;
   const net = NETS[save.net];
@@ -79,6 +79,7 @@ export function Hud() {
       {!fishing && (
         <div className="context">
           {hud?.danger && <div className="alert">Créature hostile — éloignez-vous de sa trajectoire</div>}
+          {hud?.treasure && !hud.danger && <button onClick={()=>void portOp('/api/treasure/open',{id:hud.treasure!.id})}>Ouvrir le coffre · {hud.treasure.coins} pièces</button>}
           {hud?.canCast && (
             <button className="big pulse" data-testid="cast" onClick={() => rt.game?.action()}>Lancer la ligne <kbd>Espace</kbd></button>
           )}

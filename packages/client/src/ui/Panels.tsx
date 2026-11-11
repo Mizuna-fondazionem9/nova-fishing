@@ -1,12 +1,13 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
+  VESSELS, PAINTS, CAT_PRICE, catReady, getPort,
   COLOR_NAMES, SIZE_NAMES, BIOMES, BIOME_IDS, NETS, RARITY_COLORS, SILHOUETTE_NAMES, SPECIES, TROPHIES, UPGRADES,
   bulkOf, cargoBulk, dayKey, depthMeters, gearOf, gearTier, priceOf, upgradeCost,
   type Specimen, type Species, type UpgradeDef,
 } from '../../../shared/src/index';
 import { useStore, setState, getState, portOp, api, serverNow, toast, BASE } from '../store';
 import { setSound, sfx, unlockAudio, testAudio } from '../game/audio';
-import { rt, Modal, Bar, Coins, FishIcon, Rarity, Tags, speciesOf, fmt, fmt1, fmtKg, fmtLen } from './common';
+import { rt, Modal, Bar, Coins, FishIcon, BoatIcon, Rarity, Tags, speciesOf, fmt, fmt1, fmtKg, fmtLen } from './common';
 
 /** Empêche les doubles clics pendant qu'une requête est en cours (le serveur protège aussi de son côté). */
 function useBusy(): [boolean, (fn: () => Promise<unknown>) => void] {
@@ -82,7 +83,7 @@ function SellTab() {
   const save = useStore((s) => s.save)!;
   const [busy, run] = useBusy();
   const total = save.cargo.reduce((a, f) => a + priceOf(f), 0);
-  const g = gearOf(save.up);
+  const g = gearOf(save.up,save.vessel);
   const aquaFull = save.aquarium.length >= g.aquarium;
   if (!save.cargo.length) return <p className="empty">La cale est vide. Les poissons capturés apparaîtront ici.</p>;
   return (
@@ -103,7 +104,7 @@ function SellTab() {
 function YardTab() {
   const save = useStore((s) => s.save)!;
   const [busy, run] = useBusy();
-  const g = gearOf(save.up);
+  const g = gearOf(save.up,save.vessel);
   const missing = Math.max(0, g.hullMax - save.hull);
   const cost = Math.ceil(missing * g.repairCost);
   return (
@@ -154,10 +155,39 @@ function AquariumList({ atPort }: { atPort: boolean }) {
   );
 }
 
+function MaritimeTab() {
+  const save=useStore(s=>s.save)!;
+  const hud=useStore(s=>s.hud);
+  const seed=useStore(s=>s.seed);
+  const [busy,run]=useBusy();
+  const [,refresh]=useState(0);
+  useEffect(()=>{const id=setInterval(()=>refresh(v=>v+1),1000);return()=>clearInterval(id);},[]);
+  const action=(action:string,value='')=>run(()=>portOp('/api/port/maritime',{action,value}));
+  const ready=catReady(save,serverNow());
+  const nextCat=save.cat ? Math.max(0,15-Math.floor((serverNow()-save.cat.at)/60000)) : 15;
+  return <>
+    <Section title="Chat pêcheur">
+      <p className="note">Une petite prise toutes les 15 minutes, jusqu’à six en réserve. Le chat travaille au quai où il est installé, même hors connexion.</p>
+      {!save.cat ? <button disabled={busy || save.coins<CAT_PRICE} onClick={()=>action('cat-buy')}>Adopter · <Coins n={CAT_PRICE}/></button> : <>
+        <p>🐈 Au port {getPort(seed,...save.cat.port.split(':').map(Number) as [number,number]).name} · {ready} / 6 prises prêtes.{ready===0 ? ` Prochaine prise dans ${nextCat} min.` : ''}</p>
+        {save.cat.port===hud?.port?.id ? <button disabled={busy || ready===0} onClick={()=>action('cat-claim')}>Récupérer les prises</button> : <button disabled={busy || ready>0} onClick={()=>action('cat-move')}>Installer le chat à ce quai</button>}
+        {ready>0 && save.cat.port!==hud?.port?.id && <p className="note">Récupérez ses prises au port précédent avant de le déplacer.</p>}
+      </>}
+    </Section>
+    <Section title="Choisir son bateau">
+      {VESSELS.map(v=><div className="uprow" key={v.id}><BoatIcon model={v.id} paint={save.paint ?? 0}/><div className="info"><b>{v.name}</b><p>{v.desc}</p><small>Vitesse ×{v.speed} · Cale ×{v.hold} · Coque ×{v.hull}</small></div><button disabled={busy || (save.vessel ?? 'skiff')===v.id || (!(save.vessels ?? ['skiff']).includes(v.id) && save.coins<v.price)} onClick={()=>action('vessel',v.id)}>{(save.vessel ?? 'skiff')===v.id?'Équipé':(save.vessels ?? ['skiff']).includes(v.id)?'Équiper':<Coins n={v.price}/>}</button></div>)}
+    </Section>
+    <Section title="Peinture">
+      <div className="paint-grid">{PAINTS.map((color,i)=><button key={color} aria-label={`Peinture ${i+1}`} aria-pressed={(save.paint ?? 0)===i} disabled={busy} onClick={()=>action('paint',String(i))}><span style={{background:color,width:26,height:22,borderRadius:4}}/>{(save.paints ?? [0]).includes(i)?'Possédée':'350 pièces'}</button>)}</div>
+    </Section>
+    <Section title="Taille d’affichage"><p className="note">Réglage purement visuel ; capacité et vitesse dépendent du modèle.</p><div className="row">{[0.85,1,1.15].map((size,i)=><button key={size} disabled={busy} aria-pressed={(save.boatSize ?? 1)===size} onClick={()=>action('size',String(size))}>{['Compact','Normal','Grand'][i]}</button>)}</div></Section>
+  </>;
+}
+
 export function PortPanel() {
   const hud = useStore((s) => s.hud);
   const save = useStore((s) => s.save)!;
-  const [tab, setTab] = useState<'sell' | 'yard' | 'rod' | 'aqua'>('sell');
+  const [tab, setTab] = useState<'sell' | 'yard' | 'rod' | 'aqua' | 'life'>('sell');
   if (!hud?.port) {
     return <Modal title="Port"><p className="empty">Vous avez quitté le quai. Revenez à l’arrêt près du ponton pour accéder au port.</p></Modal>;
   }
@@ -168,11 +198,12 @@ export function PortPanel() {
       top={
         <>
           <div className="balance"><span className="k">Votre bourse</span><Coins n={save.coins} /></div>
-          <Tabs tabs={[['sell', 'Criée'], ['yard', 'Chantier'], ['rod', 'Atelier'], ['aqua', 'Aquarium']]} value={tab} onChange={setTab} />
+          <Tabs tabs={[['sell', 'Criée'], ['yard', 'Chantier'], ['rod', 'Atelier'], ['aqua', 'Aquarium'], ['life','Compagnon & flotte']]} value={tab} onChange={setTab} />
         </>
       }
     >
       {tab === 'sell' && <SellTab />}
+      {tab === 'life' && <MaritimeTab />}
       {tab === 'yard' && <YardTab />}
       {tab === 'rod' && (
         <Section title="Canne à pêche">
@@ -184,7 +215,7 @@ export function PortPanel() {
           <Section title="Bassins">
             {UPGRADES.filter((u) => u.group === 'aquarium').map((u) => <UpgradeRow key={u.key} u={u} />)}
           </Section>
-          <Section title="Poissons exposés" aside={`${save.aquarium.length} / ${gearOf(save.up).aquarium}`}>
+          <Section title="Poissons exposés" aside={`${save.aquarium.length} / ${gearOf(save.up,save.vessel).aquarium}`}>
             <AquariumList atPort />
           </Section>
         </>
@@ -198,7 +229,7 @@ export function PortPanel() {
 export function ShipPanel() {
   const save = useStore((s) => s.save)!;
   const [busy, run] = useBusy();
-  const g = gearOf(save.up);
+  const g = gearOf(save.up,save.vessel);
   return (
     <Modal title="Cale et équipement" wide>
       <Section title="Cale" aside={`${cargoBulk(save)} / ${g.hold} unités`}>
@@ -327,7 +358,7 @@ function Tank({ fish }: { fish: Specimen[] }) {
 export function AquariumPanel() {
   const save = useStore((s) => s.save)!;
   const hud = useStore((s) => s.hud);
-  const cap = gearOf(save.up).aquarium;
+  const cap = gearOf(save.up,save.vessel).aquarium;
   return (
     <Modal title="Aquarium" wide>
       <Tank fish={save.aquarium} />

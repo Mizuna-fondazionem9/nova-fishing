@@ -190,3 +190,14 @@ l'évite en changeant de cap.
 - Océan volcanique, Mer de cristal et Mer spectrale : provinces au-delà de 900 tuiles du port de départ, sans changement des terres ni des ports. Leurs niveaux régionaux utilisent la progression existante par distance.
 - Chaque province ajoute quatre espèces propres, deux formes régionales et trois crabes. Difficulté de référence des poissons : cristal 6–12, volcanique 8–14, spectral 11–17, avant modificateurs régionaux et individuels.
 - Espacement déterministe des crabes conservé, y compris entre chunks. Hostiles existants étendus à ces provinces, avec les mêmes règles d'esquive.
+
+### Faune, grandes îles et vie au port
+
+- Cinq préhistoriques mythiques (difficulté 18–28) dans les onze mers : poids d'apparition réduit à 18 % de celui d'une espèce mythique classique, avant modificateurs régionaux. Ils ne figurent pas dans la réserve du chat.
+- Six grands animaux marins, sept coquillages, six espèces d'eau douce et trois crustacés fluviaux supplémentaires. Les anciennes espèces gardent leurs identifiants.
+- Grandes îles rares uniquement à plus de 1 200 tuiles du départ, avec rivière traversante de plus de huit tuiles de large. Les bassins des ports sont préservés. Une ancienne position recouverte est replacée sur l'eau proche à la connexion sans perte.
+- Chat pêcheur : 1 500 pièces, affecté à un port ; une petite prise par 15 minutes, six en réserve au maximum même hors ligne. Cale pleine : réserve conservée. Relocalisation possible une fois la réserve récupérée.
+- Coffre : une position déterministe par cellule de port et par journée UTC, 200–300 pièces ; approche à cinq tuiles, ouverture refusée pendant une pêche ou une attaque et crédit unique par joueur.
+- Cotre : 2 500 pièces, vitesse ×1,18 / cale ×0,85 / coque ×0,9. Grand voilier : 8 000, vitesse ×1,05 / cale ×1,35 / coque ×0,95. Bateau de pêche : 25 000, vitesse ×0,78 / cale ×2 / coque ×1,4. Améliorations existantes conservées. Changement de modèle : proportion de dégâts conservée, cale vérifiée.
+- Peintures : première gratuite puis 350 pièces par couleur permanente ; trois tailles visuelles gratuites, sans effet sur les statistiques.
+- Sauvegarde v2 additive, sans migration SQL : modèles, couleurs, compagnon et coffres restent dans la sauvegarde JSON existante.

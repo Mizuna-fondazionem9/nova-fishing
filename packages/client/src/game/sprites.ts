@@ -1,3 +1,4 @@
+import { PAINTS } from '../../../shared/src/gear';
 // Pixel art 100 % programmatique : aucun fichier image, aucun asset tiers.
 // Tout est dessiné une fois dans de petits canvas puis réutilisé (cache).
 import { hash2, type Species, type Silhouette } from '../../../shared/src/index';
@@ -326,6 +327,24 @@ function crabSprite(cols: [string, string, string], frame: number): Spr {
   return canvas;
 }
 
+function shellSprite(cols: [string,string,string], shrimp = false): Spr {
+  const [s,c]=makeCanvas(28,20);
+  c.fillStyle=cols[2];
+  if(shrimp) {
+    for(let i=0;i<6;i++) { c.fillStyle=i%2?cols[0]:cols[1]; c.fillRect(7+i*2,6+Math.round(Math.sin(i/2)*3),3,5); }
+    c.fillStyle=cols[0]; c.fillRect(4,5,6,3); c.fillRect(21,8,4,6);
+    c.fillStyle=cols[2]; c.fillRect(4,4,1,1);
+    for(let i=0;i<4;i++) c.fillRect(9+i*3,13,1,4);
+    c.fillRect(1,2,7,1);
+  } else {
+    c.beginPath(); c.ellipse(14,11,10,7,0,0,Math.PI*2); c.fill();
+    c.fillStyle=cols[0]; c.beginPath(); c.ellipse(14,9,9,6,0,0,Math.PI*2); c.fill();
+    c.strokeStyle=cols[1]; c.lineWidth=1;
+    for(let i=0;i<5;i++) { c.beginPath(); c.moveTo(14,15); c.lineTo(6+i*4,6); c.stroke(); }
+  }
+  return s;
+}
+
 export function fishSprite(sp: Species, color = 0, frame = 0): Spr {
   const key = `${sp.id}:${color}:${frame % 2}`;
   let s = fishCache.get(key);
@@ -341,9 +360,18 @@ export function fishSprite(sp: Species, color = 0, frame = 0): Spr {
     case 'squid': s = cephFish(sp, cols, iris, frame, true); break;
     case 'moon': s = roundFish(sp, cols, iris, frame, true); break;
     case 'angler': s = roundFish(sp, cols, iris, frame, false); break;
+    case 'shell': s = shellSprite(cols); break;
+    case 'shrimp': s = shellSprite(cols,true); break;
     case 'crab': s = crabSprite(cols, frame); break;
     case 'seahorse': s = seahorse(cols); break;
     default: s = profileFish(sp, cols, iris, frame, PROF[sp.shape] ?? PROF.fusi);
+  }
+  if(sp.ancient) {
+    const bone=s.getContext('2d')!;
+    const mid=Math.floor(s.height/2),start=Math.floor(s.width*0.25),end=Math.floor(s.width*0.7);
+    bone.fillStyle='#ecdfbf'; bone.fillRect(start,mid,end-start,2);
+    for(let x=start+2;x<end;x+=4) { bone.fillRect(x,mid-4,1,10); bone.fillRect(x-1,mid-5,3,2); }
+    for(let x=end;x<end+5;x+=2) bone.fillRect(x,mid+2,1,4);
   }
   fishCache.set(key, s);
   return s;
@@ -422,19 +450,20 @@ export function shadowFrames(kind: Silhouette, luminous = false): Spr[] {
 // Bateau (vue du dessus, proue à droite) — trois allures selon le niveau de coque
 // ---------------------------------------------------------------------------
 
-const boatCache = new Map<number, Spr>();
-export function boatSprite(tier: number): Spr {
-  let s = boatCache.get(tier);
+const boatCache = new Map<string, Spr>();
+export function boatSprite(tier: number, model='skiff', paint=0): Spr {
+  const key=`${tier}:${model}:${paint}`;
+  let s = boatCache.get(key);
   if (s) return s;
-  const L = [26, 31, 37][tier];
-  const W = [5.5, 6.5, 7.5][tier];
+  const L = [26,31,37][tier] + (model==='trawler'?10:model==='sailboat'?7:model==='cutter'?3:0);
+  const W = [5.5,6.5,7.5][tier] + (model==='trawler'?3:model==='sailboat'?1:0);
   const size = L + 6;
   const g = new Grid(size, size);
   const c = Math.floor(size / 2);
   const x0 = c - Math.floor(L / 2);
   const hull = ['#8a5a2b', '#7a4a2a', '#5f4a3a'][tier];
   const deck = ['#d2a264', '#c99a5b', '#b98f5e'][tier];
-  const trim = ['#c8402f', '#2f6fc8', '#e0b030'][tier];
+  const trim = PAINTS[paint] ?? PAINTS[0];
   for (let i = 0; i <= L; i++) {
     const u = i / L;
     const w = u < 0.55 ? W * (0.72 + 0.28 * Math.min(1, u * 5)) : W * Math.pow(Math.cos(((u - 0.55) / 0.45) * Math.PI * 0.5), 0.75);
@@ -449,14 +478,18 @@ export function boatSprite(tier: number): Spr {
   for (let x = cab0; x <= cab1; x++) for (let y = -Math.round(W * 0.55); y <= Math.round(W * 0.55); y++) g.set(x, c + y, x === cab0 || x === cab1 || Math.abs(y) === Math.round(W * 0.55) ? '#e8e2d4' : y < 0 ? '#f6f1e6' : '#ddd6c6');
   g.set(cab1 - 1, c - 1, '#6fc3e8'); g.set(cab1 - 1, c + 1, '#6fc3e8');
   // Mât(s) et voile vue de dessus
-  const masts = tier === 2 ? [0.55, 0.78] : [0.6];
+  const masts = model==='trawler'?[]:model==='sailboat'||tier===2?[0.45,0.72]:[0.6];
   for (const m of masts) {
     const mx = x0 + Math.round(L * m);
     for (let y = -Math.round(W * 1.15); y <= Math.round(W * 1.15); y++) { g.set(mx, c + y, '#fbfaf4'); g.set(mx + 1, c + y, Math.abs(y) % 3 === 0 ? '#d9d6ca' : '#f0eee4'); }
     g.set(mx, c, '#5a3a1c'); g.set(mx + 1, c, '#5a3a1c');
   }
+  if(model==='trawler') {
+    for(let x=Math.floor(c-3);x<=c+6;x++) for(let y=Math.floor(c-W+2);y<=c+W-2;y++) g.set(x,y,Math.abs(y-c)<2?'#6ab8cb':'#e5e3cf');
+    for(let x=Math.floor(x0+4);x<x0+12;x++) g.set(x,c,'#9e8966');
+  }
   s = g.outline(0.45).toCanvas();
-  boatCache.set(tier, s);
+  boatCache.set(key, s);
   return s;
 }
 
