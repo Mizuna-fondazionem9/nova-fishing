@@ -42,6 +42,7 @@ function Login() {
         </form>
       )}
       <p className="small">Votre progression est sauvegardée sur votre compte Discord.</p>
+      {BASE && <a className="back" href="/">← Retour au site</a>}
     </div>
   );
 }

@@ -72,7 +72,7 @@ les sauvegardes vont en mémoire (et dans le fichier indiqué). Ces deux facilit
 ## Tests
 
 ```bash
-npm test             # 38 tests : monde, prix, cale, améliorations, combat, équilibrage, naufrage, serveur, récompenses
+npm test             # 39 tests : monde, prix, cale, améliorations, combat, équilibrage, naufrage, serveur, récompenses
 npm run test:e2e     # parcours complet dans Chrome (construit le projet, lance le serveur, joue une partie)
 npm run balance      # tableaux d'équilibrage (joueurs simulés)
 npm run typecheck    # vérification des types
@@ -171,17 +171,35 @@ migrations puis écoute sur le port fourni.
      `PUBLIC_URL` + `/auth/discord/callback`.
 4. Pêcher un poisson, le vendre, redéployer le service, se reconnecter : les pièces doivent être là.
 
-### 8. Ajouter un lien depuis l'accueil de NovaBot
+### 8. Servir le jeu sous `novabot-hub.fr/fishing`
 
-Le jeu doit être servi à la racine de son propre domaine (ses adresses internes commencent par `/`), donc sur un
-sous-domaine et non sur un chemin `/fishing` du site existant. Sur la page d'accueil de NovaBot, un simple lien
-suffit :
+Le jeu reste un service à part, mais le site de NovaBot le relaie : les joueurs ne voient que
+`https://novabot-hub.fr/fishing`. Côté site, c'est le module `fishing.py` du dépôt NovaBot (routes `/fishing` et
+`/fishing/...`, plus une zone sur la page d'accueil). Côté jeu, il n'y a rien à coder : le préfixe est déduit de
+`PUBLIC_URL`.
 
-```html
-<a href="https://peche.novabot-hub.fr">Jouer à NOVA Fishing</a>
-```
+Dans l'ordre :
 
-Le site de NovaBot n'a pas été modifié.
+1. **Discord** : ajouter la redirection `https://novabot-hub.fr/fishing/auth/discord/callback` (garder l'ancienne
+   le temps de la bascule).
+2. **Service du jeu**, onglet Variables :
+   - `PORT` = le port affiché dans ses logs (`Prêt sur le port …`). Le fixer permet au site de le connaître.
+   - `PUBLIC_URL` = `https://novabot-hub.fr/fishing`
+3. **Service du site**, onglet Variables :
+   - `FISHING_URL` = `http://${{nova-fishing.RAILWAY_PRIVATE_DOMAIN}}:${{nova-fishing.PORT}}`
+     (remplacer `nova-fishing` par le nom exact du service du jeu). C'est le réseau privé de Railway : `http`, pas
+     `https`.
+4. Ouvrir `https://novabot-hub.fr/fishing`.
+
+Tant que `FISHING_URL` n'est pas défini, `/fishing` affiche une page d'attente. Pour revenir en arrière : supprimer
+`FISHING_URL` et remettre l'ancienne valeur de `PUBLIC_URL`.
+
+Ce que fait le relais : il ne transmet au jeu que les cookies du jeu (`nf_sid`, `nf_oauth`), jamais la session du
+site ; il transmet l'adresse du joueur pour la limitation de débit ; il ne rejoue jamais une action (vente, achat)
+en cas de coupure ; il ne laisse pas passer l'API interne des récompenses.
+
+Vérifier en local, sans le site : `E2E_BASE=/fishing npm run test:e2e` joue le parcours complet derrière un relais
+(ajouter `E2E_STRIP=1` pour un relais qui retire le préfixe).
 
 ## Sécurité et intégrité
 

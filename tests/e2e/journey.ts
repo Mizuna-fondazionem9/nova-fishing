@@ -220,7 +220,8 @@ async function main(): Promise<void> {
   mkdirSync(SHOTS, { recursive: true });
   execFileSync('node', ['scripts/build.mjs'], { stdio: 'inherit' });
   await startServer();
-  const stopProxy = BASE_PATH ? await startProxy() : null;
+  // E2E_EXTERNAL=1 : un relais tourne déjà sur le port 4312 (par exemple le vrai module du site).
+  const stopProxy = BASE_PATH && !process.env.E2E_EXTERNAL ? await startProxy() : null;
   if (BASE_PATH) console.log(`  (jeu servi sous ${URL}${process.env.E2E_STRIP ? ', préfixe retiré par le relais' : ''})`);
   const browser = await chromium.launch({ executablePath: chrome, args: ['--no-sandbox'] });
   try {
