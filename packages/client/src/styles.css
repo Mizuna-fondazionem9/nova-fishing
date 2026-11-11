@@ -421,3 +421,8 @@ button.crab-target, button.crab-target:hover:not(:disabled), button.crab-target:
 @media(prefers-reduced-motion:reduce) { .rainbow-text { animation: none; } }
 .combo.pop b.rainbow-text { animation: combopop .3s cubic-bezier(.2,1.7,.4,1), rainbowflow 2s linear infinite; }
 @media(prefers-reduced-motion:reduce) { .combo.pop b.rainbow-text { animation: none; } }
+.tabs { grid-template-columns: repeat(auto-fit,minmax(85px,1fr)); }
+.paint-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; }
+.paint-grid button { flex-direction: column; font-size: 11px; letter-spacing: 0; }
+.paint-grid button[aria-pressed=true] { border-color: #e7d395; box-shadow: inset 0 0 0 1px #e7d395; }
+.boat-preview { width: 76px; max-width: 22%; height: auto; flex: none; }

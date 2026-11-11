@@ -256,3 +256,9 @@ POST /internal/rewards/ack   {"ids": ["…"], "status": "synced"}
   but et il faut fixer un nouveau cap.
 - **Tests sur appareils réels non faits.** Le parcours a tourné dans Chrome sans écran, en 1280 × 720 et en
   390 × 780 tactile ; aucun essai sur un vrai téléphone ni sur Safari ou Firefox.
+
+### Faune et vie au port
+
+Les mers abritent des préhistoriques mythiques à plaques osseuses, de grands animaux (dont les orques) et des coquillages. Des grandes îles rares, loin de Port-Nova, sont traversées de rivières : cherchez-y les koïs, les crevettes et les crustacés d'eau douce. Les coffres dorés se récupèrent en approchant puis en cliquant « Ouvrir le coffre ».
+
+Au port, l'onglet **Compagnon & flotte** permet d'adopter un chat pêcheur, de récupérer ses prises, d'acheter ou équiper un bateau et d'en modifier la couleur ou la taille visuelle. Le chat reste au port où il est installé et stocke au maximum six petites prises. Les modèles changent réellement vitesse, stockage et coque ; les peintures et la taille d'affichage sont cosmétiques. Les tarifs et limites sont détaillés dans `BALANCING.md`.

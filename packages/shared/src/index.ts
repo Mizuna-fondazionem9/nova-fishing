@@ -7,3 +7,5 @@ export * from './gear';
 export * from './save';
 export * from './path';
 export * from './api';
+
+export * from './maritime';

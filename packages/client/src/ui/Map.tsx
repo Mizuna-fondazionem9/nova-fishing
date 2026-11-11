@@ -4,6 +4,7 @@ import { useStore, setState } from '../store';
 import { rt, Modal } from './common';
 
 const WATER: Record<BiomeId, [number, number, number]> = {
+  river: [72,139,113],
   volcanic: [177,60,65], crystal: [94,199,213], spectral: [49,117,106],
   coastal: [78, 178, 196], tropical: [38, 150, 200], reef: [72, 206, 190], temperate: [44, 108, 170],
   polar: [150, 196, 222], deep: [24, 60, 124], abyss: [14, 22, 62], mystic: [98, 54, 150],

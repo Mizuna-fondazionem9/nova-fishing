@@ -1,6 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { SPECIES_BY_ID, RARITY_NAMES, RARITY_COLORS, SIZE_NAMES, COLOR_NAMES, type Species, type Specimen } from '../../../shared/src/index';
-import { fishSprite } from '../game/sprites';
+import { fishSprite, boatSprite } from '../game/sprites';
 import { setState, useStore } from '../store';
 import { sfx } from '../game/audio';
 import type { Game } from '../game/game';
@@ -65,6 +65,16 @@ export function FishIcon({ sp, color = 0, scale = 2, animate = false, hidden = f
     return () => clearInterval(id);
   }, [sp, color, scale, animate, hidden, gfx, fit]);
   return <canvas ref={ref} className="pix" />;
+}
+
+export function BoatIcon({model,paint=0}:{model:string;paint?:number}) {
+  const ref=useRef<HTMLCanvasElement>(null);
+  useEffect(()=>{
+    const s=boatSprite(0,model,paint),c=ref.current!;
+    c.width=s.width;c.height=s.height;
+    c.getContext('2d')!.drawImage(s,0,0);
+  },[model,paint]);
+  return <canvas ref={ref} className="pix boat-preview" aria-label="Aperçu du bateau"/>;
 }
 
 export function Rarity({ r }: { r: number }) {

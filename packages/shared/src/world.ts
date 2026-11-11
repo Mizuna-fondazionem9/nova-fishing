@@ -6,10 +6,11 @@ export const TILE = 16; // pixels d'art par tuile
 export const CHUNK = 32; // tuiles par côté de chunk
 export const CELL = 160; // tuiles par côté de « cellule de port » (un port garanti par cellule)
 
-export type BiomeId = 'coastal' | 'tropical' | 'reef' | 'temperate' | 'polar' | 'deep' | 'abyss' | 'mystic' | 'volcanic' | 'crystal' | 'spectral';
-export const BIOME_IDS: BiomeId[] = ['coastal', 'tropical', 'reef', 'temperate', 'polar', 'deep', 'abyss', 'mystic', 'volcanic', 'crystal', 'spectral'];
+export type BiomeId = 'coastal' | 'tropical' | 'reef' | 'temperate' | 'polar' | 'deep' | 'abyss' | 'mystic' | 'volcanic' | 'crystal' | 'spectral' | 'river';
+export const BIOME_IDS: BiomeId[] = ['coastal', 'tropical', 'reef', 'temperate', 'polar', 'deep', 'abyss', 'mystic', 'volcanic', 'crystal', 'spectral', 'river'];
 
 export const BIOMES: Record<BiomeId, { name: string; danger: number; desc: string }> = {
+  river: { name: 'Rivières insulaires', danger: 0.05, desc: 'Bras d’eau douce au milieu de grandes îles.' },
   volcanic: { name: 'Océan volcanique', danger: 0.75, desc: 'Eaux rouges chargées de cendres et de braises.' },
   crystal: { name: 'Mer de cristal', danger: 0.5, desc: 'Reflets turquoise et récifs de quartz lumineux.' },
   spectral: { name: 'Mer spectrale', danger: 0.95, desc: 'Des eaux vertes où dansent des lueurs fantômes.' },
@@ -122,9 +123,30 @@ export function portById(seed: number, id: string): Port | null {
 /** Port de départ : celui de la cellule (0, 0). */
 export const startPort = (seed: number): Port => getPort(seed, 0, 0);
 
+/** Grandes îles rares, éloignées du départ. Les ports existants gardent leur bassin. */
+export function islandFeature(seed: number, x: number, y: number): { h: number; river: boolean } | null {
+  const cell = 480, cx = Math.floor(x/cell), cy = Math.floor(y/cell);
+  if (rand2(seed+310,cx,cy) > 0.22) return null;
+  const ix = cx*cell+240+(rand2(seed+311,cx,cy)-0.5)*80;
+  const iy = cy*cell+240+(rand2(seed+312,cx,cy)-0.5)*80;
+  const start = startPort(seed);
+  if (Math.hypot(ix-start.x,iy-start.y)<1200) return null;
+  const radius = 48+rand2(seed+313,cx,cy)*20;
+  const dx = x-ix, dy = y-iy;
+  const d = Math.hypot(dx,dy/0.8);
+  if (d > radius+14) return null;
+  const port = getPort(seed,Math.floor(x/CELL),Math.floor(y/CELL));
+  if (Math.hypot(x-port.ix,y-port.iy)<port.r+18) return null;
+  const channel = iy+Math.sin(dx/24)*7;
+  const river = Math.abs(y-channel)<4.2 && Math.abs(dx)<radius+14;
+  return { h: river ? -0.1 : (radius-d)/45, river };
+}
+
 export function heightAt(seed: number, x: number, y: number): number {
   const p = getPort(seed, Math.floor(x / CELL), Math.floor(y / CELL));
-  return heightWithPort(seed, x, y, p.ix, p.iy, p.r);
+  const base = heightWithPort(seed,x,y,p.ix,p.iy,p.r);
+  const feature = islandFeature(seed,x,y);
+  return feature ? (feature.river ? feature.h : Math.max(base,feature.h)) : base;
 }
 
 export const isLand = (seed: number, tx: number, ty: number): boolean => heightAt(seed, tx, ty) > 0;
@@ -145,6 +167,7 @@ export function tileAt(seed: number, tx: number, ty: number): Tile {
   const temp = 0.5 + (clamp((fbm(seed + 15, tx / 380, ty / 380, 2) - 0.5) * 2.4 + 0.5, 0, 1) - 0.5) * nearT;
   if (h > 0) return { land: true, h, shore: 0, depth: 0, temp, biome: 'coastal', level };
 
+  if (islandFeature(seed,tx,ty)?.river) return {land:false,h,shore:1,depth:0.22,temp,biome:'river',level};
   const shore = clamp(-h / 0.17, 0, 1);
   const basin = clamp((fbm(seed + 13, tx / 240, ty / 240, 3) - 0.5) * 3 + 0.5, 0, 1);
   const depth = shore * (0.3 + 0.7 * basin) * (0.35 + 0.65 * nearD);
