@@ -8,6 +8,7 @@ import {
 } from '../../../shared/src/index';
 import { Terrain, CHUNK_PX } from './terrain';
 import { boatSprite, shadowFrames, getDecor, SHADOW_FRAMES } from './sprites';
+import { comboColor, comboTier } from './combo';
 import { sfx, setAmbience, unlockAudio } from './audio';
 import { getState, setState, toast, api, applyMutation, serverNow, type FishStage } from '../store';
 
@@ -36,7 +37,9 @@ interface Particle {
   vy: number;
   life: number;
   max: number;
-  kind: 'wake' | 'ring' | 'splash' | 'spark';
+  kind: 'wake' | 'ring' | 'splash' | 'spark' | 'ray';
+  color?: string;
+  size?: number;
 }
 
 export interface Fishing {
@@ -57,6 +60,8 @@ export interface Fishing {
   taps: number[];
   fightT0: number;
   flash: { text: string; kind: string; at: number } | null;
+  /** Série de critiques en cours (à partir de 2), et l'instant du dernier coup pour rejouer l'animation. */
+  combo: { n: number; at: number } | null;
 }
 
 interface HostileState {
@@ -99,6 +104,8 @@ export class Game {
   private lightning = 0;
   private nextBolt = 8;
   private shake = 0;
+  /** Voile de couleur bref sur tout l'écran (combo). */
+  private pulse = { a: 0, color: '#ffe14a' };
   private envTimer = 0;
   private hudTimer = 0;
   private syncTimer = 0;
@@ -333,6 +340,7 @@ export class Game {
     if (this.particles.length > 220) this.particles.splice(0, this.particles.length - 220);
     this.particles = this.particles.filter((p) => p.life > 0);
     this.shake = Math.max(0, this.shake - dt * 2.5);
+    this.pulse.a *= Math.exp(-dt * 7);
     this.lightning = Math.max(0, this.lightning - dt * 3);
 
     if ((this.envTimer -= dt) <= 0) {
@@ -529,7 +537,7 @@ export class Game {
     this.boat.speed = 0;
     const f: Fishing = {
       stage: 'casting', target, bx: target.x, by: target.y, castT: 0, splashed: false, ready: false, sid: '', script: null, t0: 0,
-      evIdx: 0, dip: 0, dipUntil: 0, combat: null, taps: [], fightT0: 0, flash: null,
+      evIdx: 0, dip: 0, dipUntil: 0, combat: null, taps: [], fightT0: 0, flash: null, combo: null,
     };
     this.fish = f;
     this.stage('casting');
@@ -550,8 +558,8 @@ export class Game {
     }
   }
 
-  private ring(x: number, y: number, life = 0.8): void {
-    this.particles.push({ x, y, vx: 0, vy: 0, life, max: life, kind: 'ring' });
+  private ring(x: number, y: number, life = 0.8, color?: string, size?: number): void {
+    this.particles.push({ x, y, vx: 0, vy: 0, life, max: life, kind: 'ring', color, size });
   }
 
   private updateFishing(dt: number, now: number): void {
@@ -675,26 +683,32 @@ export class Game {
     const streak = r === 'crit' ? c.streak : 0;
     const text = r === 'crit' ? (streak >= 2 ? `CRITIQUE ×${streak} !` : 'CRITIQUE !') : r === 'hit' ? 'Touché !' : 'Raté !';
     f.flash = { text, kind: r, at: performance.now() };
+    f.combo = streak >= 2 ? { n: streak, at: performance.now() } : null;
     sfx(r, streak);
     if (r === 'miss') {
       this.shake = 0.5;
       return;
     }
-    const burst = (n: number, kind: 'splash' | 'spark', speed: number, life: number): void => {
+    const burst = (n: number, kind: 'splash' | 'spark' | 'ray', speed: number, life: number, color: string, size: number): void => {
       for (let i = 0; i < n; i++) {
         const a = Math.random() * Math.PI * 2;
-        const v = speed * (0.4 + Math.random() * 0.6);
-        this.particles.push({ x: f.bx, y: f.by, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life, max: life, kind });
+        const v = speed * (0.45 + Math.random() * 0.55);
+        this.particles.push({ x: f.bx, y: f.by, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life, max: life, kind, color, size });
       }
     };
-    burst(r === 'crit' ? 8 : 4, 'splash', 2, 0.45);
-    // À partir de deux critiques d'affilée : gerbe d'étincelles dorées et ondes, de plus en plus amples (plafond à 6).
-    const power = Math.min(streak, 6);
-    if (power >= 2) {
-      burst(4 * power, 'spark', 2 + power * 0.7, 0.45 + power * 0.07);
-      this.ring(f.bx, f.by, 0.5 + power * 0.1);
-    }
-    if (power >= 4) this.ring(f.bx, f.by, 1.2);
+    burst(r === 'crit' ? 10 : 4, 'splash', 2, 0.45, '#ffffff', 1);
+    const tier = comboTier(streak);
+    if (!tier) return;
+    // Combo : éclats de peinture, traits de vitesse, ondes colorées et voile de couleur sur l'écran.
+    // Tout grandit avec le palier (2 à 6) et prend sa couleur.
+    const color = comboColor(streak);
+    burst(8 + 6 * tier, 'spark', 2.5 + tier * 0.9, 0.5 + tier * 0.07, color, tier >= 4 ? 3 : 2);
+    burst(4 + 2 * tier, 'spark', 1.5 + tier * 0.5, 0.4, '#ffffff', 2);
+    burst(6 + 2 * tier, 'ray', 7 + tier * 1.5, 0.22 + tier * 0.02, color, 1);
+    this.ring(f.bx, f.by, 0.5 + tier * 0.1, color, 1 + tier * 0.4);
+    if (tier >= 3) this.ring(f.bx, f.by, 0.9 + tier * 0.08, '#ffffff', 1.4 + tier * 0.5);
+    this.pulse = { a: 0.1 + tier * 0.04, color };
+    if (tier >= 4) this.shake = Math.max(this.shake, 0.12 + tier * 0.02);
   }
 
   private async finishFight(): Promise<void> {
@@ -1035,15 +1049,26 @@ export class Game {
       const px = X(p.x);
       const py = Y(p.y);
       if (p.kind === 'ring') {
-        ctx.globalAlpha = k * 0.8;
-        ctx.strokeStyle = '#ffffff';
+        const s = p.size ?? 1;
+        ctx.globalAlpha = k * 0.85;
+        ctx.strokeStyle = p.color ?? '#ffffff';
+        ctx.lineWidth = s > 1.5 ? 2 : 1;
         ctx.beginPath();
-        ctx.ellipse(px, py, (1 - k) * 12 + 2, (1 - k) * 7 + 1, 0, 0, Math.PI * 2);
+        ctx.ellipse(px, py, (1 - k) * 12 * s + 2, (1 - k) * 7 * s + 1, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.lineWidth = 1;
+      } else if (p.kind === 'ray') {
+        ctx.globalAlpha = k;
+        ctx.strokeStyle = p.color ?? '#ffffff';
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(X(p.x - p.vx * 0.07), Y(p.y - p.vy * 0.07));
         ctx.stroke();
       } else {
+        const s = p.size ?? (p.kind === 'splash' ? 1 : 2);
         ctx.globalAlpha = k * (p.kind === 'wake' ? 0.6 : 0.95);
-        ctx.fillStyle = p.kind === 'spark' ? (k > 0.5 ? '#fff3a8' : '#ffc93a') : '#ffffff';
-        ctx.fillRect(px, py, p.kind === 'splash' ? 1 : 2, 2);
+        ctx.fillStyle = p.color ?? '#ffffff';
+        ctx.fillRect(px, py, s, Math.max(2, s));
       }
     }
     ctx.globalAlpha = 1;
@@ -1186,6 +1211,21 @@ export class Game {
         ctx.fill();
       }
       ctx.globalCompositeOperation = 'source-over';
+    }
+    // Combo : voile de couleur bref, plus un halo sur les bords tant que la série dure.
+    const serie = comboTier(this.fish?.combat?.streak ?? 0);
+    if (serie || this.pulse.a > 0.004) {
+      const color = serie ? comboColor(this.fish!.combat!.streak) : this.pulse.color;
+      const edge = ctx.createRadialGradient(vw / 2, vh / 2, Math.min(vw, vh) * 0.35, vw / 2, vh / 2, Math.max(vw, vh) * 0.75);
+      edge.addColorStop(0, 'rgba(0,0,0,0)');
+      edge.addColorStop(1, color);
+      ctx.globalAlpha = Math.min(0.75, serie * 0.07 + this.pulse.a * 1.6);
+      ctx.fillStyle = edge;
+      ctx.fillRect(0, 0, vw, vh);
+      ctx.globalAlpha = this.pulse.a;
+      ctx.fillStyle = color;
+      ctx.fillRect(0, 0, vw, vh);
+      ctx.globalAlpha = 1;
     }
     if (this.lightning > 0) {
       ctx.fillStyle = `rgba(255,255,255,${this.lightning * 0.55})`;

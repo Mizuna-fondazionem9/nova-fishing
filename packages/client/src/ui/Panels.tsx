@@ -374,7 +374,7 @@ export function SettingsPanel() {
         <button data-testid="sound" onClick={toggle} aria-pressed={sound}>{sound ? '🔊 Activés' : '🔇 Coupés'}</button>
       </div>
       <div className="uprow">
-        <div className="info"><b>Zoom</b><small>Molette, pincement à deux doigts, ou touches + et −.</small></div>
+        <div className="info"><b>Zoom</b><small><span className="touch-only">Pincez à deux doigts.</span><span className="pc-only">Molette, ou touches + et −.</span></small></div>
         <div className="row">
           <button className="icon" onClick={() => rt.game?.changeZoom(-1)}>－</button>
           <button className="icon" onClick={() => rt.game?.changeZoom(1)}>＋</button>
@@ -386,11 +386,11 @@ export function SettingsPanel() {
       </div>
       <h3>Commandes</h3>
       <ul className="help">
-        <li><b>Naviguer</b> : touchez ou cliquez la mer. <kbd>Échap</kbd> annule le cap.</li>
-        <li><b>Pêcher</b> : arrêtez-vous près d’une ombre, puis <kbd>Espace</kbd> ou le bouton « Lancer ».</li>
-        <li><b>Ferrer</b> : attendez que le bouchon plonge franchement, puis <kbd>Espace</kbd> ou touchez l’écran.</li>
-        <li><b>Combat</b> : frappez quand le curseur traverse la zone verte ; le centre doré est critique.</li>
-        <li><b>Carte</b> : <kbd>M</kbd>. Touchez la carte pour fixer un cap.</li>
+        <li><b>Naviguer</b> : touchez ou cliquez la mer.<span className="pc-only"> <kbd>Échap</kbd> annule le cap.</span></li>
+        <li><b>Pêcher</b> : arrêtez-vous près d’une ombre, puis <span className="pc-only"><kbd>Espace</kbd> ou </span>le bouton « Lancer ».</li>
+        <li><b>Ferrer</b> : attendez que le bouchon plonge franchement, puis <span className="pc-only"><kbd>Espace</kbd> ou </span>le bouton « Ferrer ».</li>
+        <li><b>Combat</b> : frappez quand le curseur traverse la zone verte ; le centre doré est critique. Enchaînez les critiques pour faire monter le combo.</li>
+        <li><b>Carte</b> : <span className="pc-only"><kbd>M</kbd> ou </span>le bouton 🗺️. Touchez la carte pour fixer un cap.</li>
       </ul>
       <p className="small">Monde n° {seed} · {hud?.fps ?? '—'} images/s · {getState().save ? `${Object.keys(getState().save!.bestiary).length} espèces` : ''}</p>
     </Modal>

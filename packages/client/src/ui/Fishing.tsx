@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { RARITY_COLORS, SILHOUETTE_NAMES, bulkOf } from '../../../shared/src/index';
 import { useStore, setState } from '../store';
 import { sfx } from '../game/audio';
+import { comboColor, comboTier } from '../game/combo';
 import { rt, FishIcon, Rarity, Tags, speciesOf, fmt, fmtKg, fmtLen } from './common';
 
 /** Jauge de combat : mise à jour image par image directement dans le DOM (pas de rendu React à 60 Hz). */
@@ -14,9 +15,17 @@ function Gauge() {
   const flash = useRef<HTMLDivElement>(null);
   const wrap = useRef<HTMLDivElement>(null);
   const count = useRef<HTMLDivElement>(null);
-  const serie = useRef<HTMLDivElement>(null);
+  const combo = useRef<HTMLDivElement>(null);
+  const comboNum = useRef<HTMLElement>(null);
   useEffect(() => {
     let raf = 0;
+    let lastPop = 0;
+    /** Rejoue une animation CSS sur un élément (il faut retirer la classe, forcer un recalcul, la remettre). */
+    const replay = (el: HTMLElement, cls: string): void => {
+      el.classList.remove(cls);
+      void el.offsetWidth;
+      el.classList.add(cls);
+    };
     const tick = (): void => {
       const f = rt.game?.fish;
       const c = f?.combat;
@@ -31,19 +40,36 @@ function Gauge() {
         const lr = c.line / p.line;
         lineBar.current!.style.width = `${lr * 100}%`;
         lineBar.current!.style.background = lr < 0.3 ? '#ff5a4a' : lr < 0.6 ? '#f0b429' : '#6fe3a1';
-        // Série de critiques : la jauge s'illumine un peu plus à chaque coup (5 paliers).
-        const palier = Math.min(c.streak, 5);
-        wrap.current!.className = `gauge ${c.rush > 0 ? 'rush' : c.warn ? 'warn' : ''} ${palier >= 2 ? `s${palier}` : ''}`;
-        serie.current!.textContent = c.streak >= 2 ? `✦ Série critique ×${c.streak} ✦` : '';
-        serie.current!.style.fontSize = `${11 + palier}px`;
+
+        // Série de critiques : couleur et intensité par palier, sur la jauge comme sur le compteur.
+        const tier = comboTier(c.streak);
+        const color = comboColor(c.streak);
+        const g = wrap.current!;
+        g.style.setProperty('--combo', color);
+        g.className = `gauge ${c.rush > 0 ? 'rush' : c.warn ? 'warn' : ''} ${tier ? `s${tier}` : ''} ${g.classList.contains('pop') ? 'pop' : ''}`;
+        const box = combo.current!;
+        if (f.combo) {
+          box.style.setProperty('--combo', color);
+          box.style.setProperty('--lvl', String(tier));
+          comboNum.current!.textContent = `×${f.combo.n}`;
+          box.classList.add('on');
+          if (f.combo.at !== lastPop) {
+            lastPop = f.combo.at;
+            replay(box, 'pop');
+            replay(g, 'pop');
+          }
+        } else box.classList.remove('on');
+
         const left = f.fightT0 - performance.now();
         count.current!.textContent = left > 0 ? (left > 700 ? 'Prêt…' : 'Combattez !') : c.rush > 0 ? '⚠ Il s’emballe !' : c.warn ? '⚠ Attention…' : '';
         const fl = f.flash;
         const age = fl ? performance.now() - fl.at : 9999;
-        flash.current!.textContent = fl && age < 600 ? fl.text : '';
-        flash.current!.className = `flash ${fl?.kind ?? ''}`;
-        flash.current!.style.opacity = String(Math.max(0, 1 - age / 600));
-        flash.current!.style.transform = `scale(${fl?.kind === 'crit' ? 1 + 0.09 * Math.min(c.streak, 6) : 1})`;
+        const el = flash.current!;
+        el.textContent = fl && age < 650 ? fl.text : '';
+        el.className = `flash ${fl?.kind ?? ''}`;
+        el.style.opacity = String(Math.max(0, 1 - age / 650));
+        el.style.color = fl?.kind === 'crit' && tier ? color : '';
+        el.style.transform = `scale(${fl?.kind === 'crit' ? 1 + 0.12 * Math.min(c.streak, 6) : 1})`;
       }
       raf = requestAnimationFrame(tick);
     };
@@ -52,9 +78,12 @@ function Gauge() {
   }, []);
   return (
     <div className="fight">
+      <div className="combo" ref={combo} aria-hidden="true">
+        <b ref={comboNum} />
+        <small>COMBO</small>
+      </div>
       <div className="flash" ref={flash} />
       <div className="count" ref={count} />
-      <div className="serie" ref={serie} />
       <div className="meters">
         <label>🐟 Fatigue du poisson</label>
         <div className="bar"><div ref={fishBar} style={{ background: '#5cc8ff' }} /></div>
@@ -66,7 +95,11 @@ function Gauge() {
         <div className="crit" ref={crit} />
         <div className="cursor" ref={cursor} />
       </div>
-      <p className="hint">Touchez l’écran ou appuyez sur <kbd>Espace</kbd> quand le curseur traverse la zone verte — le centre doré est critique.</p>
+      <p className="hint">
+        <span className="touch-only">Touchez l’écran</span>
+        <span className="pc-only">Cliquez ou appuyez sur <kbd>Espace</kbd></span>
+        {' '}quand le curseur traverse la zone verte — le centre doré est critique.
+      </p>
     </div>
   );
 }

@@ -207,11 +207,11 @@ async function fishOnce(p: Page, tried: Set<string>): Promise<string> {
     requestAnimationFrame(loop);
   });
   if (tried.size === 1) {
-    // Série de coups critiques : on attend le troisième d'affilée pour photographier l'effet.
-    const serie = await p.waitForFunction(() => ((window as any).__nf.game.fish?.combat?.streak ?? 0) >= 3, null, { timeout: 20_000, polling: 16 }).then(() => true, () => false);
+    // Série de coups critiques : on attend le quatrième d'affilée pour photographier l'effet.
+    const serie = await p.waitForFunction(() => ((window as any).__nf.game.fish?.combat?.streak ?? 0) >= 4, null, { timeout: 20_000, polling: 16 }).then(() => true, () => false);
     if (serie) {
       await p.waitForTimeout(120);
-      await p.screenshot({ path: `${SHOTS}/serie-critique.png` });
+      await p.screenshot({ path: `${SHOTS}/combo.png` });
     }
   }
   await p.waitForSelector('.modal.result', { timeout: 150_000 });

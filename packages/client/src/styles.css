@@ -23,6 +23,12 @@ h3 small { color: var(--dim); text-transform: none; letter-spacing: 0; }
 small, .small { display: block; color: var(--dim); font-size: 12px; line-height: 1.35; }
 kbd { border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; font-size: 11px; background: #0b0e18; color: var(--dim); }
 .pix { image-rendering: pixelated; image-rendering: crisp-edges; }
+/* Écrans tactiles : pas de rappel des touches du clavier, et des consignes adaptées. */
+.touch-only { display: none; }
+@media (pointer: coarse) {
+  kbd, .pc-only { display: none !important; }
+  .touch-only { display: inline; }
+}
 
 button, .btn {
   font: inherit; color: var(--text); background: var(--panel2); border: 1px solid var(--line); border-radius: 8px;
@@ -92,22 +98,37 @@ canvas.world { position: fixed; left: 0; top: 0; image-rendering: pixelated; ima
 .waitbox, .fight { background: rgba(12, 14, 26, 0.86); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: grid; gap: 10px; justify-items: center; text-align: center; }
 .hint { font-size: 12px; color: var(--dim); line-height: 1.4; }
 .hint b { color: var(--text); }
+.waitbox .row { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.waitbox .row button { width: 100%; min-height: 48px; padding-left: 8px; padding-right: 8px; }
 .bite { color: #ffe14a !important; font-size: 20px; animation: pulse 0.3s infinite; display: inline-block; }
 .meters { width: 100%; display: grid; grid-template-columns: auto 1fr; gap: 4px 8px; align-items: center; font-size: 11px; color: var(--dim); text-align: left; }
 .gauge { position: relative; width: 100%; height: 34px; background: linear-gradient(180deg, #3a1218, #5a1a22); border: 2px solid #8a2a34; border-radius: 8px; overflow: hidden; }
-.gauge.s2 { border-color: #b8943a; box-shadow: 0 0 10px rgba(255, 225, 74, 0.4); }
-.gauge.s3 { border-color: #d4ad3f; box-shadow: 0 0 16px rgba(255, 225, 74, 0.55); }
-.gauge.s4 { border-color: #ecc548; box-shadow: 0 0 24px rgba(255, 225, 74, 0.72); }
-.gauge.s5 { border-color: #ffe14a; box-shadow: 0 0 34px rgba(255, 225, 74, 0.95), inset 0 0 14px rgba(255, 225, 74, 0.3); }
-.gauge.s4 .crit, .gauge.s5 .crit { box-shadow: 0 0 16px #ffe98a; }
+/* Combo : la jauge prend la couleur du palier (variable --combo) et son halo grandit. */
+.gauge.s2, .gauge.s3, .gauge.s4, .gauge.s5, .gauge.s6 { border-color: var(--combo); }
+.gauge.s2 { box-shadow: 0 0 12px var(--combo); }
+.gauge.s3 { box-shadow: 0 0 20px var(--combo); }
+.gauge.s4 { box-shadow: 0 0 28px var(--combo), inset 0 0 8px var(--combo); }
+.gauge.s5 { box-shadow: 0 0 38px var(--combo), inset 0 0 14px var(--combo); }
+.gauge.s6 { box-shadow: 0 0 50px var(--combo), 0 0 14px #fff, inset 0 0 20px var(--combo); }
+.gauge.s4 .crit, .gauge.s5 .crit, .gauge.s6 .crit { box-shadow: 0 0 18px #fff; }
+.gauge.pop { animation: gaugepop 0.22s ease-out; }
+@keyframes gaugepop { 0% { transform: scale(1.05, 1.35); filter: brightness(2.2); } 100% { transform: none; filter: none; } }
 .gauge.warn { border-color: var(--gold); }
 .gauge.rush { border-color: #ff5a4a; box-shadow: 0 0 18px rgba(255, 90, 74, 0.8); animation: shake 0.12s infinite; }
 @keyframes shake { 50% { transform: translateX(2px); } }
 .gauge .zone { position: absolute; top: 0; bottom: 0; background: linear-gradient(180deg, #4fd08a, #2f9a62); }
 .gauge .crit { position: absolute; top: 0; bottom: 0; background: linear-gradient(180deg, #ffe98a, #f0b429); box-shadow: 0 0 8px #ffe98a; }
 .gauge .cursor { position: absolute; top: -2px; bottom: -2px; width: 5px; margin-left: -2.5px; background: #fff; box-shadow: 0 0 6px #fff, 0 0 0 1px #000; }
-.fight .flash { height: 22px; font-size: 18px; font-weight: 700; transition: transform 0.08s; }
-.fight .serie { height: 18px; font-weight: 700; color: #ffe14a; text-shadow: 0 0 10px rgba(255, 225, 74, 0.8); letter-spacing: 0.04em; }
+.fight { position: relative; }
+.fight .flash { height: 22px; font-size: 18px; font-weight: 700; transition: transform 0.08s; text-shadow: 0 0 10px currentColor; }
+/* Compteur de combo : gros, penché, au-dessus du panneau. Il grossit avec le palier (--lvl). */
+.combo { position: absolute; left: 50%; bottom: calc(100% + 16px); transform: translateX(-50%) rotate(-5deg); display: grid; justify-items: center; pointer-events: none;
+  opacity: 0; transition: opacity 0.3s; color: var(--combo, #ffe14a); font-weight: 800; line-height: 1; white-space: nowrap; }
+.combo.on { opacity: 1; }
+.combo b { display: block; font-size: calc(30px + var(--lvl, 2) * 9px); text-shadow: 3px 3px 0 #14092a, -1px -1px 0 #14092a, 0 0 22px currentColor; }
+.combo small { color: #fff; font-size: 12px; letter-spacing: 0.35em; margin-right: -0.35em; text-shadow: 2px 2px 0 #14092a; }
+.combo.pop b { animation: combopop 0.3s cubic-bezier(0.2, 1.7, 0.4, 1); }
+@keyframes combopop { 0% { transform: scale(2.1) rotate(8deg); filter: brightness(2.4); } 100% { transform: none; filter: none; } }
 .flash.crit { color: #ffe14a; } .flash.hit { color: var(--ok); } .flash.miss { color: var(--bad); }
 .fight .count { height: 18px; font-weight: 700; color: var(--gold); }
 
@@ -192,4 +213,4 @@ canvas.map { width: 100%; max-width: 560px; aspect-ratio: 1; justify-self: cente
   .uprow > button { width: 100%; }
   .modal .body { padding: 10px; }
 }
-@media (prefers-reduced-motion: reduce) { .pulse, .alert, .bite, .gauge.rush { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .pulse, .alert, .bite, .gauge.rush, .gauge.pop, .combo.pop b { animation: none; } }
