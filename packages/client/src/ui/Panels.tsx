@@ -238,9 +238,12 @@ function SpeciesCard({ sp, onPick }: { sp: Species; onPick: (s: Species) => void
   return (
     <button className={`spcard ${entry ? '' : 'unknown'}`} onClick={() => onPick(sp)} style={entry ? { borderColor: RARITY_COLORS[sp.rarity] } : undefined}>
       <FishIcon sp={sp} scale={2} hidden={!entry} />
-      <span>{entry ? sp.name : 'Inconnu'}</span>
-      <small>{entry ? `${entry.n} captures` : 'À découvrir'}</small>
-      <small>{sp.prefs.time ? `Favorise : ${sp.prefs.time}` : 'Toute heure'} · {sp.prefs.weather ?? 'Toute météo'}</small>
+      <div className="sp-conditions">
+        {sp.prefs.time && <span role="img" aria-label={`Moment favorable : ${sp.prefs.time}`} title={`Moment favorable : ${sp.prefs.time}`}>{({ aube: '🌅', jour: '☀️', crepuscule: '🌇', nuit: '🌙' } as Record<string, string>)[sp.prefs.time] ?? '🕒'}</span>}
+        {sp.prefs.weather && <span role="img" aria-label={`Météo favorable : ${sp.prefs.weather}`} title={`Météo favorable : ${sp.prefs.weather}`}>{({ clair: '☀️', pluie: '🌧️', orage: '⛈️', brume: '🌫️', brouillard: '🌫️', nuageux: '☁️' } as Record<string, string>)[sp.prefs.weather] ?? '☁️'}</span>}
+      </div>
+      <strong>{entry ? sp.name : '?????'}</strong>
+      {entry && <small>×{entry.n}</small>}
     </button>
   );
 }

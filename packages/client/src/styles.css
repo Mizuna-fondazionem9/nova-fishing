@@ -358,3 +358,19 @@ button:focus-visible, input:focus-visible { outline: 3px solid #efd595; outline-
 .nav { background: #10212df5; border-color: #536773; }
 .nav button { color: #d4d8df; text-transform: none; letter-spacing: .025em; }
 @media(max-width:560px) { .modal .body { padding: 16px; gap: 20px; } .modal header { padding: 14px 16px; } .modal .top { padding: 12px 16px; } .fishrow,.uprow { padding: 14px; } .spgrid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+
+/* Dock flottant : pictogrammes fins, libellés discrets et séparation des réglages. */
+.nav { gap: 6px; padding: 8px; border-radius: 22px; background: linear-gradient(160deg,#193442f5,#101d2cf5); border: 1px solid #76959166; box-shadow: 0 12px 36px #0006, inset 0 1px #d4eceb15; backdrop-filter: blur(16px); }
+.nav button { display: flex; flex-direction: column; justify-content: center; gap: 6px; min-width: 72px; min-height: 62px; padding: 8px 12px; border-radius: 15px; font: 500 11px var(--f-body); color: #b8ced5; transition: background .18s, color .18s, transform .18s; }
+.nav button svg { width: 23px; height: 23px; color: #86bbb8; }
+.nav button:hover:not(:disabled), .nav button:focus-visible { background: #426b7255; color: #fff3d7; transform: translateY(-2px); }
+.nav button:hover svg { color: #f0d29a; }
+.nav button:last-child { border-left: 1px solid #76959133; border-radius: 0 15px 15px 0; margin-left: 4px; }
+.nav button em { top: 2px; right: 8px; background: #d8b577; color: #13212b; }
+.context { bottom: calc(104px + env(safe-area-inset-bottom)); }
+.spcard { position: relative; padding-top: 34px; min-height: 132px; gap: 8px; }
+.spcard strong { font-size: 13px; line-height: 1.35; }
+.spcard.unknown strong { font-size: 17px; letter-spacing: .14em; color: #c8d5df; }
+.sp-conditions { position: absolute; top: 9px; left: 10px; display: flex; gap: 5px; font-size: 16px; line-height: 1; }
+@media(max-width:560px) { .nav { gap: 2px; padding: 6px 4px; border-radius: 18px; } .nav button { min-width: 0; min-height: 58px; padding: 6px 2px; gap: 5px; font-size: 10px; } .nav button svg { width: 21px; height: 21px; } .nav button:last-child { margin-left: 2px; } .context { bottom: calc(94px + env(safe-area-inset-bottom)); } }
+@media(prefers-reduced-motion:reduce) { .nav button { transition: none; } .nav button:hover:not(:disabled) { transform: none; } }

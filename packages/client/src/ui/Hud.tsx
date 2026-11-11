@@ -12,6 +12,18 @@ const open = (panel: Panel) => (): void => {
   setState({ panel });
 };
 
+const NAV_ICONS = {
+  ship: 'M4 9h16v11H4z M8 9V5h8v4 M4 13h16 M10 13v3h4v-3',
+  bestiary: 'M12 5C8 3 5 3 3 4v15c3-1 6-1 9 1 3-2 6-2 9-1V4c-2-1-5-1-9 1z M12 5v15',
+  aquarium: 'M3 5h18v15H3z M3 9c3-3 6 3 9 0s6 3 9 0 M8 14c3-3 6-3 8 0-2 3-5 3-8 0z M8 14l-2-2v4z',
+  trophies: 'M7 3h10v6a5 5 0 0 1-10 0z M7 5H3v3c0 3 2 4 5 4 M17 5h4v3c0 3-2 4-5 4 M12 14v6 M8 21h8',
+  daily: 'M7 4h13v17H4V4h3 M8 2h8v5H8z M8 13l3 3 5-6',
+  settings: 'M4 6h16 M4 12h16 M4 18h16 M8 3v6 M16 9v6 M10 15v6',
+};
+function NavIcon({ name }: { name: keyof typeof NAV_ICONS }) {
+  return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d={NAV_ICONS[name]} /></svg>;
+}
+
 export function Hud() {
   const save = useStore((s) => s.save)!;
   const hud = useStore((s) => s.hud);
@@ -85,13 +97,13 @@ export function Hud() {
       )}
 
       {!fishing && (
-        <nav className="nav">
-          <button onClick={open('ship')}>Cale</button>
-          <button onClick={open('bestiary')}>Bestiaire</button>
-          <button onClick={open('aquarium')}>Aquarium</button>
-          <button onClick={open('trophies')}>Trophées</button>
-          <button onClick={open('daily')}>Défis{dailyLeft > 0 && <em>{dailyLeft}</em>}</button>
-          <button onClick={open('settings')}>Réglages</button>
+        <nav className="nav" aria-label="Carnet de bord">
+          <button onClick={open('ship')}><NavIcon name="ship" /><span>Cale</span></button>
+          <button onClick={open('bestiary')}><NavIcon name="bestiary" /><span>Bestiaire</span></button>
+          <button onClick={open('aquarium')}><NavIcon name="aquarium" /><span>Aquarium</span></button>
+          <button onClick={open('trophies')}><NavIcon name="trophies" /><span>Trophées</span></button>
+          <button onClick={open('daily')}><NavIcon name="daily" /><span>Défis</span>{dailyLeft > 0 && <em>{dailyLeft}</em>}</button>
+          <button onClick={open('settings')}><NavIcon name="settings" /><span>Réglages</span></button>
         </nav>
       )}
     </div>
