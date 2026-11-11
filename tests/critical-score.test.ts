@@ -2,14 +2,16 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { criticalScore } from '../packages/client/src/game/critical-score';
 
-test('chaque critique de 1 à 10 enrichit le son sans événement périodique', () => {
-  for (let n = 2; n <= 10; n++) {
-    const before = criticalScore(n - 1), after = criticalScore(n);
-    assert.ok(after.pitch > before.pitch);
-    assert.ok(after.echo > before.echo);
-    assert.ok(after.layers[0].duration > before.layers[0].duration);
-    assert.ok(after.layers[3].volume > before.layers[3].volume);
-    assert.ok(after.layers.reduce((sum, l) => sum + l.volume, 0) < 0.32);
+test('les arpèges commencent au troisième et gagnent une note à chaque palier', () => {
+  const starts = (n: number) => [...new Set(criticalScore(n).layers.map(l => l.delay))];
+  assert.equal(starts(1).length, 1);
+  assert.equal(starts(2).length, 1);
+  for (let n = 3; n <= 10; n++) {
+    assert.equal(starts(n).length, n);
+    const score = criticalScore(n);
+    assert.ok(Math.max(...starts(n)) < 0.65);
+    assert.ok(score.layers.every(l => l.volume > 0 && l.volume <= 0.14));
+    assert.ok(score.layers.every(l => score.pitch * l.ratio < 3200));
   }
 });
 test('le son complet reste identique après le dixième, y compris aux multiples de cinq', () => {

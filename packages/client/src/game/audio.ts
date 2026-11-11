@@ -168,7 +168,7 @@ function crit(streak: number): void {
   for (const layer of score.layers) {
     if (layer.volume === 0) continue;
     note(score.pitch * layer.ratio, layer.duration, {
-      type: 'sine', vol: layer.volume, attack: layer.attack, echo: score.echo,
+      type: 'sine', vol: layer.volume, attack: layer.attack, echo: score.echo, delay: layer.delay,
     });
   }
   note(98, 0.12, { vol: 0.05, attack: 0.006, slide: -24 });
