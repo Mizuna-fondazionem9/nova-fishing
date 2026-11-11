@@ -25,6 +25,11 @@ export function unlockAudio(): void {
     resumeAudio(ctx, document.hidden);
     return;
   }
+  // Safari/iPadOS : une session de lecture évite le routage « effets » muet.
+  try {
+    const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
+    if (session) session.type = 'playback';
+  } catch { /* API optionnelle : conserver Web Audio standard. */ }
   const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
   if (!AC) return;
   ctx = new AC();
@@ -241,5 +246,31 @@ export function sfx(name: Sfx, level = 1): void {
     case 'port':
       [0, 4, 7].forEach((st, i) => mallet(RE * semitones(st), 0.6, 0.085, i * 0.08, 0.4));
       return;
+  }
+}
+
+/** Diagnostic déclenché directement par un bouton, jamais une lecture automatique. */
+export async function testAudio(reset = false): Promise<string> {
+  if (!enabled) return 'Les sons sont coupés dans le jeu.';
+  if (reset && ctx && 'close' in ctx) {
+    const old = ctx as AudioContext;
+    ctx = null; master = null; echo = null; ambient = null; noiseData = null;
+    void old.close().catch(() => {});
+  }
+  unlockAudio();
+  const current = ctx;
+  if (!current) return 'Web Audio indisponible dans ce navigateur.';
+  try {
+    if ('resume' in current && current.state !== 'running') {
+      await Promise.race([(current as AudioContext).resume(), new Promise<void>(r => setTimeout(r, 1000))]);
+    }
+    if (current.state !== 'running') return `Audio bloqué (${current.state}). Touchez Réinitialiser le son.`;
+    const before = current.currentTime;
+    sfx('crit', 10);
+    await new Promise(r => setTimeout(r, 180));
+    if (current.currentTime <= before) return 'Le moteur audio est figé. Touchez Réinitialiser le son.';
+    return 'Lecture lancée. Si vous n’entendez rien : vérifiez le volume multimédia, le mode silencieux et la sortie Bluetooth de l’iPad.';
+  } catch (error) {
+    return `Lecture refusée : ${error instanceof Error ? error.name : 'erreur audio'}. Réessayez dans Safari directement.`;
   }
 }
