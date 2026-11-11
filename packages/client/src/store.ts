@@ -2,7 +2,7 @@
 import { useSyncExternalStore } from 'react';
 import type { Save, Challenge, UserInfo, Specimen, Port, Weather, TimeOfDay, BiomeId, MeResponse, Mutation } from '../../shared/src/index';
 
-export type Panel = null | 'port' | 'ship' | 'bestiary' | 'aquarium' | 'trophies' | 'daily' | 'settings' | 'map';
+export type Panel = null | 'port' | 'ship' | 'bestiary' | 'aquarium' | 'trophies' | 'daily' | 'settings' | 'map' | 'journal';
 
 export interface Hud {
   biome: BiomeId;
@@ -16,6 +16,7 @@ export interface Hud {
   weather: Weather;
   danger: boolean;
   fps: number;
+  landmark?: {id:string;name:string};
   treasure?: { id:string; coins:number };
 }
 
@@ -43,6 +44,7 @@ export interface AppState {
   seed: number;
   daily: Challenge[];
   panel: Panel;
+  landmarkId?: string | null;
   toasts: { id: number; text: string }[];
   hud: Hud | null;
   fishing: FishStage;

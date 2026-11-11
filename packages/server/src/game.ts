@@ -6,6 +6,7 @@ import {
   judgeHook, makeCombatParams, replayCombat, gearOf, applyCatch, noteBiome, evalTrophies, bumpDaily, dailyChallenges,
   dayKey, opSell, opUpgrade, opBuyNet, opRepair, opKeep, opRelease, applyDamage, holdFree, bulkOf, regionBonus,
   SPECIES, SPECIES_BY_ID, HOSTILES, HOSTILE_BY_ID, BIOMES, NETS, NET_COOLDOWN_MS, NET_DISTANCE, RARITY_WEIGHT,
+  adventureOf, adventurePortOp, nearbyLandmarks, landmarkById, discoverPoint, pointOp, chartOp, noteAdventureCatch,
   maritimeOp, nearbyTreasures,
   MAX_COMBAT_TICKS, TICK_HZ, CHUNK, UPGRADE_BY_KEY,
   type CombatTap, type Save, type Specimen, type Species, type BiteScript, type CombatParams, type Shadow, type UpgradeKey, type Op,
@@ -120,7 +121,7 @@ export class Game {
     const now = this.now();
     const dt = Math.max(0, (now - save.syncAt) / 1000);
     const dist = Math.hypot(x - save.x, y - save.y);
-    const g = gearOf(save.up,save.vessel);
+    const g = gearOf(save.up,save.vessel,save.kit);
     const allowed = g.speed * Math.min(dt, 120) * 1.25 + 2;
     save.syncAt = now;
     if (dist > allowed || isLand(this.seed, Math.floor(x), Math.floor(y))) return false;
@@ -205,6 +206,7 @@ export class Game {
         if (!corrected) {
           netted = this.haulNet(save, notes);
           encounter = this.rollEncounter(playerId, save);
+          for(const p of nearbyLandmarks(this.seed,save.x,save.y))if(Math.hypot(p.x-save.x,p.y-save.y)<20)notes.push(...discoverPoint(save,p,this.now()));
         }
       }
       this.finish(save, tx, notes);
@@ -234,10 +236,21 @@ export class Game {
       if (save.consumed.includes(key)) throw new HttpError(409, 'Ce poisson est déjà parti.');
       if (Math.hypot(shadow.x - save.x, shadow.y - save.y) > CAST_RANGE + CAST_SLACK) throw new HttpError(409, 'Trop loin pour lancer.');
       const rng = new Rng(this.randomSeed());
-      const pick = speciesForShadow(rng, this.seed, shadow);
+      const a=adventureOf(save);
+      const bait=a.bait && (a.baits[a.bait]??0)>0 ? a.bait : 'none';
+      const pick = speciesForShadow(rng, this.seed, shadow,bait);
       if (!pick) throw new HttpError(409, 'Rien ne mord ici.');
-      const spec = rollSpecimen(rng, pick.sp, pick.tile.level, pick.tile.biome, now, randomUUID());
-      const script = makeBiteScript(rng, pick.sp, gearOf(save.up,save.vessel).rod.reel);
+      const lagoon=nearbyLandmarks(this.seed,shadow.x,shadow.y).some(p=>p.kind==='lagoon'&&Math.hypot(p.x-shadow.x,p.y-shadow.y)<18);
+      const spec = rollSpecimen(rng, pick.sp, pick.tile.level, pick.tile.biome, now, randomUUID(),lagoon?2:1);
+      if(bait!=='none')a.baits[bait]--;
+      const script = makeBiteScript(rng, pick.sp, gearOf(save.up,save.vessel,save.kit).rod.reel);
+      if(bait==='gentle') {
+        script.window=Math.round(script.window*1.15);
+        // Un départ sans morsure est parfois transformé en vraie touche.
+        if(script.biteAt===null && rng.chance(0.65)) {
+          script.events=script.events.filter(e=>e.kind!=='leave');script.biteAt=script.end;script.window=950;script.events.push({t:script.biteAt,kind:'bite'});script.end+=2150;
+        }
+      }
       const s: FishingSession = { sid: randomUUID(), key, sp: pick.sp, spec, script, createdAt: this.now(), state: 'wait', hookAt: 0, combat: null };
       return s;
     });
@@ -264,8 +277,8 @@ export class Game {
       const save = (await this.store.getPlayer(playerId))!.save;
       s.state = 'fight';
       s.hookAt = now;
-      s.combat = makeCombatParams(fightStats(s.sp, s.spec), gearOf(save.up,save.vessel).rod, this.randomSeed());
-      if (s.sp.sil === 'crab') { s.combat.mode = 'crab'; s.combat.crabPrecision = gearOf(save.up,save.vessel).rod.precision; s.combat.aggr = 0; }
+      s.combat = makeCombatParams(fightStats(s.sp, s.spec), gearOf(save.up,save.vessel,save.kit).rod, this.randomSeed());
+      if (s.sp.sil === 'crab') { s.combat.mode = 'crab'; s.combat.crabPrecision = gearOf(save.up,save.vessel,save.kit).rod.precision; s.combat.aggr = 0; }
       return { verdict, combat: s.combat };
     }
     this.fishing.delete(playerId);
@@ -329,6 +342,7 @@ export class Game {
       }
       const r = applyCatch(save, s.spec, replay.crits, now);
       noteBiome(save, s.spec.biome);
+      noteAdventureCatch(save,s.spec,now);
       for (const c of bumpDaily(save, { kind: 'catch', sp: s.sp, kg: s.spec.kg, biome: s.spec.biome }, now))
         notes.push(`Défi réussi : ${c.label} (+${c.reward} pièces)`);
       if (s.sp.rarity >= 4) tx.reward(`capture:${s.sp.id}`, 'capture', { species: s.sp.id, name: s.sp.name, kg: s.spec.kg, rarity: s.sp.rarity });
@@ -380,6 +394,26 @@ export class Game {
       if (!r.ok) throw new HttpError(400, r.error); // l'exception annule toute la transaction
       this.finish(save, tx, notes);
       return this.mutation(save, notes);
+    });
+  }
+
+  adventureAction(playerId:string,action:string,value:string):Promise<Mutation> {
+    return this.atPort(playerId,(save,notes)=>{
+      const port=portInRange(this.seed,save.x,save.y)!;
+      const r=adventurePortOp(save,action,value,port.id,this.now(),this.seed);
+      if(r.ok)notes.push(r.message);return r;
+    });
+  }
+
+  async landmarkAction(playerId:string,id:string,action:string,value:string):Promise<Mutation> {
+    const now=this.now();
+    if(this.fishing.has(playerId)||(this.encounters.get(playerId)?.expires??0)>now)throw new HttpError(409,'Terminez la pêche ou éloignez-vous de la créature hostile.');
+    return this.store.withSave(playerId,(save,tx)=>{
+      const p=landmarkById(this.seed,id);
+      if(action!=='chart'&&(!p||Math.hypot(p.x-save.x,p.y-save.y)>8))throw new HttpError(409,'Approchez-vous du lieu pour agir.');
+      const r=action==='chart'?chartOp(save,this.seed):pointOp(save,p!,action,value,now,this.seed);
+      if(!r.ok)throw new HttpError(400,r.error);
+      const notes=[r.message];this.finish(save,tx,notes);return this.mutation(save,notes);
     });
   }
 

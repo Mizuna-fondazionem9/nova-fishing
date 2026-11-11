@@ -201,3 +201,13 @@ l'évite en changeant de cap.
 - Cotre : 2 500 pièces, vitesse ×1,18 / cale ×0,85 / coque ×0,9. Grand voilier : 8 000, vitesse ×1,05 / cale ×1,35 / coque ×0,95. Bateau de pêche : 25 000, vitesse ×0,78 / cale ×2 / coque ×1,4. Améliorations existantes conservées. Changement de modèle : proportion de dégâts conservée, cale vérifiée.
 - Peintures : première gratuite puis 350 pièces par couleur permanente ; trois tailles visuelles gratuites, sans effet sur les statistiques.
 - Sauvegarde v2 additive, sans migration SQL : modèles, couleurs, compagnon et coffres restent dans la sauvegarde JSON existante.
+
+### Carnet de l'explorateur
+
+- Contrats : trois actifs, six récompenses par journée UTC tous ports confondus ; 220/260/350 pièces et 20/25/35 réputation selon livraison/photo/exploration. Livraisons consommées, photos uniquement après acceptation via une capture manuelle.
+- Première découverte : 75 pièces et une inscription, une fois par lieu. Épaves : 55–85 pièces et un fragment par compartiment, six fouilles au total par jour. Trois fragments révèlent une destination inconnue ; pas de cartes simultanées.
+- Lagon : couleurs rares ×2 dans un rayon de dix-huit tuiles, plafond strict ×2 ; aucune espèce garantie. Casier : deux petites prises par relevé, trois relevés par jour, un par lagon et par jour.
+- Montages permanents : précision 1 200 (+0,04 précision / −8 % puissance), profondeurs 2 200 (+18 % résistance / −10 % puissance), casier 1 600 (−10 % cale / accès aux relevés). Un seul montage équipé.
+- Appâts consommés au lancer : discret 35 pièces, scintillant 60 ; réserve plafonnée à vingt par type. Aucun effet sur la silhouette annoncée.
+- Réputation et collections : décors/titres, pas de revenu passif. Premier rang à 100 réputation dans un port : décor et trois appâts, une seule fois par joueur.
+- Sauvegarde v3, limites et règles détaillées dans `docs/carnet-explorateur.md`.

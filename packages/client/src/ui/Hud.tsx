@@ -13,6 +13,7 @@ const open = (panel: Panel) => (): void => {
 };
 
 const NAV_ICONS = {
+  journal: 'M4 3h15v18H4z M8 3v18 M12 8h4 M12 12h4 M12 16h3',
   ship: 'M4 9h16v11H4z M8 9V5h8v4 M4 13h16 M10 13v3h4v-3',
   bestiary: 'M12 5C8 3 5 3 3 4v15c3-1 6-1 9 1 3-2 6-2 9-1V4c-2-1-5-1-9 1z M12 5v15',
   aquarium: 'M3 5h18v15H3z M3 9c3-3 6 3 9 0s6 3 9 0 M8 14c3-3 6-3 8 0-2 3-5 3-8 0z M8 14l-2-2v4z',
@@ -30,7 +31,7 @@ export function Hud() {
   const user = useStore((s) => s.user);
   const fishing = useStore((s) => s.fishing);
   const daily = useStore((s) => s.daily);
-  const g = gearOf(save.up,save.vessel);
+  const g = gearOf(save.up,save.vessel,save.kit);
   const bulk = cargoBulk(save);
   const dest = rt.game?.boat.dest ?? null;
   const net = NETS[save.net];
@@ -79,6 +80,7 @@ export function Hud() {
       {!fishing && (
         <div className="context">
           {hud?.danger && <div className="alert">Créature hostile — éloignez-vous de sa trajectoire</div>}
+          {hud?.landmark && !hud.danger && <button onClick={()=>setState({panel:'journal',landmarkId:hud.landmark!.id})}>Explorer · {hud.landmark.name}</button>}
           {hud?.treasure && !hud.danger && <button onClick={()=>void portOp('/api/treasure/open',{id:hud.treasure!.id})}>Ouvrir le coffre · {hud.treasure.coins} pièces</button>}
           {hud?.canCast && (
             <button className="big pulse" data-testid="cast" onClick={() => rt.game?.action()}>Lancer la ligne <kbd>Espace</kbd></button>
@@ -104,6 +106,7 @@ export function Hud() {
           <button onClick={open('aquarium')}><NavIcon name="aquarium" /><span>Aquarium</span></button>
           <button onClick={open('trophies')}><NavIcon name="trophies" /><span>Trophées</span></button>
           <button onClick={open('daily')}><NavIcon name="daily" /><span>Défis</span>{dailyLeft > 0 && <em>{dailyLeft}</em>}</button>
+          <button onClick={()=>{setState({landmarkId:null});open('journal')();}}><NavIcon name="journal"/><span>Carnet</span></button>
           <button onClick={open('settings')}><NavIcon name="settings" /><span>Réglages</span></button>
         </nav>
       )}

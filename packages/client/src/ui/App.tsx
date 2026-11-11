@@ -5,6 +5,7 @@ import { rt } from './common';
 import { Hud } from './Hud';
 import { FishingOverlay, ResultModal } from './Fishing';
 import { PortPanel, ShipPanel, BestiaryPanel, AquariumPanel, TrophiesPanel, DailyPanel, SettingsPanel } from './Panels';
+import { JournalPanel } from './Adventure';
 import { MapPanel } from './Map';
 
 function Loading({ text, pct }: { text: string; pct: number }) {
@@ -99,6 +100,7 @@ function GameView() {
       {panel === 'daily' && <DailyPanel />}
       {panel === 'settings' && <SettingsPanel />}
       {panel === 'map' && <MapPanel />}
+      {panel === 'journal' && <JournalPanel />}
       <ResultModal />
       <div className={`fade ${fade ? 'on' : ''}`} />
       <div className={`cover ${ready ? 'gone' : ''}`}><Loading text="Génération de l’océan…" pct={0.4 + pct * 0.6} /></div>

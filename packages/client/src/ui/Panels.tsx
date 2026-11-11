@@ -1,6 +1,7 @@
+import { Captaincy, AquariumWorkshop } from './Adventure';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
-  VESSELS, PAINTS, CAT_PRICE, catReady, getPort,
+  KIT_DEFS, BAITS, VESSELS, PAINTS, CAT_PRICE, catReady, getPort,
   COLOR_NAMES, SIZE_NAMES, BIOMES, BIOME_IDS, NETS, RARITY_COLORS, SILHOUETTE_NAMES, SPECIES, TROPHIES, UPGRADES,
   bulkOf, cargoBulk, dayKey, depthMeters, gearOf, gearTier, priceOf, upgradeCost,
   type Specimen, type Species, type UpgradeDef,
@@ -83,7 +84,7 @@ function SellTab() {
   const save = useStore((s) => s.save)!;
   const [busy, run] = useBusy();
   const total = save.cargo.reduce((a, f) => a + priceOf(f), 0);
-  const g = gearOf(save.up,save.vessel);
+  const g = gearOf(save.up,save.vessel,save.kit);
   const aquaFull = save.aquarium.length >= g.aquarium;
   if (!save.cargo.length) return <p className="empty">La cale est vide. Les poissons capturés apparaîtront ici.</p>;
   return (
@@ -104,7 +105,7 @@ function SellTab() {
 function YardTab() {
   const save = useStore((s) => s.save)!;
   const [busy, run] = useBusy();
-  const g = gearOf(save.up,save.vessel);
+  const g = gearOf(save.up,save.vessel,save.kit);
   const missing = Math.max(0, g.hullMax - save.hull);
   const cost = Math.ceil(missing * g.repairCost);
   return (
@@ -187,7 +188,7 @@ function MaritimeTab() {
 export function PortPanel() {
   const hud = useStore((s) => s.hud);
   const save = useStore((s) => s.save)!;
-  const [tab, setTab] = useState<'sell' | 'yard' | 'rod' | 'aqua' | 'life'>('sell');
+  const [tab, setTab] = useState<'sell' | 'yard' | 'rod' | 'aqua' | 'life' | 'captaincy'>('sell');
   if (!hud?.port) {
     return <Modal title="Port"><p className="empty">Vous avez quitté le quai. Revenez à l’arrêt près du ponton pour accéder au port.</p></Modal>;
   }
@@ -198,12 +199,13 @@ export function PortPanel() {
       top={
         <>
           <div className="balance"><span className="k">Votre bourse</span><Coins n={save.coins} /></div>
-          <Tabs tabs={[['sell', 'Criée'], ['yard', 'Chantier'], ['rod', 'Atelier'], ['aqua', 'Aquarium'], ['life','Compagnon & flotte']]} value={tab} onChange={setTab} />
+          <Tabs tabs={[['sell', 'Criée'], ['yard', 'Chantier'], ['rod', 'Atelier'], ['aqua', 'Aquarium'], ['life','Compagnon & flotte'], ['captaincy','Capitainerie']]} value={tab} onChange={setTab} />
         </>
       }
     >
       {tab === 'sell' && <SellTab />}
       {tab === 'life' && <MaritimeTab />}
+      {tab === 'captaincy' && <Captaincy />}
       {tab === 'yard' && <YardTab />}
       {tab === 'rod' && (
         <Section title="Canne à pêche">
@@ -212,10 +214,11 @@ export function PortPanel() {
       )}
       {tab === 'aqua' && (
         <>
+          <AquariumWorkshop />
           <Section title="Bassins">
             {UPGRADES.filter((u) => u.group === 'aquarium').map((u) => <UpgradeRow key={u.key} u={u} />)}
           </Section>
-          <Section title="Poissons exposés" aside={`${save.aquarium.length} / ${gearOf(save.up,save.vessel).aquarium}`}>
+          <Section title="Poissons exposés" aside={`${save.aquarium.length} / ${gearOf(save.up,save.vessel,save.kit).aquarium}`}>
             <AquariumList atPort />
           </Section>
         </>
@@ -229,7 +232,7 @@ export function PortPanel() {
 export function ShipPanel() {
   const save = useStore((s) => s.save)!;
   const [busy, run] = useBusy();
-  const g = gearOf(save.up,save.vessel);
+  const g = gearOf(save.up,save.vessel,save.kit);
   return (
     <Modal title="Cale et équipement" wide>
       <Section title="Cale" aside={`${cargoBulk(save)} / ${g.hold} unités`}>
@@ -243,6 +246,8 @@ export function ShipPanel() {
       </Section>
       <Section title="Équipement">
         <dl className="facts">
+          <div className="full"><dt>Montage</dt><dd>{KIT_DEFS.find(k=>k.id===(save.kit??'standard'))?.name}</dd></div>
+          <div className="full"><dt>Appât</dt><dd>{BAITS.find(b=>b.id===save.adventure?.bait)?.name??'Aucun'}</dd></div>
           <div><dt>Canne</dt><dd>★{fmt1(gearTier(g.rod))}</dd></div>
           <div><dt>Puissance</dt><dd>{fmt1(g.rod.power)}</dd></div>
           <div><dt>Résistance</dt><dd>{fmt1(g.rod.resistance)}</dd></div>
@@ -339,7 +344,8 @@ export function BestiaryPanel() {
 
 function Tank({ fish }: { fish: Specimen[] }) {
   return (
-    <div className="tank">
+    <div className={`tank theme-${useStore(s=>s.save?.adventure?.aquarium.theme)??'sand'}`}>
+      <div className="tank-ornament" aria-hidden="true"/>
       <div className="sand" />
       {fish.map((f, i) => {
         const sp = speciesOf(f);
@@ -358,10 +364,12 @@ function Tank({ fish }: { fish: Specimen[] }) {
 export function AquariumPanel() {
   const save = useStore((s) => s.save)!;
   const hud = useStore((s) => s.hud);
-  const cap = gearOf(save.up,save.vessel).aquarium;
+  const cap = gearOf(save.up,save.vessel,save.kit).aquarium;
   return (
-    <Modal title="Aquarium" wide>
+    <Modal title={save.adventure?.aquarium.name??'Aquarium'} wide>
       <Tank fish={save.aquarium} />
+      {save.aquarium.find(f=>f.uid===save.adventure?.aquarium.featured)&&<div className="featured-display"><span className="eyebrow">À l’honneur</span>{save.aquarium.filter(f=>f.uid===save.adventure?.aquarium.featured).map(f=><div key={f.uid}><FishIcon sp={speciesOf(f)} color={f.color} scale={3}/><b>{speciesOf(f).name}</b><small>{fmtKg(f.kg)} · {fmtLen(f.len)}</small></div>)}</div>}
+      <AquariumWorkshop />
       <Section title="Poissons exposés" aside={`${save.aquarium.length} / ${cap}`}>
         <AquariumList atPort={!!hud?.port} />
         <p className="note">Les bassins s’agrandissent au port, onglet Aquarium.</p>

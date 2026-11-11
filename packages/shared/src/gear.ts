@@ -79,18 +79,18 @@ export const VESSELS = [
 ] as const;
 export const PAINTS = ['#e4d3a1','#b15f50','#5792aa','#658d66','#9c78b9','#343d55'];
 
-export function gearOf(up: Levels, vessel = 'skiff'): Gear {
+export function gearOf(up: Levels, vessel = 'skiff', kit = 'standard'): Gear {
   const model = VESSELS.find(v=>v.id===vessel) ?? VESSELS[0];
   const e = (k: UpgradeKey): number => UPGRADE_BY_KEY[k].effect(up[k] ?? 0);
   return {
     speed: e('speed')*model.speed,
     accel: e('accel'),
     hullMax: Math.round(e('hull')*model.hull),
-    hold: Math.max(1,Math.round(e('hold')*model.hold)),
+    hold: Math.max(1,Math.round(e('hold')*model.hold*(kit==='cage'?0.9:1))),
     netEff: e('nets'),
     repairCost: e('repair'),
     aquarium: e('aquarium'),
-    rod: { power: e('rodPower'), resistance: e('rodRes'), line: e('line'), reel: e('reel'), recovery: e('recovery'), precision: e('precision') },
+    rod: { power: e('rodPower')*(kit==='river'?0.92:kit==='abyss'?0.9:1), resistance: e('rodRes')*(kit==='abyss'?1.18:1), line: e('line'), reel: e('reel'), recovery: e('recovery'), precision: e('precision')+(kit==='river'?0.04:0) },
   };
 }
 

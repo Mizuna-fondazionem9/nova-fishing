@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "description": "NOVA Fishing — jeu de pêche 2D en pixel art sur navigateur",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "build": "node scripts/build.mjs",
     "start": "node dist/server/index.js",
@@ -12,7 +14,8 @@
     "test": "tsx --test tests/*.test.ts",
     "test:e2e": "tsx tests/e2e/journey.ts",
     "balance": "tsx scripts/balance.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:e2e:adventure": "tsx tests/e2e/adventure.ts"
   },
   "dependencies": {
     "esbuild": "^0.28.0",

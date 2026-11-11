@@ -191,7 +191,7 @@ function hit(): void {
   wash(0.04, 3000, 0.025, 'highpass', 0.002);
 }
 
-export type Sfx = 'click' | 'cast' | 'splash' | 'nibble' | 'bite' | 'hit' | 'crit' | 'miss' | 'win' | 'lose' | 'coin' | 'alarm' | 'crash' | 'thunder' | 'port';
+export type Sfx = 'click' | 'cast' | 'splash' | 'nibble' | 'bite' | 'hit' | 'crit' | 'miss' | 'win' | 'lose' | 'coin' | 'alarm' | 'crash' | 'thunder' | 'port' | 'reveal';
 
 /** Joue un son. `level` ne sert qu'à 'crit' : longueur de la série de coups critiques en cours. */
 export function sfx(name: Sfx, level = 1): void {
@@ -221,6 +221,10 @@ export function sfx(name: Sfx, level = 1): void {
       mallet(RE * semitones(-9), 0.42, 0.1, 0.09, 0.2);
       note(140, 0.26, { type: 'triangle', vol: 0.12, slide: -60 });
       return wash(0.18, 420, 0.08);
+    case 'reveal':
+      [0,7,12,16,19,24].forEach((st,i)=>mallet(RE*semitones(st),0.9,0.11,i*0.085,0.5));
+      bell(RE*2,1.25,0.09,0.5,0.4);
+      return;
     case 'win':
       // Capture : la gamme remonte et se pose sur l'accord.
       [0, 4, 7, 12].forEach((st, i) => mallet(RE * semitones(st), 0.6, 0.13, i * 0.11, 0.5));

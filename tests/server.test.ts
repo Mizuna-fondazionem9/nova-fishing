@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import type { AddressInfo } from 'node:net';
 import {
   newSave, migrateSave, startPort, spawnShadows, slotOf, findPath, isLand, simulateBot, BOTS, Rng, priceOf, upgradeCost,
-  nearbyTreasures, CAT_INTERVAL, SPECIES_BY_ID, NETS, CHUNK, gearOf, type Shadow, type Save,
+  landmarkAt, adventureOf, portContracts, noteAdventureCatch, nearbyTreasures, CAT_INTERVAL, SPECIES_BY_ID, NETS, CHUNK, gearOf, type Shadow, type Save,
 } from '../packages/shared/src/index';
 import { loadConfig, type Config } from '../packages/server/src/config';
 import { buildServer, type Built } from '../packages/server/src/app';
@@ -675,4 +675,46 @@ test('extension : une ancienne position sur terre est récupérée sans perte',a
   const result=await r.game.me(r.id);
   assert.ok(!isLand(SEED,Math.floor(result.save.x),Math.floor(result.save.y)));
   assert.equal(result.save.coins,1234);assert.equal(result.save.hull,77);
+});
+
+
+test('aventure : livraison via HTTP, transaction unique et réputation au bon port',async()=>{
+  const {base,built}=await startApp({DEV_AUTH:'1'});const jar=new Jar();
+  await get(base,'/auth/dev/login?name=Contrats',jar);
+  const me=await (await get(base,'/api/me',jar)).json() as {user:{id:string};save:Save;now:number};
+  const port=me.save.lastPort,c=portContracts(SEED,port,me.now)[0];
+  const accept=await post(base,'/api/port/adventure',jar,{action:'accept',value:c.id});assert.equal(accept.status,200);
+  await built.store.withSave(me.user.id,s=>{
+    s.cargo=Array.from({length:3},(_,i)=>({uid:`delivery-${i}`,sp:c.species!,kg:0.1,len:15,color:0,size:0,tough:false,lvl:1,value:5,at:me.now,biome:'coastal'}));
+  });
+  const results=await Promise.all([post(base,'/api/port/adventure',jar,{action:'complete',value:c.id}),post(base,'/api/port/adventure',jar,{action:'complete',value:c.id})]);
+  assert.deepEqual(results.map(r=>r.status).sort(),[200,400]);
+  const saved=(await built.store.getPlayer(me.user.id))!.save;
+  assert.equal(saved.cargo.length,0);assert.equal(saved.adventure!.reputation[port],c.rep);
+  assert.equal(saved.adventure!.completed.length,1);
+});
+test('aventure : un lieu distant est refusé, fouille et découverte ne créditent qu’une fois',async()=>{
+  const r=await rig('epave');let point:ReturnType<typeof landmarkAt>=null;
+  for(let cy=-6;cy<=6&&!point;cy++)for(let cx=-6;cx<=6&&!point;cx++){
+    const p=landmarkAt(SEED,cx,cy);if(p?.kind==='wreck')point=p;
+  }
+  assert.ok(point);
+  assert.equal(await status(r.game.landmarkAction(r.id,point.id,'loot','0')),409);
+  await r.patch(s=>{s.x=point!.x;s.y=point!.y;});const coins=(await r.save()).coins;
+  const results=await Promise.allSettled([r.game.landmarkAction(r.id,point.id,'loot','0'),r.game.landmarkAction(r.id,point.id,'loot','0')]);
+  assert.equal(results.filter(v=>v.status==='fulfilled').length,1);
+  const s=await r.save();assert.ok(s.coins>=coins+130&&s.coins<=coins+160);
+  assert.equal(s.adventure!.fragments,1);assert.equal(s.adventure!.runes,1);assert.equal(Object.keys(s.adventure!.points).length,1);
+  assert.equal(await status(r.game.landmarkAction(r.id,'../../fake','loot','0')),409);
+});
+test('aventure : l’appât est consommé une fois au lancer et le matériel ne change pas pendant la pêche',async()=>{
+  const r=await rig('appats');
+  await r.patch(s=>{s.coins=5000;});
+  await r.game.adventureAction(r.id,'bait-buy','gentle');await r.game.adventureAction(r.id,'bait-select','gentle');
+  const shadow=(await r.shadowsNear())[0];const cast=await castAt(r,shadow);
+  assert.equal((await r.save()).adventure!.baits.gentle,0);
+  assert.equal(await status(r.game.cast(r.id,shadow.key,(await r.save()).x,(await r.save()).y)),409);
+  assert.equal((await r.save()).adventure!.baits.gentle,0);
+  assert.equal(await status(r.game.adventureAction(r.id,'kit','abyss')),409);
+  await r.game.cancel(r.id,cast.sid);
 });

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { BIOMES, CELL, getPort, tileAt, type BiomeId, type Port } from '../../../shared/src/index';
-import { useStore, setState } from '../store';
+import { useStore, getState, setState } from '../store';
 import { rt, Modal } from './common';
 
 const WATER: Record<BiomeId, [number, number, number]> = {
@@ -50,6 +50,12 @@ export function MapPanel() {
           ctx.fillStyle = '#fff';
           ctx.fillText(p.name, px, py - 5);
         }
+      }
+      const a=getState().save?.adventure;
+      for(const p of [...Object.values(a?.points??{}).map(v=>v.point),...(a?.chart?[a.chart]:[])]) {
+        const px=(p.x-x0)/scale,py=(p.y-y0)/scale;
+        if(px<0||py<0||px>SIZE||py>SIZE)continue;
+        ctx.fillStyle=p.id===a?.chart?.id?'#ffb76e':'#9de5d6';ctx.fillRect(px-2,py-2,4,4);
       }
       const b = rt.game?.boat;
       if (b) {
@@ -129,7 +135,10 @@ export function MapPanel() {
         ))}
         <span><i style={{ background: '#ffd86a' }} />Port</span>
         <span><i style={{ background: '#ff5cf0' }} />Vous</span>
+        <span><i style={{ background: '#9de5d6' }} />Lieu découvert</span>
+        <span><i style={{ background: '#ffb76e' }} />Carte reconstituée</span>
       </div>
+      <button onClick={()=>setState({panel:'journal',landmarkId:null})}>Ouvrir le carnet d’exploration</button>
       <p className="note">Largeur affichée : {SIZE * scale} tuiles. Les très longs trajets se font en plusieurs caps.</p>
     </Modal>
   );

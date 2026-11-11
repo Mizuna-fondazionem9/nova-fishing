@@ -16,12 +16,12 @@ export function maritimeOp(s: Save, action: string, value: string, port: string,
     const model = VESSELS.find(v=>v.id===value);
     if (!model) return fail('Bateau inconnu.');
     const owned = s.vessels ?? ['skiff'];
-    if (cargoBulk(s)>gearOf(s.up,model.id).hold) return fail('Vendez une partie de la cale avant de choisir ce bateau.');
+    if (cargoBulk(s)>gearOf(s.up,model.id,s.kit).hold) return fail('Vendez une partie de la cale avant de choisir ce bateau.');
     if (!owned.includes(value) && s.coins<model.price) return fail('Pas assez de pièces.');
-    const ratio=s.hull/gearOf(s.up,s.vessel).hullMax;
+    const ratio=s.hull/gearOf(s.up,s.vessel,s.kit).hullMax;
     if (!owned.includes(value)) { s.coins-=model.price; owned.push(value); }
     s.vessels=owned; s.vessel=value;
-    s.hull=Math.min(gearOf(s.up,value).hullMax,Math.floor(ratio*gearOf(s.up,value).hullMax));
+    s.hull=Math.min(gearOf(s.up,value,s.kit).hullMax,Math.floor(ratio*gearOf(s.up,value,s.kit).hullMax));
     return {ok:true,message:`${model.name} équipé.`};
   }
   if (action==='paint') {

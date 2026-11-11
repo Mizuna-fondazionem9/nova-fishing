@@ -41,7 +41,8 @@ export function priceOf(s: Pick<Specimen, 'sp' | 'kg' | 'size' | 'color' | 'toug
   return Math.max(1, Math.round(price));
 }
 
-export function rollSpecimen(rng: Rng, sp: Species, lvl: number, biome: BiomeId, now: number, uid: string): Specimen {
+export function rollSpecimen(rng: Rng, sp: Species, lvl: number, biome: BiomeId, now: number, uid: string, colorBoost = 1): Specimen {
+  colorBoost = Math.max(1,Math.min(2,Number.isFinite(colorBoost)?colorBoost:1));
   const boost = 1 + regionBonus(lvl);
   const r = rng.next();
   const size = r < 0.0008 * boost ? 3 : r < 0.008 * boost ? 2 : r < 0.05 * boost ? 1 : 0;
@@ -51,7 +52,7 @@ export function rollSpecimen(rng: Rng, sp: Species, lvl: number, biome: BiomeId,
   if (size === 3) len = sp.lmax * (1.32 + 0.18 * rng.next());
   const kg = sp.kgMax * Math.pow(len / sp.lmax, 3) * rng.range(0.9, 1.1);
   const c = rng.next();
-  const color = c < 0.001 ? 4 : c < 0.005 ? 3 : c < 0.015 ? 2 : c < 0.025 ? 1 : 0;
+  const color = c < 0.001*colorBoost ? 4 : c < 0.005*colorBoost ? 3 : c < 0.015*colorBoost ? 2 : c < 0.025*colorBoost ? 1 : 0;
   const tough = rng.chance(0.06 + 0.02 * regionBonus(lvl));
   const spec: Specimen = {
     uid, sp: sp.id, len: Math.round(len * 10) / 10, kg: Math.max(0.001, Math.round(kg * 1000) / 1000),
@@ -96,13 +97,13 @@ function weightOf(sp: Species, tile: Tile, tod: TimeOfDay, weather: Weather): nu
 }
 
 /** Tire une espèce pour une tuile. Si `sil` est fourni, seules les espèces de cette silhouette sont candidates. */
-export function pickSpecies(rng: Rng, tile: Tile, tod: TimeOfDay, weather: Weather, sil?: Silhouette, excludeCrabs = false): Species | null {
+export function pickSpecies(rng: Rng, tile: Tile, tod: TimeOfDay, weather: Weather, sil?: Silhouette, excludeCrabs = false, bait = 'none'): Species | null {
   const items: Species[] = [];
   const weights: number[] = [];
   for (const sp of SPECIES) {
     if (sil && sp.sil !== sil) continue;
     if (excludeCrabs && sp.sil === 'crab') continue;
-    const w = weightOf(sp, tile, tod, weather);
+    const w = weightOf(sp, tile, tod, weather)*(bait==='glimmer'&&sp.rarity>=2?1.75:1);
     if (w > 0) {
       items.push(sp);
       weights.push(w);
@@ -185,9 +186,9 @@ export function spawnShadows(seed: number, cx: number, cy: number, slot: number)
 }
 
 /** Côté serveur : espèce réelle d'une ombre, parmi celles qui partagent sa silhouette. */
-export function speciesForShadow(secret: Rng, seed: number, sh: Shadow): { sp: Species; tile: Tile } | null {
+export function speciesForShadow(secret: Rng, seed: number, sh: Shadow, bait = 'none'): { sp: Species; tile: Tile } | null {
   const tile = tileAt(seed, Math.floor(sh.x), Math.floor(sh.y));
   const ms = sh.slot * SLOT_MS;
-  const sp = pickSpecies(secret, tile, timeOfDay(ms), weatherAt(seed, ms, sh.x, sh.y), sh.sil);
+  const sp = pickSpecies(secret, tile, timeOfDay(ms), weatherAt(seed, ms, sh.x, sh.y), sh.sil,false,bait);
   return sp ? { sp, tile } : null;
 }
