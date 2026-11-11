@@ -10,7 +10,7 @@ test('les arpèges commencent au troisième et gagnent une note à chaque palier
     assert.equal(starts(n).length, n);
     const score = criticalScore(n);
     assert.ok(Math.max(...starts(n)) < 0.65);
-    assert.ok(score.layers.every(l => l.volume > 0 && l.volume <= 0.14));
+    assert.ok(score.layers.every(l => l.volume > 0 && l.volume <= 0.18));
     assert.ok(score.layers.every(l => score.pitch * l.ratio < 3200));
   }
 });

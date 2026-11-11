@@ -5,7 +5,7 @@ import {
   type Specimen, type Species, type UpgradeDef,
 } from '../../../shared/src/index';
 import { useStore, setState, getState, portOp, api, serverNow, toast, BASE } from '../store';
-import { setSound, sfx } from '../game/audio';
+import { setSound, sfx, unlockAudio } from '../game/audio';
 import { rt, Modal, Bar, Coins, FishIcon, Rarity, Tags, speciesOf, fmt, fmt1, fmtKg, fmtLen } from './common';
 
 /** Empêche les doubles clics pendant qu'une requête est en cours (le serveur protège aussi de son côté). */
@@ -237,7 +237,7 @@ function SpeciesCard({ sp, onPick }: { sp: Species; onPick: (s: Species) => void
   const entry = useStore((s) => s.save!.bestiary[sp.id]);
   return (
     <button className={`spcard ${entry ? '' : 'unknown'}`} onClick={() => onPick(sp)} style={entry ? { borderColor: RARITY_COLORS[sp.rarity] } : undefined}>
-      <FishIcon sp={sp} scale={2} hidden={!entry} />
+      <FishIcon sp={sp} scale={3} hidden={!entry} />
       <div className="sp-conditions">
         {sp.prefs.time && <span role="img" aria-label={`Moment favorable : ${sp.prefs.time}`} title={`Moment favorable : ${sp.prefs.time}`}>{({ aube: '🌅', jour: '☀️', crepuscule: '🌇', nuit: '🌙' } as Record<string, string>)[sp.prefs.time] ?? '🕒'}</span>}
         {sp.prefs.weather && <span role="img" aria-label={`Météo favorable : ${sp.prefs.weather}`} title={`Météo favorable : ${sp.prefs.weather}`}>{({ clair: '☀️', pluie: '🌧️', orage: '⛈️', brume: '🌫️', brouillard: '🌫️', nuageux: '☁️' } as Record<string, string>)[sp.prefs.weather] ?? '☁️'}</span>}
@@ -427,7 +427,7 @@ export function SettingsPanel() {
     } catch {
       /* stockage local indisponible : le réglage vaudra pour cette session */
     }
-    if (on) sfx('click');
+    if (on) { unlockAudio(); sfx('click'); }
   };
   const logout = async (): Promise<void> => {
     try {
@@ -444,6 +444,7 @@ export function SettingsPanel() {
         <div className="info"><div className="name"><b>Sons et ambiance</b></div><p>Vagues, touches, combats.</p></div>
         <button className="buy" data-testid="sound" onClick={toggle} aria-pressed={sound}>{sound ? 'Activés' : 'Coupés'}</button>
       </div>
+      <button disabled={!sound} onClick={() => { unlockAudio(); sfx('crit', 7); }}>♫ Tester le son</button>
       <div className="uprow">
         <div className="info">
           <div className="name"><b>Zoom</b></div>

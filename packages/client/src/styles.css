@@ -374,3 +374,14 @@ button:focus-visible, input:focus-visible { outline: 3px solid #efd595; outline-
 .sp-conditions { position: absolute; top: 9px; left: 10px; display: flex; gap: 5px; font-size: 16px; line-height: 1; }
 @media(max-width:560px) { .nav { gap: 2px; padding: 6px 4px; border-radius: 18px; } .nav button { min-width: 0; min-height: 58px; padding: 6px 2px; gap: 5px; font-size: 10px; } .nav button svg { width: 21px; height: 21px; } .nav button:last-child { margin-left: 2px; } .context { bottom: calc(94px + env(safe-area-inset-bottom)); } }
 @media(prefers-reduced-motion:reduce) { .nav button { transition: none; } .nav button:hover:not(:disabled) { transform: none; } }
+
+/* Fiches compactes : la silhouette occupe la place centrale, pas du vide. */
+.spgrid { grid-template-columns: repeat(auto-fill,minmax(140px,1fr)); gap: 10px; }
+.spcard { min-height: 122px; padding: 25px 10px 12px; gap: 7px; justify-content: center; background: radial-gradient(ellipse at 50% 38%,#264554 0%,#192d3b 75%); }
+.spcard canvas { max-width: 115px; max-height: 54px; height: auto !important; object-fit: contain; }
+.spcard strong { font-family: var(--f-title); font-size: 16px; font-weight: 700; letter-spacing: .025em; line-height: 1.15; }
+.spcard small { font-size: 11px; }
+.spcard.unknown { background: radial-gradient(ellipse at 50% 38%,#1e3344,#132330 75%); }
+.spcard.unknown strong { font-size: 18px; letter-spacing: .16em; }
+.card.tr .row button.icon { width: 38px; height: 38px; min-width: 38px; min-height: 38px; padding: 0; }
+@media(max-width:560px) { .spgrid { grid-template-columns: repeat(2,minmax(0,1fr)); } .spcard { min-height: 116px; } .spcard strong { font-size: 15px; } }

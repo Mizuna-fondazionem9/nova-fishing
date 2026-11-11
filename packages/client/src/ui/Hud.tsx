@@ -70,7 +70,7 @@ export function Hud() {
           </>
         )}
         <div className="row">
-          <button className="mini" onClick={open('map')} aria-label="Carte du monde" title="Carte (M)">Carte</button>
+          <button className="icon" onClick={open('map')} aria-label="Carte du monde" title="Carte (M)"><span aria-hidden="true">🗺️</span></button>
           <button className="icon" onClick={() => rt.game?.changeZoom(1)} aria-label="Zoomer" title="Zoomer (+)">+</button>
           <button className="icon" onClick={() => rt.game?.changeZoom(-1)} aria-label="Dézoomer" title="Dézoomer (-)">−</button>
         </div>
