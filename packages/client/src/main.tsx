@@ -2,7 +2,12 @@ import { createRoot } from 'react-dom/client';
 import './styles.css';
 import { App } from './ui/App';
 import { api, loadMe, setState, getState, BASE } from './store';
-import { setSound } from './game/audio';
+import { setSound, unlockAudio } from './game/audio';
+
+// Safari tactile : relancer sur la fin du geste, y compris sur les boutons React.
+for (const event of ['pointerup', 'touchend', 'keydown'] as const) {
+  document.addEventListener(event, () => unlockAudio(), { capture: true, passive: true });
+}
 
 async function boot(): Promise<void> {
   setSound(getState().sound);

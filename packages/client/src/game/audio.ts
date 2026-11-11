@@ -1,3 +1,4 @@
+import { resumeAudio } from './audio-resume';
 import { criticalScore } from './critical-score';
 // Sons synthétisés : ambiance marine, signature mélodique progressive pour les combos.
 // Aucun extrait de la référence commerciale n’est distribué.
@@ -18,13 +19,17 @@ export function setSound(on: boolean): void {
 
 /** À appeler sur un geste de l'utilisateur (règle des navigateurs). */
 export function unlockAudio(): void {
+  if (!enabled || document.hidden) return;
+  if (ctx?.state === 'closed') { ctx = null; master = null; echo = null; ambient = null; noiseData = null; }
   if (ctx) {
-    if (ctx.state === 'suspended' && 'resume' in ctx && !document.hidden) void (ctx as AudioContext).resume();
+    resumeAudio(ctx, document.hidden);
     return;
   }
   const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
   if (!AC) return;
   ctx = new AC();
+  // Appel synchrone dans le geste tactile, même à la première création.
+  resumeAudio(ctx, document.hidden);
   master = ctx.createGain();
   master.gain.value = enabled ? VOLUME : 0;
   // Filtre général très léger : il ne retire que l'extrême aigu, sans étouffer.
@@ -82,8 +87,8 @@ export function unlockAudio(): void {
 export function pauseAudio(paused: boolean): void {
   if (!ctx || !('suspend' in ctx)) return;
   const ac = ctx as AudioContext;
-  if (paused) void ac.suspend();
-  else if (ac.state !== 'running') void ac.resume();
+  if (paused) void ac.suspend().catch(() => {});
+  else if (enabled) resumeAudio(ac, document.hidden);
 }
 
 /** Pluie et orage renforcent l'ambiance. */
@@ -168,7 +173,7 @@ function crit(streak: number): void {
   for (const layer of score.layers) {
     if (layer.volume === 0) continue;
     note(score.pitch * layer.ratio, layer.duration, {
-      type: 'sine', vol: layer.volume, attack: layer.attack, echo: score.echo, delay: layer.delay,
+      type: layer.type, vol: layer.volume, attack: layer.attack, echo: score.echo, delay: layer.delay,
     });
   }
   note(98, 0.12, { vol: 0.05, attack: 0.006, slide: -24 });
