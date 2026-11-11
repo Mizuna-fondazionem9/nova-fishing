@@ -1,3 +1,4 @@
+import { criticalScore } from './critical-score';
 // Sons synthétisés : ambiance marine, signature mélodique progressive pour les combos.
 // Aucun extrait de la référence commerciale n’est distribué.
 
@@ -161,30 +162,16 @@ function mallet(freq: number, dur: number, vol: number, delay = 0, echoSend = 0.
 const semitones = (n: number): number => Math.pow(2, n / 12);
 const RE = 293.66; // ré : la tonique du jeu
 
-/** Signature mélodique ascendante : timbre rond, quinte et résolution aux paliers.
- * Hauteurs bornées : les longues séries ne deviennent pas stridentes.
- */
+/** Chaque critique enrichit l'impact ; 10 et tous les suivants sont identiques. */
 function crit(streak: number): void {
-  const n = Math.max(1, Math.floor(Number.isFinite(streak) ? streak : 1));
-  const melody = [0, 2, 4, 7, 9, 12, 14, 16];
-  const step = Math.min(n - 1, melody.length - 1);
-  const f = 392 * semitones(melody[step]);
-  const voice = (hz: number, delay = 0, volume = 0.16): void => {
-    note(hz, 0.48, { vol: volume, attack: 0.008, delay, echo: 0.18 });
-    note(hz * 2, 0.18, { type: 'sine', vol: volume * 0.18, attack: 0.005, delay });
-    note(hz / 2, 0.25, { type: 'triangle', vol: volume * 0.22, attack: 0.008, delay });
-  };
-  voice(f);
-  // Une assise douce et brève, sans bruit blanc ni dent de scie.
-  note(98, 0.12, { vol: 0.065, attack: 0.006, slide: -24 });
-  if (n >= 3) voice(f * 0.75, 0.025, 0.045);
-  if (n % 5 === 0) {
-    // Un petit accord majeur reconnaissable ponctue chaque série de cinq.
-    [0, 4, 7, 12].forEach((st, i) => voice(392 * semitones(st), 0.06 + i * 0.065, 0.085));
-  } else if (n > melody.length) {
-    // Au sommet : réponse mélodique alternée, pas d'escalade dans le suraigu.
-    voice(784 * semitones(n % 2 ? 7 : 4), 0.085, 0.07);
+  const score = criticalScore(streak);
+  for (const layer of score.layers) {
+    if (layer.volume === 0) continue;
+    note(score.pitch * layer.ratio, layer.duration, {
+      type: 'sine', vol: layer.volume, attack: layer.attack, echo: score.echo,
+    });
   }
+  note(98, 0.12, { vol: 0.05, attack: 0.006, slide: -24 });
 }
 
 /** Coup simple : la même lame, une octave plus bas, sèche et sans harmonie. On entend la différence avec un critique. */
