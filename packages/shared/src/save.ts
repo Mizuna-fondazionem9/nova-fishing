@@ -1,7 +1,7 @@
 // Sauvegarde d'un joueur et opérations de jeu PURES (aucun accès réseau ni base ici).
 // Le serveur charge la sauvegarde sous verrou, applique une de ces opérations, puis réécrit.
 import { hashN, Rng } from './rng';
-import { startPort, nearestPort, BIOME_IDS, type BiomeId } from './world';
+import { startPort, nearestPort, BIOME_IDS, BIOMES, type BiomeId } from './world';
 import { SPECIES, SPECIES_BY_ID, type Species } from './species';
 import { bulkOf, priceOf, type Specimen } from './fish';
 import { gearOf, gearTier, upgradeCost, zeroLevels, NETS, UPGRADE_BY_KEY, type Levels, type UpgradeKey } from './gear';
@@ -126,8 +126,7 @@ export function dailyChallenges(day: string, discovered: number): Challenge[] {
   ];
   return all;
 }
-const biomeLabel = (b: BiomeId): string =>
-  ({ coastal: 'eaux côtières', tropical: 'mer tropicale', reef: 'récifs', temperate: 'océan tempéré', polar: 'eaux polaires', deep: 'océan profond', abyss: 'fosses', mystic: 'eaux mystérieuses' })[b];
+const biomeLabel = (b: BiomeId): string => BIOMES[b].name;
 
 type DailyEvent = { kind: 'catch'; sp: Species; kg: number; biome: BiomeId } | { kind: 'sell'; gain: number };
 
@@ -171,7 +170,7 @@ export const TROPHIES: Trophy[] = [
   { id: 'pecheur_100', name: 'Matelot', desc: 'Capturer 100 poissons.', test: (s) => s.stats.caught >= 100 },
   { id: 'pecheur_1000', name: 'Vieux loup de mer', desc: 'Capturer 1 000 poissons.', test: (s) => s.stats.caught >= 1000 },
   { id: 'explorateur_3', name: 'Cabotage', desc: 'Découvrir 3 biomes.', test: (s) => s.stats.biomes.length >= 3 },
-  { id: 'explorateur_8', name: 'Tour du monde', desc: 'Découvrir les 8 biomes.', test: (s) => s.stats.biomes.length >= BIOME_IDS.length },
+  { id: 'explorateur_8', name: 'Tour du monde', desc: 'Découvrir tous les biomes.', test: (s) => s.stats.biomes.length >= BIOME_IDS.length },
   { id: 'poids_50', name: 'Belle pièce', desc: 'Capturer un poisson de 50 kg ou plus.', test: (s) => s.stats.maxKg >= 50 },
   { id: 'poids_500', name: 'Monstre marin', desc: 'Capturer un poisson de 500 kg ou plus.', test: (s) => s.stats.maxKg >= 500 },
   { id: 'poids_5000', name: 'Titan', desc: 'Capturer une créature de 5 tonnes ou plus.', test: (s) => s.stats.maxKg >= 5000 },

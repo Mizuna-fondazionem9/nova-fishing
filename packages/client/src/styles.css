@@ -416,3 +416,8 @@ button:focus-visible, input:focus-visible { outline: 3px solid #efd595; outline-
 .crab-board { pointer-events: auto; }
 /* La cible ne doit jamais hériter du déplacement des boutons au toucher. */
 button.crab-target, button.crab-target:hover:not(:disabled), button.crab-target:active:not(:disabled) { transform: translate(-50%,-50%); transition: none; touch-action: none; }
+.rainbow-text { background: linear-gradient(90deg,#ff729a,#ffe376,#95ff98,#71eeff,#b69aff,#ff729a); background-size: 300% 100%; background-clip: text; -webkit-background-clip: text; color: transparent !important; -webkit-text-fill-color: transparent; text-shadow: none !important; filter: drop-shadow(0 0 7px #9edfff88); animation: rainbowflow 2s linear infinite; }
+.crab-streak { min-height: 30px; font: 700 23px/1.2 var(--f-title); color: #ffe196; letter-spacing: .06em; text-align: center; }
+@media(prefers-reduced-motion:reduce) { .rainbow-text { animation: none; } }
+.combo.pop b.rainbow-text { animation: combopop .3s cubic-bezier(.2,1.7,.4,1), rainbowflow 2s linear infinite; }
+@media(prefers-reduced-motion:reduce) { .combo.pop b.rainbow-text { animation: none; } }

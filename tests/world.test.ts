@@ -25,7 +25,7 @@ test('monde : génération déterministe et reproductible', () => {
   assert.deepEqual(getPort(SEED, 5, -3), getPort(SEED, 5, -3));
 });
 
-test('monde : les 8 biomes existent et la zone de départ est douce', () => {
+test('monde : les 11 biomes existent et la zone de départ est douce', () => {
   const o = startPort(SEED);
   const seen = new Set<string>();
   for (let y = -2600; y <= 2600; y += 13)

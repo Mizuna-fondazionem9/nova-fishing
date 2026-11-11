@@ -52,6 +52,7 @@ function Gauge() {
         if (f.combo) {
           box.style.setProperty('--combo', color);
           box.style.setProperty('--lvl', String(tier));
+          comboNum.current!.classList.toggle('rainbow-text', c.streak >= 7);
           comboNum.current!.textContent = `×${f.combo.n}`;
           comboLabel.current!.textContent = comboWord(f.combo.n);
           box.classList.add('on');
@@ -120,7 +121,7 @@ function CrabGauge() {
   const ready = f.stage === 'fight' && c.tick >= c.targetAt && c.state === 'run';
   const perfect = (c.tick - c.targetAt) * 1000 / 60 <= c.perfectMs;
   return <div className="fight crab-fight" data-frame={frame}>
-    <h3>🦀 Attrapez les crabes</h3>
+    <div className={`crab-streak ${c.streak >= 7 ? 'rainbow-text' : ''}`} aria-live="polite">{c.streak > 0 ? `CRITIQUE ×${c.streak}` : '🦀 Attrapez les crabes'}</div>
     <p className="hint">Touchez chaque cercle dès son apparition. Parfait : {Math.round(c.perfectMs)} ms.</p>
     <div className="meters"><label>Fatigue du crabe</label><div className="bar"><div style={{ width: `${100*c.fish/c.p.stamina}%`, background: '#5cc8ff' }} /></div><label>Résistance de la ligne</label><div className="bar"><div style={{ width: `${100*c.line/c.p.line}%`, background: '#6fe3a1' }} /></div></div>
     <div className={`crab-board ${c.streak >= 7 ? 'rainbow' : ''}`} data-testid="crab-board" onPointerDown={e => {

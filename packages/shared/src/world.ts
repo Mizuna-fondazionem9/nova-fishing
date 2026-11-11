@@ -6,10 +6,13 @@ export const TILE = 16; // pixels d'art par tuile
 export const CHUNK = 32; // tuiles par côté de chunk
 export const CELL = 160; // tuiles par côté de « cellule de port » (un port garanti par cellule)
 
-export type BiomeId = 'coastal' | 'tropical' | 'reef' | 'temperate' | 'polar' | 'deep' | 'abyss' | 'mystic';
-export const BIOME_IDS: BiomeId[] = ['coastal', 'tropical', 'reef', 'temperate', 'polar', 'deep', 'abyss', 'mystic'];
+export type BiomeId = 'coastal' | 'tropical' | 'reef' | 'temperate' | 'polar' | 'deep' | 'abyss' | 'mystic' | 'volcanic' | 'crystal' | 'spectral';
+export const BIOME_IDS: BiomeId[] = ['coastal', 'tropical', 'reef', 'temperate', 'polar', 'deep', 'abyss', 'mystic', 'volcanic', 'crystal', 'spectral'];
 
 export const BIOMES: Record<BiomeId, { name: string; danger: number; desc: string }> = {
+  volcanic: { name: 'Océan volcanique', danger: 0.75, desc: 'Eaux rouges chargées de cendres et de braises.' },
+  crystal: { name: 'Mer de cristal', danger: 0.5, desc: 'Reflets turquoise et récifs de quartz lumineux.' },
+  spectral: { name: 'Mer spectrale', danger: 0.95, desc: 'Des eaux vertes où dansent des lueurs fantômes.' },
   coastal: { name: 'Eaux côtières', danger: 0, desc: 'Hauts-fonds calmes près des îles.' },
   tropical: { name: 'Mer tropicale', danger: 0.2, desc: 'Eaux chaudes et grands pélagiques.' },
   reef: { name: 'Récifs coralliens', danger: 0.1, desc: 'Labyrinthes de corail grouillants de vie.' },
@@ -157,6 +160,11 @@ export function tileAt(seed: number, tx: number, ty: number): Tile {
   else if (depth < 0.28 || shore < 0.4) biome = 'coastal';
   else if (warm) biome = 'tropical';
   else biome = 'temperate';
+  // Ajouter des provinces marines sans déplacer terres, ports ni zone de départ.
+  if (dist > 900 && shore > 0.4 && fbm(seed+141,tx/210,ty/210,2)>0.59) {
+    const realm = vnoise(seed+142,tx/430,ty/430);
+    biome = realm < 0.36 ? 'volcanic' : realm > 0.64 ? 'spectral' : 'crystal';
+  }
   return { land: false, h, shore, depth, temp, biome, level };
 }
 
