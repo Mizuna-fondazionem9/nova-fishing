@@ -1,9 +1,5 @@
-// Sons synthétisés avec WebAudio : aucun fichier audio. Désactivable dans les réglages.
-//
-// Parti pris sonore : musical et gratifiant. Les coups du combat sont joués sur un instrument à
-// lames (type marimba / glockenspiel) accordé en ré majeur. Chaque coup critique enchaîné joue la
-// note suivante d'une gamme qui monte : une série devient une petite mélodie, avec de plus en plus
-// d'harmonie, et un accord égrené tous les 5 coups. Un écho léger donne de l'ampleur.
+// Sons synthétisés : ambiance marine, impacts spray/scratch pour les combos.
+// Aucun extrait de la référence commerciale n’est distribué.
 
 let ctx: BaseAudioContext | null = null;
 let master: GainNode | null = null;
@@ -35,7 +31,12 @@ export function unlockAudio(): void {
   tame.type = 'lowpass';
   tame.frequency.value = 9500;
   tame.Q.value = 0.3;
-  master.connect(tame).connect(ctx.destination);
+  const limiter = ctx.createDynamicsCompressor();
+  limiter.threshold.value = -8;
+  limiter.ratio.value = 12;
+  limiter.attack.value = 0.003;
+  limiter.release.value = 0.12;
+  master.connect(tame).connect(limiter).connect(ctx.destination);
 
   // Écho : une répétition douce et assourdie, qui s'éteint en trois ou quatre rebonds.
   echo = ctx.createGain();
@@ -160,41 +161,31 @@ function mallet(freq: number, dur: number, vol: number, delay = 0, echoSend = 0.
 const semitones = (n: number): number => Math.pow(2, n / 12);
 const RE = 293.66; // ré : la tonique du jeu
 
-// La mélodie des séries : la gamme pentatonique de ré majeur, sur deux octaves et demie.
-// Chaque critique enchaîné joue la marche suivante. Aucune fausse note possible : toutes sonnent bien ensemble.
-const LADDER = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24, 26, 28, 31];
-// Une fois en haut, la série tourne sur les trois dernières marches au lieu de monter dans le suraigu.
-const TOP = [28, 31, 26];
-
-function ladder(streak: number): number {
-  const i = Math.max(streak, 1) - 1;
-  return i < LADDER.length ? LADDER[i] : TOP[(i - LADDER.length) % TOP.length];
-}
-
-/**
- * Coup critique. `streak` = nombre de critiques enchaînés (1 pour le premier).
- * - la note monte d'une marche à chaque coup ;
- * - à partir de 2, une quinte l'accompagne ; à partir de 4, l'octave scintille au-dessus ;
- * - tous les 5 coups, un accord égrené et un souffle brillant saluent la série.
- * Le tout repose sur un coup sourd, pour la sensation d'impact.
- */
+/** Attaque spray / scratch : souffle résonant, pitch plongeant et accent de palier. */
 function crit(streak: number): void {
-  const f = RE * semitones(ladder(streak));
-  const lift = Math.min(Math.max(streak, 1) - 1, 8);
-  const vol = 0.17 + lift * 0.008;
-  // Impact.
-  note(120, 0.16, { vol: 0.17, attack: 0.003, slide: -55 });
-  wash(0.05, 5200, 0.035, 'highpass', 0.002);
-  // La note de la mélodie.
-  mallet(f, 0.75, vol);
-  // L'harmonie s'épaissit avec la série.
-  if (streak >= 2) mallet(f * 1.5, 0.55, vol * 0.3, 0.012, 0.3);
-  if (streak >= 4) note(f * 2, 0.6, { vol: vol * 0.28, delay: 0.07, attack: 0.004, echo: 0.6 });
-  if (streak >= 7) note(f * 4, 0.45, { type: 'triangle', vol: 0.022, delay: 0.13, echo: 0.6 });
-  // Palier : accord de ré majeur égrené vers l'aigu, puis un souffle brillant.
-  if (streak >= 5 && streak % 5 === 0) {
-    [0, 4, 7, 12, 16].forEach((st, i) => mallet(f * semitones(st), 0.6, 0.085, 0.11 + i * 0.055, 0.6));
-    wash(0.55, 6000, 0.045, 'highpass', 0.05, 0.12);
+  if (!ctx || !master || !enabled || !noiseData) return;
+  const t = ctx.currentTime;
+  const tier = Math.min(8, Math.floor((streak - 1) / 2));
+  const src = ctx.createBufferSource();
+  src.buffer = noiseData;
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'bandpass';
+  filter.Q.value = 3;
+  filter.frequency.setValueAtTime(900 + tier * 190, t);
+  filter.frequency.exponentialRampToValueAtTime(4200 + tier * 220, t + 0.035);
+  filter.frequency.exponentialRampToValueAtTime(460 + tier * 80, t + 0.21);
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.0001, t);
+  gain.gain.linearRampToValueAtTime(0.32, t + 0.006);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.25);
+  src.connect(filter).connect(gain).connect(master);
+  src.start(t); src.stop(t + 0.27);
+  src.onended = () => { src.disconnect(); filter.disconnect(); gain.disconnect(); };
+  note(150 + tier * 16, 0.16, { vol: 0.2, attack: 0.003, slide: -95 });
+  note(580 + tier * 100, 0.18, { type: 'sawtooth', vol: 0.045, slide: -360, attack: 0.004 });
+  if (streak % 5 === 0) {
+    wash(0.32, 2600, 0.14, 'bandpass', 0.004, 0.08);
+    [0, 7, 12].forEach((n, i) => note(440 * semitones(n), 0.22, { type: 'triangle', vol: 0.09, delay: 0.07 + i * 0.055 }));
   }
 }
 

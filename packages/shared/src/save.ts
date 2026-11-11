@@ -14,6 +14,8 @@ export interface BestiaryEntry {
   maxKg: number;
   first: number;
   biomes: BiomeId[];
+  /** Variantes conservées même après vente ; absent dans les anciennes sauvegardes. */
+  variants?: Pick<Specimen, "color" | "size" | "tough">[];
 }
 
 export interface Stats {
@@ -213,6 +215,12 @@ export function applyCatch(s: Save, spec: Specimen, crits: number, now: number):
   const first = !prev;
   const record = !!prev && spec.kg > prev.maxKg;
   const e: BestiaryEntry = prev ?? { n: 0, maxLen: 0, maxKg: 0, first: now, biomes: [] };
+  e.variants ??= [];
+  // Récupère aussi les prises encore présentes des anciennes sauvegardes.
+  for (const f of [...s.cargo, ...s.aquarium, spec]) {
+    if (f.sp === spec.sp && !e.variants.some(v => v.color === f.color && v.size === f.size && v.tough === f.tough))
+      e.variants.push({ color: f.color, size: f.size, tough: f.tough });
+  }
   e.n++;
   e.maxLen = Math.max(e.maxLen, spec.len);
   e.maxKg = Math.max(e.maxKg, spec.kg);

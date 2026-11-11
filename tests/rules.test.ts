@@ -375,3 +375,17 @@ test('trophées et défis : débloqués une seule fois, récompense bornée', ()
   assert.equal(bumpDaily(s, { kind: 'sell', gain: 5000 }, day + 86400000).length >= 0, true);
   assert.equal(s.daily.day, '2026-11-12');
 });
+
+test('le bestiaire conserve les variantes uniques après vente et reprend les anciennes prises', () => {
+  const s = newSave(SEED, 0);
+  const a = { ...fish('bar', 9, 'variant-a'), color: 3, size: 1, tough: true };
+  applyCatch(s, a, 0, 1);
+  applyCatch(s, { ...a, uid: 'variant-b' }, 0, 2);
+  assert.equal(s.bestiary.bar.variants?.length, 1);
+  s.cargo = [];
+  assert.deepEqual(s.bestiary.bar.variants, [{ color: 3, size: 1, tough: true }]);
+  delete s.bestiary.bar.variants;
+  s.aquarium.push(a);
+  applyCatch(s, { ...a, uid: 'variant-c', color: 4 }, 0, 3);
+  assert.deepEqual((s.bestiary.bar.variants as unknown as { color: number }[]).map(v => v.color), [3, 4]);
+});
