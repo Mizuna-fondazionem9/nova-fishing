@@ -324,3 +324,37 @@ canvas.map { width: 100%; max-width: 560px; aspect-ratio: 1; align-self: center;
   .help li b { position: static; display: block; margin-bottom: 2px; }
 }
 @media (prefers-reduced-motion: reduce) { .pulse, .alert, .bite, .gauge.rush, .gauge.pop, .combo.pop b, .combo.pop::before, .combo.pop small { animation: none; } }
+
+/* Carnet de bord : encre marine, papier chaud et repères cuivrés. */
+:root { --dim: #b5b8ca; --line: #354254; --panel: #111e2b; --panel2: #172838; }
+.modal { border-color: #627071; box-shadow: 0 24px 100px #0009; border-radius: 20px; }
+.modal header { padding: 20px 24px; background: linear-gradient(120deg,#203b46,#172536); border-bottom: 2px solid #bda36a; }
+.modal header h2 { text-transform: none; letter-spacing: .025em; font-size: 23px; color: #f2e5c7; }
+.modal .top { background: #13222f; padding: 16px 24px; }
+.modal .body { padding: 24px; gap: 24px; }
+.block { gap: 14px; }
+.block h3 { color: #d8c28d; letter-spacing: .1em; font-size: 12px; }
+.fishrow, .uprow { padding: 18px; gap: 18px; background: linear-gradient(110deg,#1b3040,#172534); }
+.info p, .note { line-height: 1.65; }
+.tabs button { text-transform: none; letter-spacing: .02em; font-size: 14px; }
+.tabs button.on { background: #2d5960; border-color: #86b8b1; box-shadow: none; }
+button:focus-visible, input:focus-visible { outline: 3px solid #efd595; outline-offset: 3px; }
+.spgrid { grid-template-columns: repeat(auto-fill,minmax(145px,1fr)); gap: 12px; }
+.spcard { min-height: 145px; padding: 16px 10px; gap: 10px; text-transform: none; font-size: 13px; background: #192d3b; }
+.spcard.unknown { opacity: 1; background: #132330; }
+.spcard small { white-space: normal; line-height: 1.5; }
+.journal-intro { font: italic 26px Georgia,serif; color: #eeddb7; }
+.journal-intro span { display: block; font: 14px/1.6 var(--f-body); color: var(--dim); margin-top: 8px; }
+.search { width: 100%; border: 1px solid #5b707a; border-radius: 10px; background: #0c1b28; color: #fff; padding: 14px; font: inherit; }
+.conditions { display: flex; flex-wrap: wrap; gap: 10px; }
+.conditions span { background: #233f49; color: #e2e8da; padding: 10px 14px; border-radius: 9px; font-size: 13px; }
+.variant-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+.variant-grid button { flex-direction: column; padding: 14px 8px; gap: 8px; text-transform: none; letter-spacing: 0; }
+.variant-grid button[aria-pressed=true] { border-color: #e5c57c; background: #30434a; }
+.variant-grid canvas { max-width: 100%; object-fit: contain; }
+.variant-grid small { color: var(--dim); }
+.showcase { min-height: 160px; background: radial-gradient(ellipse at 50% 65%,#30606a,#102432 75%); border-color: #405966; }
+.card { background: #10212dec; border-color: #536773; }
+.nav { background: #10212df5; border-color: #536773; }
+.nav button { color: #d4d8df; text-transform: none; letter-spacing: .025em; }
+@media(max-width:560px) { .modal .body { padding: 16px; gap: 20px; } .modal header { padding: 14px 16px; } .modal .top { padding: 12px 16px; } .fishrow,.uprow { padding: 14px; } .spgrid { grid-template-columns: repeat(2,minmax(0,1fr)); } }

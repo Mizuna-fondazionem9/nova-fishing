@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import {
-  BIOMES, BIOME_IDS, NETS, RARITY_COLORS, SILHOUETTE_NAMES, SPECIES, TROPHIES, UPGRADES,
+  COLOR_NAMES, SIZE_NAMES, BIOMES, BIOME_IDS, NETS, RARITY_COLORS, SILHOUETTE_NAMES, SPECIES, TROPHIES, UPGRADES,
   bulkOf, cargoBulk, dayKey, depthMeters, gearOf, gearTier, priceOf, upgradeCost,
   type Specimen, type Species, type UpgradeDef,
 } from '../../../shared/src/index';
@@ -236,33 +236,49 @@ export function ShipPanel() {
 function SpeciesCard({ sp, onPick }: { sp: Species; onPick: (s: Species) => void }) {
   const entry = useStore((s) => s.save!.bestiary[sp.id]);
   return (
-    <button className={`spcard ${entry ? '' : 'unknown'}`} onClick={() => entry && onPick(sp)} disabled={!entry} style={entry ? { borderColor: RARITY_COLORS[sp.rarity] } : undefined}>
+    <button className={`spcard ${entry ? '' : 'unknown'}`} onClick={() => onPick(sp)} style={entry ? { borderColor: RARITY_COLORS[sp.rarity] } : undefined}>
       <FishIcon sp={sp} scale={2} hidden={!entry} />
       <span>{entry ? sp.name : 'Inconnu'}</span>
-      {entry && <small>×{entry.n}</small>}
+      <small>{entry ? `${entry.n} captures` : 'À découvrir'}</small>
+      <small>{sp.prefs.time ? `Favorise : ${sp.prefs.time}` : 'Toute heure'} · {sp.prefs.weather ?? 'Toute météo'}</small>
     </button>
   );
 }
 
 export function BestiaryPanel() {
-  const bestiary = useStore((s) => s.save!.bestiary);
+  const save = useStore((s) => s.save)!;
+  const bestiary = save.bestiary;
+  const [color, setColor] = useState(0);
+  const [query, setQuery] = useState('');
   const [pick, setPick] = useState<Species | null>(null);
   const groups = useMemo(() => BIOME_IDS.map((b) => [b, SPECIES.filter((s) => s.biomes[0] === b)] as const), []);
   const known = Object.keys(bestiary).length;
   if (pick) {
     const e = bestiary[pick.id];
+    const variants = [...(e?.variants ?? [])];
+    for (const f of [...save.cargo, ...save.aquarium].filter(f => f.sp === pick.id)) {
+      if (!variants.some(v => v.color === f.color && v.size === f.size && v.tough === f.tough)) variants.push(f);
+    }
     return (
       <Modal title="Bestiaire" onClose={() => setPick(null)}>
-        <div className="showcase"><FishIcon sp={pick} scale={4} animate /></div>
-        <h3 className="species" style={{ color: RARITY_COLORS[pick.rarity] }}>{pick.name}</h3>
+        <div className="showcase"><FishIcon sp={pick} color={color} scale={4} animate hidden={!e} /></div>
+        <h3 className="species" style={{ color: RARITY_COLORS[pick.rarity] }}>{e ? pick.name : 'Espèce à découvrir'}</h3>
         <p className="tags"><Rarity r={pick.rarity} /><span className="tag">{SILHOUETTE_NAMES[pick.sil]}</span></p>
-        <p className="desc">{pick.desc}</p>
+        <p className="desc">{e ? pick.desc : 'Une silhouette manque encore à votre carnet. Voici où tenter votre chance.'}</p>
+        <Section title="Quand lancer la ligne ?">
+          <div className="conditions"><span>◷ {pick.prefs.time ? `Plus fréquent : ${pick.prefs.time}` : 'À toute heure'}</span><span>☁ {pick.prefs.weather ? `Météo favorable : ${pick.prefs.weather}` : 'Toute météo'}</span></div>
+          <p className="note">Ces préférences augmentent les chances de rencontre. Aucune exclusivité horaire ou météo.</p>
+        </Section>
+        {e && <Section title="Variantes capturées" aside={`${variants.length} formes consignées`}>
+          <div className="variant-grid">{variants.map((v, i) => <button key={i} aria-pressed={color === v.color} onClick={() => setColor(v.color)}><FishIcon sp={pick} color={v.color} /><b>{COLOR_NAMES[v.color] || 'Naturelle'}</b><small>{SIZE_NAMES[v.size] || 'Taille standard'}{v.tough ? ' · Coriace' : ''}</small></button>)}</div>
+          {!e.variants && <p className="note">Les anciennes prises vendues n’enregistraient pas leurs variantes. Vos prises conservées sont visibles ; les prochaines seront mémorisées définitivement.</p>}
+        </Section>}
         <dl className="facts">
-          <div><dt>Captures</dt><dd>{e.n}</dd></div>
-          <div><dt>Plus grand</dt><dd>{fmtLen(e.maxLen)}</dd></div>
-          <div><dt>Poids record</dt><dd>{fmtKg(e.maxKg)}</dd></div>
+          <div><dt>Captures</dt><dd>{e?.n ?? 0}</dd></div>
+          <div><dt>Plus grand</dt><dd>{e ? fmtLen(e.maxLen) : '—'}</dd></div>
+          <div><dt>Poids record</dt><dd>{e ? fmtKg(e.maxKg) : '—'}</dd></div>
           <div><dt>Profondeur</dt><dd>{depthMeters(pick.dmin)} à {depthMeters(pick.dmax)} m</dd></div>
-          <div className="full"><dt>Biomes connus</dt><dd>{e.biomes.map((b) => BIOMES[b].name).join(', ')}</dd></div>
+          <div className="full"><dt>Biomes connus</dt><dd>{(e?.biomes ?? pick.biomes).map((b) => BIOMES[b].name).join(', ')}</dd></div>
         </dl>
         <button className="big wide" onClick={() => setPick(null)}>Retour</button>
       </Modal>
@@ -274,9 +290,11 @@ export function BestiaryPanel() {
       wide
       top={<div className="balance"><span className="k">Espèces découvertes</span><b className="num">{known} / {SPECIES.length}</b><Bar value={known} max={SPECIES.length} color="#a05cf0" /></div>}
     >
-      {groups.map(([b, list]) => (
+      <p className="journal-intro">Le carnet des marées <span>Chaque silhouette, une rencontre à venir.</span></p>
+      <input className="search" aria-label="Rechercher une espèce découverte" placeholder="Rechercher une espèce découverte…" value={query} onChange={e => setQuery(e.target.value)} />
+      {groups.map(([b, all]) => [b, all.filter(sp => !query || (bestiary[sp.id] && sp.name.toLocaleLowerCase('fr').includes(query.toLocaleLowerCase('fr'))))] as const).filter(([, list]) => list.length).map(([b, list]) => (
         <Section key={b} title={BIOMES[b].name} aside={`${list.filter((s) => bestiary[s.id]).length} / ${list.length}`}>
-          <div className="spgrid">{list.map((sp) => <SpeciesCard key={sp.id} sp={sp} onPick={setPick} />)}</div>
+          <div className="spgrid">{list.map((sp) => <SpeciesCard key={sp.id} sp={sp} onPick={sp => { setColor(0); setPick(sp); }} />)}</div>
         </Section>
       ))}
     </Modal>
