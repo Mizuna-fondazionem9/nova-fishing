@@ -300,6 +300,26 @@ function seahorse(cols: [string, string, string]): Spr {
 const fishCache = new Map<string, Spr>();
 
 /** Illustration d'une espèce. `color` = variante (0 normal, 1 albinos, 2 mélanique, 3 doré, 4 irisé). */
+function crabSprite(cols: [string, string, string], frame: number): Spr {
+  const [canvas, c] = makeCanvas(44, 30);
+  c.fillStyle = cols[2];
+  for (let side of [-1, 1]) {
+    for (let leg = 0; leg < 4; leg++) {
+      const x = side < 0 ? 5 : 30;
+      c.fillRect(x, 15 + leg * 3, 9, 2);
+      c.fillRect(side < 0 ? x - 2 : x + 7, 17 + leg * 3 + frame % 2, 3, 3);
+    }
+    c.fillStyle = cols[0];
+    c.fillRect(side < 0 ? 3 : 33, 5, 8, 9);
+    c.fillRect(side < 0 ? 1 : 39, 2, 4, 7);
+    c.fillStyle = cols[2];
+  }
+  c.fillStyle = cols[0]; c.fillRect(12, 11, 20, 15); c.fillRect(15, 8, 14, 4);
+  c.fillStyle = cols[1]; c.fillRect(15, 12, 12, 3);
+  c.fillStyle = '#142330'; c.fillRect(16, 7, 3, 4); c.fillRect(25, 7, 3, 4);
+  return canvas;
+}
+
 export function fishSprite(sp: Species, color = 0, frame = 0): Spr {
   const key = `${sp.id}:${color}:${frame % 2}`;
   let s = fishCache.get(key);
@@ -315,6 +335,7 @@ export function fishSprite(sp: Species, color = 0, frame = 0): Spr {
     case 'squid': s = cephFish(sp, cols, iris, frame, true); break;
     case 'moon': s = roundFish(sp, cols, iris, frame, true); break;
     case 'angler': s = roundFish(sp, cols, iris, frame, false); break;
+    case 'crab': s = crabSprite(cols, frame); break;
     case 'seahorse': s = seahorse(cols); break;
     default: s = profileFish(sp, cols, iris, frame, PROF[sp.shape] ?? PROF.fusi);
   }
@@ -329,6 +350,7 @@ export function fishSprite(sp: Species, color = 0, frame = 0): Spr {
 export const SHADOW_FRAMES = 8;
 const shadowCache = new Map<string, Spr[]>();
 const SH: Record<Silhouette, { L: number; W: number; amp: number; size: number }> = {
+  crab: { L: 9, W: 7, amp: 0.3, size: 24 },
   small: { L: 9, W: 1.7, amp: 1.4, size: 14 },
   long: { L: 24, W: 1.5, amp: 2.6, size: 30 },
   massive: { L: 18, W: 4.6, amp: 1.6, size: 26 },
@@ -349,7 +371,13 @@ export function shadowFrames(kind: Silhouette): Spr[] {
     const g = new Grid(p.size, p.size);
     const c = p.size / 2;
     const x1 = c + p.L / 2; // tête à droite
-    if (kind === 'ray') {
+    if (kind === 'crab') {
+      for (let x = -5; x <= 5; x++) for (let y = -4; y <= 4; y++) g.set(c+x,c+y,col);
+      for (const side of [-1,1]) {
+        for (let leg = 0; leg < 4; leg++) for (let n = 0; n < 5; n++) g.set(c+side*(5+n),c-3+leg*2+n*0.3*Math.sin(ph),col);
+        for (let x = 0; x < 4; x++) for (let y = 0; y < 4; y++) g.set(c+side*(6+x),c-8+y,col);
+      }
+    } else if (kind === 'ray') {
       const span = p.W * (0.86 + 0.14 * Math.sin(ph));
       for (let i = 0; i <= p.L; i++) {
         const u = i / p.L;

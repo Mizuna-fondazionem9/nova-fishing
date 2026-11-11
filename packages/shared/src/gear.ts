@@ -35,7 +35,7 @@ export const UPGRADES: UpgradeDef[] = [
   { key: 'line', group: 'rod', name: 'Solidité de la ligne', desc: 'Résistance initiale de la ligne.', cost0: 50, max: MAX_LEVEL, effect: (n) => Math.round(100 * (1 + 0.16 * Math.pow(n, 0.75))), fmt: (v) => `${v}` },
   { key: 'reel', group: 'rod', name: 'Moulinet', desc: 'Amortit la tension des erreurs et allonge un peu le ferrage.', cost0: 45, max: MAX_LEVEL, effect: (n) => 1 + 1.2 * sat(n, 18), fmt: (v) => `×${f1(v)}` },
   { key: 'recovery', group: 'rod', name: 'Récupération', desc: 'Bonus de fatigue sur les coups réussis à la suite.', cost0: 55, max: MAX_LEVEL, effect: (n) => sat(n, 20), fmt: pct },
-  { key: 'precision', group: 'rod', name: 'Guides de précision', desc: 'Élargit légèrement la zone de réussite.', cost0: 70, max: MAX_LEVEL, effect: (n) => 0.25 * sat(n, 15), fmt: pct },
+  { key: 'precision', group: 'rod', name: 'Guides de précision', desc: 'Élargit la zone de réussite ; pour les crabes, agrandit les cibles et allonge le délai parfait.', cost0: 70, max: MAX_LEVEL, effect: (n) => 0.25 * sat(n, 15), fmt: pct },
   { key: 'aquarium', group: 'aquarium', name: 'Bassins d’aquarium', desc: 'Nombre d’emplacements d’exposition.', cost0: 150, max: 30, effect: (n) => 4 + 2 * n, fmt: (v) => `${v} places` },
 ];
 

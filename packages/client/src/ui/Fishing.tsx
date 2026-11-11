@@ -1,7 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { RARITY_COLORS, SILHOUETTE_NAMES, bulkOf } from '../../../shared/src/index';
 import { useStore, setState } from '../store';
-import { sfx } from '../game/audio';
+import { sfx, unlockAudio } from '../game/audio';
 import { comboColor, comboTier, comboWord } from '../game/combo';
 import { rt, Coins, FishIcon, Rarity, Tags, speciesOf, fmtKg, fmtLen } from './common';
 
@@ -47,7 +47,7 @@ function Gauge() {
         const color = comboColor(c.streak);
         const g = wrap.current!;
         g.style.setProperty('--combo', color);
-        g.className = `gauge ${c.rush > 0 ? 'rush' : c.warn ? 'warn' : ''} ${tier ? `s${tier}` : ''} ${g.classList.contains('pop') ? 'pop' : ''}`;
+        g.className = `gauge ${c.streak >= 7 ? 'rainbow' : ''} ${c.rush > 0 ? 'rush' : c.warn ? 'warn' : ''} ${tier ? `s${tier}` : ''} ${g.classList.contains('pop') ? 'pop' : ''}`;
         const box = combo.current!;
         if (f.combo) {
           box.style.setProperty('--combo', color);
@@ -106,6 +106,36 @@ function Gauge() {
   );
 }
 
+/** Carré de réflexes : coordonnées normalisées transmises au moteur puis rejouées côté serveur. */
+function CrabGauge() {
+  const [frame, setFrame] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setFrame(v => v + 1), 32);
+    return () => clearInterval(id);
+  }, []);
+  const f = rt.game?.fish;
+  const c = f?.combat;
+  if (!f || !c) return null;
+  const ready = f.stage === 'fight' && c.tick >= c.targetAt && c.state === 'run';
+  const perfect = (c.tick - c.targetAt) * 1000 / 60 <= c.perfectMs;
+  return <div className="fight crab-fight" data-frame={frame}>
+    <h3>🦀 Attrapez les crabes</h3>
+    <p className="hint">Touchez chaque cercle dès son apparition. Parfait : {Math.round(c.perfectMs)} ms.</p>
+    <div className="meters"><label>Fatigue du crabe</label><div className="bar"><div style={{ width: `${100*c.fish/c.p.stamina}%`, background: '#5cc8ff' }} /></div><label>Résistance de la ligne</label><div className="bar"><div style={{ width: `${100*c.line/c.p.line}%`, background: '#6fe3a1' }} /></div></div>
+    <div className={`crab-board ${c.streak >= 7 ? 'rainbow' : ''}`} data-testid="crab-board" onPointerDown={e => {
+      e.preventDefault(); e.stopPropagation(); unlockAudio();
+      const r = e.currentTarget.getBoundingClientRect();
+      rt.game?.tapFight((e.clientX-r.left)/r.width, (e.clientY-r.top)/r.height);
+    }}>
+      {f.stage === 'countdown' && <span className="crab-ready">Prêt…</span>}
+      {ready && <button key={c.targetId} className={`crab-target ${perfect ? 'perfect' : ''}`} aria-label="Attraper le crabe" style={{ left: `${c.targetX*100}%`, top: `${c.targetY*100}%`, width: `${c.targetRadius*200}%`, height: `${c.targetRadius*200}%` }} onClick={e => {
+        if (e.detail === 0) { unlockAudio(); rt.game?.tapFight(c.targetX,c.targetY); }
+      }}><span>🦀</span></button>}
+    </div>
+    <div className="crab-feedback" role="status">{f.flash && performance.now()-f.flash.at < 650 ? f.flash.text : c.streak >= 2 ? `COMBO ×${c.streak}` : 'Visez vite et juste !'}</div>
+  </div>;
+}
+
 export function FishingOverlay() {
   const stage = useStore((s) => s.fishing);
   if (!stage) return null;
@@ -128,7 +158,7 @@ export function FishingOverlay() {
           </div>
         </div>
       )}
-      {(stage === 'countdown' || stage === 'fight' || stage === 'resolving') && <Gauge />}
+      {(stage === 'countdown' || stage === 'fight' || stage === 'resolving') && (rt.game?.fish?.combat?.p.mode === 'crab' ? <CrabGauge /> : <Gauge />)}
     </div>
   );
 }

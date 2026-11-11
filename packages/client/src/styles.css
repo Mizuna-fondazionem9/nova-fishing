@@ -398,3 +398,19 @@ button:focus-visible, input:focus-visible { outline: 3px solid #efd595; outline-
 .spcard.unknown .specimen-caption strong { font: 700 17px var(--f-title); letter-spacing: .15em; color: #99adbc; }
 .spcard:hover:not(:disabled) .specimen-art { background-color: #4a7b8522; }
 @media(max-width:560px) { .spgrid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; } .specimen-caption { padding: 9px; } .spcard .specimen-caption strong { font-size: 16px; } }
+
+/* Palier 7+ : liseré arc-en-ciel animé, sans changer les couleurs utiles des zones. */
+.gauge.rainbow, .crab-board.rainbow { border-color: #d8caff; box-shadow: 0 0 18px #bb79ff99, 0 0 30px #5ce9ff66; }
+.gauge.rainbow::after, .crab-board.rainbow::after { content: ''; position: absolute; inset: 0; padding: 3px; border-radius: inherit; background: linear-gradient(90deg,#ff628a,#ffc65c,#a4ff72,#58f1ff,#a582ff,#ff628a); background-size: 300% 100%; -webkit-mask: linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; animation: rainbowflow 2s linear infinite; }
+@keyframes rainbowflow { to { background-position: 150% 0; } }
+.fishing:has(.crab-fight) { top: 50%; bottom: auto; transform: translate(-50%,-50%); width: min(94vw,470px); }
+.crab-fight { gap: 10px; padding: 16px; }
+.crab-board { width: min(100%,340px); aspect-ratio: 1; position: relative; touch-action: none; overflow: hidden; border: 2px solid #637f92; border-radius: 16px; background: radial-gradient(ellipse,#244f5c,#102332); }
+.crab-target { position: absolute; transform: translate(-50%,-50%); padding: 0; min-width: 0; min-height: 0; border-radius: 50%; border: 3px solid #70e9b2; background: #236c73; box-shadow: 0 0 14px #63e7c488; display: grid; place-items: center; }
+.crab-target.perfect { border-color: #ffe196; background: #a17b33; box-shadow: 0 0 18px #ffdd8aaa; }
+.crab-target span { pointer-events: none; font-size: 20px; }
+.crab-ready { position: absolute; inset: 0; display: grid; place-items: center; font: 700 26px var(--f-title); color: #ffe196; }
+.crab-feedback { min-height: 22px; color: #ffe196; font-weight: 700; }
+@media(max-height:640px) { .crab-board { width: min(100%,240px); } .crab-fight { padding: 10px; gap: 6px; } }
+@media(prefers-reduced-motion:reduce) { .gauge.rainbow::after, .crab-board.rainbow::after { animation: none; } }
+.crab-board { pointer-events: auto; }

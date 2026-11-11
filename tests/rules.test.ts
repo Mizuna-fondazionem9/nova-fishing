@@ -146,7 +146,8 @@ test('combat : la ligne s’use même avec un jeu parfait, et casse sans rien fa
   assert.ok(perfect.win);
   const c2 = new Combat(params('sardine'));
   for (const t of perfect.taps) {
-    while (c2.tick < t) c2.step();
+    assert.equal(typeof t, 'number');
+    while (c2.tick < (t as number)) c2.step();
     c2.tap();
   }
   assert.ok(c2.line < params('sardine').line);

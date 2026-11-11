@@ -1,8 +1,9 @@
 // Base des espèces. Les identifiants sont STABLES : ne jamais les renommer (sauvegardes, bestiaire).
 import type { BiomeId, TimeOfDay, Weather } from './world';
 
-export type Silhouette = 'small' | 'long' | 'massive' | 'shark' | 'ray' | 'cephalo' | 'giant';
+export type Silhouette = 'small' | 'long' | 'massive' | 'shark' | 'ray' | 'cephalo' | 'giant' | 'crab';
 export const SILHOUETTE_NAMES: Record<Silhouette, string> = {
+  crab: 'Crabe',
   small: 'Petit poisson',
   long: 'Poisson allongé',
   massive: 'Poisson massif',
@@ -24,7 +25,7 @@ export type BiteStyle = 'franc' | 'prudent' | 'joueur' | 'vorace' | 'timide';
 export type Focus = 'endurant' | 'puissant' | 'vif' | 'ruse';
 export type Shape =
   | 'fusi' | 'slim' | 'deep' | 'eel' | 'bill' | 'tuna' | 'shark' | 'ray' | 'flat'
-  | 'octo' | 'squid' | 'whale' | 'serpent' | 'angler' | 'moon' | 'seahorse';
+  | 'crab' | 'octo' | 'squid' | 'whale' | 'serpent' | 'angler' | 'moon' | 'seahorse';
 
 export interface Species {
   id: string;
@@ -153,6 +154,24 @@ export const SPECIES: Species[] = [
   S('kraken', 'Kraken juvénile', 'Juvénile, disent les savants. Personne n’a vu l’adulte.', 'mystic abyss', 0.6, 1, 'giant', 800, 2000, 9000, 5, 28, 'octo', '#7a1f3a #f0a8b8 #3a0a18', { focus: 'puissant', pow: 1.5, stam: 1.4, aggr: 1, profile: 'erratic' }),
   S('leviathan', 'Léviathan', 'La mer elle-même, quand elle décide de mordre.', 'mystic', 0.5, 1, 'giant', 1500, 4000, 40000, 5, 30, 'serpent', '#1f5c5a #a8f0d9 #0a2a3a', { pattern: 'bands', focus: 'endurant', stam: 1.6, pow: 1.4, aggr: 1, profile: 'erratic', prefs: { weather: 'orage' } }),
 ];
+
+// Trois espèces propres à chacun des huit biomes, également visibles au bestiaire.
+const CRAB_ZONES: [BiomeId, string[], string, number][] = [
+  ['coastal', ['Crabe vert', 'Étrille des quais', 'Tourteau côtier'], '#80914b #d6c88b #384c32', 1.5],
+  ['tropical', ['Crabe cocotier', 'Crabe violoniste', 'Crabe de mangrove'], '#ce7840 #f2c27a #813f28', 3],
+  ['reef', ['Crabe porcelaine', 'Crabe des coraux', 'Crabe arlequin'], '#c85a6a #f4d0be #66365c', 4],
+  ['temperate', ['Araignée de mer', 'Crabe dormeur', 'Crabe des laminaires'], '#a48351 #e2c49a #59452f', 4.5],
+  ['polar', ['Crabe des neiges', 'Crabe royal boréal', 'Crabe de banquise'], '#a7c2d1 #f0f5fa #536b91', 7],
+  ['deep', ['Crabe des épaves', 'Crabe des cheminées', 'Crabe aveugle'], '#8a718f #d7b9cf #473f60', 9],
+  ['abyss', ['Crabe yéti', 'Crabe des failles', 'Crabe abyssal'], '#a9b4ad #edf0d2 #3d5564', 13],
+  ['mystic', ['Crabe de lune', 'Crabe prismatique', 'Crabe des étoiles'], '#8680ce #e3c9ff #3e387d', 16],
+];
+for (const [biome, names, colors, tier] of CRAB_ZONES) names.forEach((name, i) => {
+  const id = `crabe_${biome}_${['a', 'b', 'c'][i]}`;
+  SPECIES.push(S(id, name, 'Une carapace à saisir au bon instant : visez les cercles avant sa fuite.', biome,
+    0, 1, 'crab', 8 + i * 4, 24 + i * 12, 1.2 + i * 2, i, tier + i, 'crab', colors,
+    { bite: 'franc', aggr: 0, stam: 1.3, pow: 1.1, focus: 'ruse' }));
+});
 
 export const SPECIES_BY_ID: Record<string, Species> = Object.fromEntries(SPECIES.map((s) => [s.id, s]));
 
