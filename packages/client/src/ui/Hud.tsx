@@ -1,4 +1,4 @@
-import { BIOMES, NETS, cargoBulk, gearOf, gearTier, dayKey } from '../../../shared/src/index';
+import { BIOMES, NETS, cargoBulk, gearOf, gearTier, dayKey, fishingSector } from '../../../shared/src/index';
 import { useStore, setState, serverNow, portOp, type Panel } from '../store';
 import { sfx, unlockAudio } from '../game/audio';
 import { rt, Bar, Coins, fmt1 } from './common';
@@ -67,7 +67,7 @@ export function Hud() {
         {hud && (
           <>
             <b className={`biome ${BIOMES[hud.biome].danger >= 0.4 ? 'hot' : ''}`}>{BIOMES[hud.biome].name}</b>
-            <span className="k level">Niveau {fmt1(hud.level)}</span>
+            <button className="sector-badge" onClick={open('ship')} title="Conseil de pêche et équipement">{fishingSector(hud.level).name} · Conseil de pêche ↗</button>
             <span className="coords">X {hud.x} · Y {hud.y}</span>
             <span className="k">{TOD[hud.tod]} · {WEATHER[hud.weather]}</span>
           </>

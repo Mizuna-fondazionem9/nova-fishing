@@ -15,3 +15,9 @@ Le nombre conseillé s’applique à **chacune des six améliorations de la cann
 Le guide est affiché sur `/nova-fishing#guide-canne` grâce au bundle community.js. La fiche équipement du jeu y donne accès. Après modification des combats ou des bonus, régénérer le JSON et vérifier les tests avant de déployer.
 
 Déploiement : mettre à jour le jeu d’abord, puis la PR du gabarit NovaBot qui ajoute le conteneur du guide et les liens de navigation. Aucune variable ou migration SQL manuelle.
+
+## Repères compréhensibles en jeu
+
+Le guide utilise maintenant des fiches de destinations, triées des plus accessibles aux plus exigeantes, et les mêmes noms de secteurs que le badge du jeu : Proche du départ, Au large, Eaux lointaines, Eaux extrêmes. Le badge reste affiché sur téléphone (l’ancien niveau régional numérique était masqué à cette largeur). Il ouvre la fiche équipement, qui compare le matériel réel aux repères du profil choisi et identifie l’amélioration la plus basse. Au-delà de la plage modélisée, aucun feu vert n’est affiché.
+
+Les explications sur les six améliorations et les limites du modèle sont repliables. Les joueurs n’ont plus à interpréter un tableau de nombres ni à deviner un niveau régional caché.

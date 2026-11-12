@@ -553,3 +553,9 @@ button.crab-target, button.crab-target:hover:not(:disabled), button.crab-target:
 .cargo-choices small { font-size: 11px; color: #a5bec7; }
 .pending-catch button { width: 100%; margin-top: 10px; white-space: normal; }
 .release-pending { padding: 12px; border: 1px solid #846774; border-radius: 8px; background: #382832; color: #efdce2; }
+.sector-badge { display: block; font: 600 10px var(--f-num); color: #c5e3d5; border: 1px solid #476f71; background: #153037; border-radius: 6px; padding: 6px 8px; white-space: normal; text-align: left; letter-spacing: 0; text-transform: none; }
+.zone-advice { padding: 14px; border: 1px solid #926c78; border-left: 4px solid #c18e9d; border-radius: 9px; background: #182833; }
+.zone-advice.ready { border-left-color: #73dfad; }.zone-advice.careful { border-left-color: #e5c981; }
+.zone-advice h3 { margin: 0 0 10px; font-size: 14px; color: #e6eee9; }.zone-advice > b { display: block; margin-top: 12px; color: #ead9ae; font-size: 14px; }
+.zone-advice p { color: #abc4cc; font-size: 12px; line-height: 1.6; }.zone-advice label { font-size: 12px; }.zone-advice select { max-width: 100%; padding: 7px; margin: 5px 0; background: #0f232c; color: #e2e9e7; border: 1px solid #4c6572; border-radius: 5px; }
+@media(max-width:560px) { .card.tr .sector-badge { display: block; font-size: 9px; padding: 5px; } }
