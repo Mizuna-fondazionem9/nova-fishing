@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   KIT_DEFS, BAITS, VESSELS, PAINTS, CAT_PRICE, catReady, getPort,
   TRAIT_NAMES, type SpecimenTrait, COLOR_NAMES, SIZE_NAMES, BIOMES, BIOME_IDS, NETS, RARITY_COLORS, SILHOUETTE_NAMES, SPECIES, TROPHIES, UPGRADES,
-  bulkOf, cargoBulk, dayKey, depthMeters, gearOf, gearTier, priceOf, upgradeCost,
+  bulkOf, cargoBulk, dayKey, fishingAdvice, depthMeters, gearOf, gearTier, priceOf, upgradeCost,
   type Specimen, type Species, type UpgradeDef,
 } from '../../../shared/src/index';
 import { useStore, setState, getState, portOp, api, serverNow, toast, BASE } from '../store';
@@ -234,6 +234,9 @@ export function PortPanel() {
 export function ShipPanel() {
   const save = useStore((s) => s.save)!;
   const [busy, run] = useBusy();
+  const hud = useStore(s => s.hud);
+  const [skill, setSkill] = useState<'debutant' | 'moyen'>('debutant');
+  const advice = hud ? fishingAdvice(save.up, hud.biome, hud.level, skill) : null;
   const g = gearOf(save.up,save.vessel,save.kit);
   return (
     <Modal title="Cale et équipement" wide>
@@ -246,6 +249,13 @@ export function ShipPanel() {
         ))}
         <p className="note">La vente, les améliorations et l’aquarium se font au port. En cas de naufrage, la cale est perdue.</p>
       </Section>
+      {advice && hud && <section className={`zone-advice ${advice.state}`}>
+        <h3>{BIOMES[hud.biome].name} · {advice.sector}</h3>
+        <label>Repère pour <select value={skill} onChange={e => setSkill(e.target.value as 'debutant' | 'moyen')}><option value="debutant">Je débute / je rate souvent</option><option value="moyen">Je suis à l’aise avec la jauge</option></select></label>
+        <b>{advice.title}</b>
+        <p>{advice.target === null ? 'Cette zone reste très exigeante. Reviens vers les eaux proches du départ pour progresser plus tranquillement.' : `Pour les prises courantes, vise environ le niveau ${advice.target} sur tes six améliorations de canne.`}</p>
+        <p>Ton amélioration la plus basse : <strong>{advice.weakest}, niveau {advice.minimum}</strong>. {advice.target !== null && advice.minimum < advice.target ? 'Renforce-la au port avant de t’aventurer plus loin.' : 'Les poissons rares et géants peuvent rester plus difficiles.'}</p>
+      </section>}
       <Section title="Équipement">
         <dl className="facts">
           <div className="full"><dt>Montage</dt><dd>{KIT_DEFS.find(k=>k.id===(save.kit??'standard'))?.name}</dd></div>

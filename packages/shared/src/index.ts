@@ -11,3 +11,4 @@ export * from './api';
 export * from './maritime';
 
 export * from './adventure';
+export * from './fishing-advice';

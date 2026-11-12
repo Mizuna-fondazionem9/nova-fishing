@@ -4,13 +4,13 @@
 .rod-guide label { display: flex; align-items: center; flex-wrap: wrap; gap: .8rem; margin: 1.3rem 0; color: #e1eeeb; font-size: .9rem; }
 .rod-guide select { padding: .6rem 1rem; border: 1px solid #4b7474; border-radius: 7px; background: #142a30; color: #edf7f3; font: inherit; }
 .rod-guide select:focus-visible { outline: 2px solid #73dfad; outline-offset: 3px; }
-.rod-guide-scroll { overflow-x: auto; border: 1px solid #345455; border-radius: 10px; }
-.rod-guide-table { width: 100%; border-collapse: collapse; font-size: .85rem; background: #102127; }
-.rod-guide-table caption { padding: .8rem 1rem; text-align: left; color: #a2d2c6; }
-.rod-guide-table th,.rod-guide-table td { padding: .75rem 1rem; text-align: left; border-top: 1px solid #28434b; }
-.rod-guide-table thead { color: #73dfad; background: #172e33; }
-.rod-guide-table tbody th { font-weight: 400; color: #d6e6e3; }
-.rod-guide-table td { color: #e3d4b1; white-space: nowrap; }
 .rod-guide .rod-guide-note { font-size: .8rem; }
 .rod-guide .rod-guide-tip { padding: 1rem; border-left: 3px solid #73dfad; background: #142c2d; border-radius: 0 8px 8px 0; }
-@media(max-width:520px) { .rod-guide-table { font-size: .75rem; }.rod-guide-table th,.rod-guide-table td { padding: .65rem .5rem; } }
+.rod-guide-intro { padding: 1.1rem 1.3rem; background: #152f2e; border-left: 3px solid #73dfad; border-radius: 0 10px 10px 0; }
+.rod-guide-intro h3 { margin: 0; color: #d8f4e6; }.rod-guide-intro p { margin-bottom: 0; }
+.rod-guide-cards { display: grid; grid-template-columns: repeat(auto-fit,minmax(230px,1fr)); gap: .8rem; margin: 1.4rem 0; }
+.rod-zone-card { padding: 1.1rem; background: #11272d; border: 1px solid #33535b; border-top: 3px solid #d4b97e; border-radius: 10px; }
+.rod-zone-card.easy { border-top-color: #73dfad; }.rod-zone-card.hard { border-top-color: #ba899b; }
+.rod-zone-card h3 { font-size: 1rem; margin: 0 0 .7rem; color: #e2efea; }.rod-zone-card strong { color: #ecd8aa; font-size: .95rem; }.rod-zone-card p { margin: .6rem 0 0; font-size: .8rem; }
+.rod-guide-help { margin: .8rem 0; padding: 1rem; border: 1px solid #33535b; border-radius: 8px; background: #112329; }
+.rod-guide-help summary { cursor: pointer; color: #cce5dc; }.rod-guide-help p { margin-bottom: 0; }
