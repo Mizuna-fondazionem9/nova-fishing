@@ -559,3 +559,13 @@ button.crab-target, button.crab-target:hover:not(:disabled), button.crab-target:
 .zone-advice h3 { margin: 0 0 10px; font-size: 14px; color: #e6eee9; }.zone-advice > b { display: block; margin-top: 12px; color: #ead9ae; font-size: 14px; }
 .zone-advice p { color: #abc4cc; font-size: 12px; line-height: 1.6; }.zone-advice label { font-size: 12px; }.zone-advice select { max-width: 100%; padding: 7px; margin: 5px 0; background: #0f232c; color: #e2e9e7; border: 1px solid #4c6572; border-radius: 5px; }
 @media(max-width:560px) { .card.tr .sector-badge { display: block; font-size: 9px; padding: 5px; } }
+
+/* Relative difficulty stays explicit even without colour perception. */
+.card.tr .biome.ready,.zone-rating.ready { color: #8ce0b4; }
+.card.tr .biome.careful,.zone-rating.careful { color: #f0ba69; }
+.card.tr .biome.hard,.zone-rating.hard { color: #f18d9e; }
+.zone-rating { display: grid; gap: 4px; width: 100%; }
+.zone-rating strong { font-size: 12px; }.zone-rating > span:last-child { font-size: 9px; color: #d4e1e5; }
+.net-rating { display: block; font-size: 10px; margin: 5px 0; line-height: 1.3; }
+.net-rating.ready { color: #8ce0b4; }.net-rating.careful { color: #f0ba69; }.net-rating.hard { color: #f18d9e; }.net-rating.none { color: #a7bac7; }
+@media(max-width:560px) { .card.tr .zone-rating { display: grid; gap: 3px; }.zone-rating strong { font-size: 10px; }.net-rating { font-size: 9px; } }
