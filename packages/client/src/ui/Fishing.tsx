@@ -197,7 +197,7 @@ export function ResultModal() {
         {r.outcome === 'win' && f ? (
           <>
             <h2 style={{ color: RARITY_COLORS[speciesOf(f).rarity] }}>Capture !</h2>
-            <div className="showcase"><FishIcon sp={speciesOf(f)} color={f.color} scale={4} animate /></div>
+            <div className="showcase"><FishIcon sp={speciesOf(f)} color={f.color} scale={4} animate contain fit /></div>
             <h3 className="species">{speciesOf(f).name}</h3>
             <p className="tags"><Rarity r={speciesOf(f).rarity} /> <Tags f={f} /></p>
             <p className="badges">

@@ -25,7 +25,7 @@ export function Coins({ n, testid }: { n: number; testid?: string }) {
   );
 }
 
-export function FishIcon({ sp, color = 0, scale = 2, animate = false, hidden = false, fit = false }: { sp: Species; color?: number; scale?: number; animate?: boolean; hidden?: boolean; fit?: boolean }) {
+export function FishIcon({ sp, color = 0, scale = 2, animate = false, hidden = false, fit = false, contain = false }: { sp: Species; color?: number; scale?: number; animate?: boolean; hidden?: boolean; fit?: boolean; contain?: boolean }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const gfx = useStore((s) => s.gfx);
   useEffect(() => {
@@ -56,14 +56,24 @@ export function FishIcon({ sp, color = 0, scale = 2, animate = false, hidden = f
       c.style.width = `${w * factor}px`;
       c.style.height = `${h * factor}px`;
     };
-    draw();
-    if (!animate) return;
+    const resize = (): void => {
+      if (!contain) return;
+      const host = c.parentElement;
+      if (!host || !c.width || !c.height) return;
+      const factor = Math.min(scale, Math.max(1, host.clientWidth - 32) / c.width, 160 / c.height);
+      c.style.width = `${c.width * factor}px`;
+      c.style.height = `${c.height * factor}px`;
+    };
+    const observer = contain ? new ResizeObserver(resize) : null;
+    if (observer && c.parentElement) observer.observe(c.parentElement);
+    draw(); resize();
+    if (!animate) return () => observer?.disconnect();
     const id = setInterval(() => {
       frame++;
-      draw();
+      draw(); resize();
     }, 380);
-    return () => clearInterval(id);
-  }, [sp, color, scale, animate, hidden, gfx, fit]);
+    return () => { clearInterval(id); observer?.disconnect(); };
+  }, [sp, color, scale, animate, hidden, gfx, fit, contain]);
   return <canvas ref={ref} className="pix" />;
 }
 

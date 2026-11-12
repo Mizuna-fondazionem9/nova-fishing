@@ -21,14 +21,21 @@ const sat = (n: number, k: number): number => n / (n + k); // 0 -> 0, infini -> 
 const f1 = (v: number): string => (Math.round(v * 10) / 10).toString().replace('.', ',');
 const pct = (v: number): string => `+${Math.round(v * 100)} %`;
 
-export const MAX_LEVEL = 200;
+export const MAX_LEVEL = 50;
+/** Fifty meaningful steps reach the previous endgame strength (200), with a gentle early boost. */
+export const effectiveUpgradeLevel = (level: number): number => {
+  const n = Math.min(MAX_LEVEL, Math.max(0, level));
+  return n + (3 / 47) * n * Math.max(0, n - 3);
+};
+export const compressLegacyLevel = (level: number): number => level <= MAX_LEVEL ? level :
+  Math.min(MAX_LEVEL, Math.ceil((Math.sqrt((38 / 47) ** 2 + 4 * (3 / 47) * level) - 38 / 47) / (6 / 47)));
 
-export const UPGRADES: UpgradeDef[] = [
+const BASE_UPGRADES: UpgradeDef[] = [
   { key: 'speed', group: 'boat', name: 'Voilure', desc: 'Vitesse maximale du bateau.', cost0: 80, max: MAX_LEVEL, effect: (n) => 4.6 * (1 + 1.6 * sat(n, 25)), fmt: (v) => `${f1(v)} tuiles/s` },
   { key: 'accel', group: 'boat', name: 'Gréement', desc: 'Accélération et freinage.', cost0: 50, max: MAX_LEVEL, effect: (n) => 3 * (1 + 2 * sat(n, 15)), fmt: (v) => `${f1(v)} tuiles/s²` },
   { key: 'hull', group: 'boat', name: 'Coque', desc: 'Points de coque : encaisse les attaques.', cost0: 60, max: MAX_LEVEL, effect: (n) => Math.round(100 + 22 * Math.pow(n, 0.8)), fmt: (v) => `${v} PC` },
   { key: 'hold', group: 'boat', name: 'Cale', desc: 'Capacité de stockage, en unités d’encombrement.', cost0: 70, max: MAX_LEVEL, effect: (n) => Math.round(20 + 5 * Math.pow(n, 0.85)), fmt: (v) => `${v} unités` },
-  { key: 'nets', group: 'boat', name: 'Maillage des filets', desc: 'Rendement et puissance de capture des filets (+0,12 par niveau ; nécessite un filet).', cost0: 90, max: MAX_LEVEL, effect: (n) => 1 + 1.5 * sat(n, 20), fmt: (v) => `×${f1(v)}` },
+  { key: 'nets', group: 'boat', name: 'Maillage des filets', desc: 'Augmente le rendement et permet des prises plus difficiles (nécessite un filet).', cost0: 90, max: MAX_LEVEL, effect: (n) => 1 + 1.5 * sat(n, 20), fmt: (v) => `×${f1(v)}` },
   { key: 'repair', group: 'boat', name: 'Atelier de bord', desc: 'Réduit le prix des réparations.', cost0: 40, max: MAX_LEVEL, effect: (n) => 2 * (1 - 0.7 * sat(n, 15)), fmt: (v) => `${f1(v)} or / PC` },
   { key: 'rodPower', group: 'rod', name: 'Puissance de la canne', desc: 'Fatigue infligée au poisson à chaque coup réussi.', cost0: 60, max: MAX_LEVEL, effect: (n) => 10 * (1 + 0.18 * Math.pow(n, 0.7)), fmt: f1 },
   { key: 'rodRes', group: 'rod', name: 'Résistance de la canne', desc: 'Réduit l’usure de la ligne face aux poissons puissants.', cost0: 60, max: MAX_LEVEL, effect: (n) => 10 * (1 + 0.3 * Math.pow(n, 0.8)), fmt: f1 },
@@ -38,6 +45,7 @@ export const UPGRADES: UpgradeDef[] = [
   { key: 'precision', group: 'rod', name: 'Guides de précision', desc: 'Élargit la zone de réussite ; pour les crabes, agrandit les cibles et allonge le délai parfait.', cost0: 70, max: MAX_LEVEL, effect: (n) => 0.25 * sat(n, 15), fmt: pct },
   { key: 'aquarium', group: 'aquarium', name: 'Bassins d’aquarium', desc: 'Nombre d’emplacements d’exposition.', cost0: 150, max: 30, effect: (n) => 4 + 2 * n, fmt: (v) => `${v} places` },
 ];
+export const UPGRADES: UpgradeDef[] = BASE_UPGRADES.map((u: UpgradeDef) => u.key === 'aquarium' ? u : { ...u, effect: (n: number) => u.effect(effectiveUpgradeLevel(n)) });
 
 export const UPGRADE_BY_KEY = Object.fromEntries(UPGRADES.map((u) => [u.key, u])) as Record<UpgradeKey, UpgradeDef>;
 export const UPGRADE_KEYS = UPGRADES.map((u) => u.key);

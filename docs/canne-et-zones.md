@@ -1,0 +1,17 @@
+# Niveaux, cadrage et guide de pêche
+
+Le plafond des améliorations du bateau et de la canne passe de 200 à 50. Les bassins gardent leur plafond de 30. Les niveaux 0 à 3 ont exactement leurs anciens bonus ; les niveaux suivants progressent plus vite, jusqu’à retrouver au niveau 50 les bonus de l’ancien niveau 200. La puissance maximale de fin de jeu reste accessible.
+
+Les anciennes sauvegardes passent de la version 4 à 5. Les niveaux jusqu’à 50 sont conservés. Les niveaux supérieurs sont convertis vers le plus petit niveau entier donnant au moins leurs anciens bonus. La conversion ne touche ni les pièces ni la collection et ne s’applique qu’une fois. La puissance des filets utilise le même niveau équivalent que leurs autres bonus.
+
+Les jauges ont une hauteur de 16 px et un remplissage exact sur 50 niveaux. Les images de capture sont recadrées sur leurs pixels visibles puis mises à l’échelle selon l’espace réellement disponible, avec maintien des proportions et adaptation au redimensionnement.
+
+## Guide du site
+
+`packages/shared/src/rod-guide.json` est généré avec `node --import tsx scripts/rod-guide.ts` depuis les vrais combats. Il couvre les douze biomes et les tranches régionales 1–3, 4–8, 9–15 et 16–30. Le calcul utilise la borne haute de chaque tranche, les poissons communs/peu communs (hors crabes et fossiles), 20 spécimens déterministes par espèce et par niveau, et les profils de simulation débutant et moyen. Le seuil visé est 75 % de captures en moyenne sur l’échantillon des espèces. Ce n’est pas une garantie pour un poisson particulier ou une distribution exacte des apparitions en jeu.
+
+Le nombre conseillé s’applique à **chacune des six améliorations de la canne** : puissance, résistance, ligne, moulinet, récupération et précision. Ce n’est pas l’indice en étoiles. Si aucun niveau jusqu’à 50 n’atteint le seuil, le guide indique que la zone reste très exigeante ; il n’invente pas un niveau inaccessible. Les rares, géants et trophées ne sont pas couverts par ces repères.
+
+Le guide est affiché sur `/nova-fishing#guide-canne` grâce au bundle community.js. La fiche équipement du jeu y donne accès. Après modification des combats ou des bonus, régénérer le JSON et vérifier les tests avant de déployer.
+
+Déploiement : mettre à jour le jeu d’abord, puis la PR du gabarit NovaBot qui ajoute le conteneur du guide et les liens de navigation. Aucune variable ou migration SQL manuelle.

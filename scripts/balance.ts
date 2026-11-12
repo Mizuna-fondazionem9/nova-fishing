@@ -46,7 +46,7 @@ function rate(sp: Species, level: number, bot: keyof typeof BOTS, n = 300): { wi
 
 function combat(): void {
   const picks = ['sardine', 'maquereau', 'bar', 'lieu', 'cabillaud', 'congre', 'barracuda', 'merou', 'espadon', 'thon_rouge', 'requin_groenland', 'calmar_geant', 'requin_fantome', 'leviathan'];
-  for (const level of [0, 5, 15, 40, 80]) {
+  for (const level of [0, 5, 15, 30, 50]) {
     console.log(`\nCanne niveau ${level} — taux de capture (durée moyenne en s)`);
     console.log('espèce'.padEnd(18), 'tier'.padEnd(5), ...Object.keys(BOTS).map((b) => b.padEnd(14)));
     for (const id of picks) {
@@ -62,9 +62,9 @@ function combat(): void {
 
 function costs(): void {
   console.log('\nCoût cumulé pour monter TOUTES les améliorations au niveau n :');
-  for (const n of [5, 10, 20, 50, 100, 200]) {
+  for (const n of [5, 10, 20, 35, 50]) {
     let total = 0;
-    for (const k of UPGRADE_KEYS) for (let i = 0; i < Math.min(n, k === 'aquarium' ? 30 : 200); i++) total += upgradeCost(k, i);
+    for (const k of UPGRADE_KEYS) for (let i = 0; i < Math.min(n, k === 'aquarium' ? 30 : 50); i++) total += upgradeCost(k, i);
     console.log(`  niveau ${n} : ${total.toLocaleString('fr-FR')} pièces`);
   }
 }

@@ -2,7 +2,7 @@
 
 ## Équipement
 
-La fiche du bateau montre des jauges exactes niveau / plafond, séparées en Bateau, Canne & ligne et Aquarium. Un niveau 6/200 remplit 3 % de la barre ; le nombre et l'effet restent lisibles. Zéro ne produit pas de remplissage artificiel. Le plafond des bassins est 30.
+La fiche du bateau montre des jauges exactes niveau / plafond, séparées en Bateau, Canne & ligne et Aquarium. Le plafond est désormais 50 : un niveau 6/50 remplit 12 % de la barre ; le nombre et l'effet restent lisibles. Zéro ne produit pas de remplissage artificiel. Le plafond des bassins reste 30. Les bonus atteignent à 50 l’ancienne puissance de fin de jeu à 200. Les niveaux existants au-dessus de 50 sont convertis en conservant au moins leur puissance.
 
 ## Difficulté et récompenses
 
