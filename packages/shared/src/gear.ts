@@ -28,7 +28,7 @@ export const UPGRADES: UpgradeDef[] = [
   { key: 'accel', group: 'boat', name: 'Gréement', desc: 'Accélération et freinage.', cost0: 50, max: MAX_LEVEL, effect: (n) => 3 * (1 + 2 * sat(n, 15)), fmt: (v) => `${f1(v)} tuiles/s²` },
   { key: 'hull', group: 'boat', name: 'Coque', desc: 'Points de coque : encaisse les attaques.', cost0: 60, max: MAX_LEVEL, effect: (n) => Math.round(100 + 22 * Math.pow(n, 0.8)), fmt: (v) => `${v} PC` },
   { key: 'hold', group: 'boat', name: 'Cale', desc: 'Capacité de stockage, en unités d’encombrement.', cost0: 70, max: MAX_LEVEL, effect: (n) => Math.round(20 + 5 * Math.pow(n, 0.85)), fmt: (v) => `${v} unités` },
-  { key: 'nets', group: 'boat', name: 'Maillage des filets', desc: 'Rendement des filets (nécessite un filet).', cost0: 90, max: MAX_LEVEL, effect: (n) => 1 + 1.5 * sat(n, 20), fmt: (v) => `×${f1(v)}` },
+  { key: 'nets', group: 'boat', name: 'Maillage des filets', desc: 'Rendement et puissance de capture des filets (+0,12 par niveau ; nécessite un filet).', cost0: 90, max: MAX_LEVEL, effect: (n) => 1 + 1.5 * sat(n, 20), fmt: (v) => `×${f1(v)}` },
   { key: 'repair', group: 'boat', name: 'Atelier de bord', desc: 'Réduit le prix des réparations.', cost0: 40, max: MAX_LEVEL, effect: (n) => 2 * (1 - 0.7 * sat(n, 15)), fmt: (v) => `${f1(v)} or / PC` },
   { key: 'rodPower', group: 'rod', name: 'Puissance de la canne', desc: 'Fatigue infligée au poisson à chaque coup réussi.', cost0: 60, max: MAX_LEVEL, effect: (n) => 10 * (1 + 0.18 * Math.pow(n, 0.7)), fmt: f1 },
   { key: 'rodRes', group: 'rod', name: 'Résistance de la canne', desc: 'Réduit l’usure de la ligne face aux poissons puissants.', cost0: 60, max: MAX_LEVEL, effect: (n) => 10 * (1 + 0.3 * Math.pow(n, 0.8)), fmt: f1 },
@@ -42,10 +42,10 @@ export const UPGRADES: UpgradeDef[] = [
 export const UPGRADE_BY_KEY = Object.fromEntries(UPGRADES.map((u) => [u.key, u])) as Record<UpgradeKey, UpgradeDef>;
 export const UPGRADE_KEYS = UPGRADES.map((u) => u.key);
 
-/** Prix pour passer de `level` à `level + 1`. Polynomial : ~n^1,85, sans risque de dépassement. */
+/** Prix pour passer de `level` à `level + 1`. Courbe polynomiale adoucie pour limiter les retours au port sans progression. */
 export function upgradeCost(key: UpgradeKey, level: number): number {
   const d = UPGRADE_BY_KEY[key];
-  return Math.round(d.cost0 * Math.pow(level + 1, 1.85) * (1 + level / 40));
+  return Math.round(d.cost0 * Math.pow(level + 1, 1.55) * (1 + level / 80));
 }
 
 export interface RodStats {

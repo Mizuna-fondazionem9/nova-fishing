@@ -1,32 +1,34 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createCanvas } from '@napi-rs/canvas';
-import { createHash } from 'node:crypto';
+import { existsSync, statSync } from 'node:fs';
 import { SPECIES, THEME_NAMES } from '../packages/shared/src/index';
 const callbacks=new Map<number,FrameRequestCallback>();let sequence=0,reduced=false;
 let resize:()=>void=()=>{};
-const dom=()=>({className:'',style:{setProperty(){}},children:[] as any[],setAttribute(){},append(e:any){this.children.push(e);}});
+const dom=()=>({className:'',classList:{add(){}},replaceChildren(){this.children=[];},style:{setProperty(){}},children:[] as any[],setAttribute(){},append(e:any){this.children.push(e);}});
 (globalThis as any).document={hidden:false,createElement:(tag:string)=>tag==='canvas'?Object.assign(createCanvas(1,1),dom()):dom()};
 (globalThis as any).requestAnimationFrame=(cb:FrameRequestCallback)=>{callbacks.set(++sequence,cb);return sequence;};
 (globalThis as any).cancelAnimationFrame=(id:number)=>callbacks.delete(id);
 (globalThis as any).matchMedia=()=>({get matches(){return reduced;},addEventListener(){},removeEventListener(){}});
 (globalThis as any).window={addEventListener(){},removeEventListener(){}};
 (globalThis as any).ResizeObserver=class {constructor(cb:()=>void){resize=cb;}observe(){}disconnect(){}};
-const {mountAquarium,paintAquarium}=await import('../packages/client/src/public-aquarium');
+const {mountAquarium,aquariumThemeAsset}=await import('../packages/client/src/public-aquarium');
 function step(ms:number){const queue=[...callbacks.values()];callbacks.clear();for(const cb of queue)cb(ms);}
 const position=(a:any)=>{const m=a.style.transform.match(/translate3d\(([-\d.]+)px,([-\d.]+)px/);return {x:+m[1],y:+m[2],w:parseFloat(a.style.width),h:parseFloat(a.style.height)};};
 const floor=SPECIES.filter(s=>['crab','shell','shrimp'].includes(s.shape));
-test('all themes paint distinct, opaque and deterministic scenery',()=>{
- const hashes=[];for(const theme of Object.keys(THEME_NAMES)){
-  const render=()=>{const c=createCanvas(1,1);paintAquarium(c as any,theme);const rgba=c.getContext('2d').getImageData(0,0,720,420).data;assert.ok(rgba.every((v,i)=>i%4!==3||v===255));return createHash('sha256').update(rgba).digest('hex');};
-  const h=render();assert.equal(h,render());hashes.push(h);
- }assert.equal(new Set(hashes).size,7);
+test('seven generated themes are shipped and invalid names fall back to sand',()=>{
+ for(const theme of Object.keys(THEME_NAMES)) {
+  assert.ok(aquariumThemeAsset(theme).endsWith(`/assets/aquariums/${theme}.webp`));
+  const path=`packages/client/public/assets/aquariums/${theme}.webp`;
+  assert.ok(existsSync(path));assert.ok(statSync(path).size>10000);
+ }
+ assert.equal(aquariumThemeAsset('../unknown'),aquariumThemeAsset('sand'));
 });
 test('64 bottom dwellers remain separated, within the tank, and animate after mobile resize',()=>{
  reduced=false;const tank=Object.assign(dom(),{clientWidth:1000,isConnected:true});
  mountAquarium(tank as any,'coral',Array.from({length:64},(_,i)=>({sp:floor[i%floor.length].id,color:0,featured:false})));
  step(0);step(1000);
- const actors=tank.children.filter(x=>x.className.includes('tank-fish'));
+ const actors=tank.children.filter(x=>x.className.includes('nova-aquarium-fish'));
  const first=actors.map(a=>a.style.transform);
  for(const width of [1000,390,280]){
   tank.clientWidth=width;resize();
@@ -46,5 +48,5 @@ test('reduced motion paints every resident once and stops scheduling frames',()=
  reduced=true;const tank=Object.assign(dom(),{clientWidth:390,isConnected:true});
  mountAquarium(tank as any,'sand',floor.map(s=>({sp:s.id,color:0,featured:false})));
  step(0);assert.equal(callbacks.size,0);
- assert.ok(tank.children.filter(x=>x.className.includes('tank-fish')).every(a=>a.style.transform));
+ assert.ok(tank.children.filter(x=>x.className.includes('nova-aquarium-fish')).every(a=>a.style.transform));
 });

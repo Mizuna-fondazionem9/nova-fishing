@@ -1,0 +1,13 @@
+/* Shared by app.css and community.css. The Hub loads this after its own stylesheet. */
+.nova-aquarium { position: relative; isolation: isolate; overflow: hidden; width: 100%; min-height: 360px; border: 1px solid #628b93; border-radius: 14px; background: #103f59; box-shadow: 0 12px 38px #0004,inset 0 0 40px #0004; }
+.nova-aquarium > .nova-aquarium-scenery { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; pointer-events: none; image-rendering: auto; }
+.nova-aquarium-light { position: absolute; z-index: 1; inset: 0; pointer-events: none; background: linear-gradient(112deg,transparent 22%,#c7ffef09 30%,transparent 44%,#c7ffef08 60%,transparent 75%); animation: nova-aquarium-rays 18s ease-in-out infinite alternate; }
+.nova-aquarium-surface { position: absolute; z-index: 3; pointer-events: none; inset: 0; border-radius: inherit; box-shadow: inset 0 2px 1px #dcfffa60,inset 0 -18px 32px #071c352b,inset 12px 0 25px #071c352b,inset -12px 0 25px #071c352b; }
+.nova-aquarium-bubbles { position: absolute; z-index: 2; pointer-events: none; inset: 0; overflow: hidden; }
+.nova-aquarium-bubbles i { position: absolute; bottom: -12px; width: 4px; height: 4px; border: 1px solid #c5fafc70; border-radius: 50%; animation: nova-aquarium-bubble 13s linear var(--bubble-delay,0s) infinite; }
+.nova-aquarium .nova-aquarium-fish { position: absolute; left: 0; top: 0; margin: 0; z-index: 2; max-width: none; animation: none; transform-origin: center 80%; image-rendering: pixelated; }
+.nova-aquarium .nova-aquarium-fish.featured { filter: drop-shadow(0 0 5px #f2dfa890); }
+.nova-aquarium .aquarium-empty { position: absolute; z-index: 4; inset: 0; display: grid; place-items: center; color: #e0e9e0; text-shadow: 0 2px 6px #000; padding: 2rem; text-align: center; }
+@keyframes nova-aquarium-rays { to { transform: translateX(22px); opacity: .35; } }
+@keyframes nova-aquarium-bubble { 0% { transform: translate(0,0); opacity: 0; } 8% { opacity: .7; } 88% { opacity: .4; } 100% { transform: translate(16px,-900px); opacity: 0; } }
+@media(prefers-reduced-motion:reduce) { .nova-aquarium-light,.nova-aquarium-bubbles i { animation: none; } }

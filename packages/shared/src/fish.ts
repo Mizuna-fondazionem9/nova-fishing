@@ -1,7 +1,7 @@
 // Spécimens (individus), variantes procédurales, prix, statistiques de combat et apparition des ombres.
 import { Rng, hashN, clamp } from './rng';
-import { CHUNK, tileAt, timeOfDay, weatherAt, type BiomeId, type Tile, type TimeOfDay, type Weather } from './world';
-import { SPECIES, SPECIES_BY_ID, RARITY_WEIGHT, type Species, type Silhouette, type CursorProfile, type Focus } from './species';
+import { CHUNK, BIOMES, tileAt, timeOfDay, weatherAt, type BiomeId, type Tile, type TimeOfDay, type Weather } from './world';
+import { SPECIES, SPECIES_BY_ID, RARITY_VALUE, RARITY_WEIGHT, type Species, type Silhouette, type CursorProfile, type Focus } from './species';
 
 export interface Specimen {
   uid: string;
@@ -35,14 +35,26 @@ export const regionBonus = (lvl: number): number => Math.log(1 + Math.max(0, lvl
 /** Encombrement en cale : racine du poids, borné. 0,2 kg -> 1 ; 25 kg -> 5 ; 400 kg -> 20 ; plafond 40. */
 export const bulkOf = (kg: number): number => clamp(Math.ceil(Math.sqrt(kg)), 1, 40);
 
-export function priceOf(s: Pick<Specimen, 'sp' | 'kg' | 'size' | 'color' | 'tough' | 'lvl'> & {trait?:SpecimenTrait}): number {
+/** Shared combat/reward rating: regional waters have a floor, even for familiar species. */
+export function encounterTier(sp: Species, lvl: number, biome: BiomeId = sp.biomes[0]): number {
+  const danger = BIOMES[biome]?.danger ?? 0;
+  const regional = 1 + Math.max(0, danger - 0.2) * 9 + Math.max(0, lvl - 1) * 0.65;
+  return Math.max(sp.tier, regional);
+}
+
+export function priceOf(s: Pick<Specimen, 'sp' | 'kg' | 'size' | 'color' | 'tough' | 'lvl'> & {trait?:SpecimenTrait; biome?: BiomeId}): number {
   const sp = SPECIES_BY_ID[s.sp];
   if (!sp) return 0;
   const avgLen = sp.lmin + (sp.lmax - sp.lmin) * 0.4;
   const avgKg = sp.kgMax * Math.pow(avgLen / sp.lmax, 3);
   const weightF = clamp(Math.pow(s.kg / avgKg, 0.55), 0.4, 6);
-  const price = sp.value * weightF * SIZE_VALUE[s.size] * COLOR_VALUE[s.color] * (s.tough ? 1.3 : 1) * (s.trait?TRAIT_VALUE[s.trait]??1:1) * (1 + 0.35 * regionBonus(s.lvl));
-  return Math.max(1, Math.round(price));
+  const tier = encounterTier(sp, s.lvl, s.biome);
+  const variants = SIZE_VALUE[s.size] * COLOR_VALUE[s.color] * (s.tough ? 1.3 : 1) * (s.trait ? TRAIT_VALUE[s.trait] ?? 1 : 1);
+  // A hard catch must pay for the space it occupies, rather than penalising large fish.
+  const perBulk = 12 * Math.pow(tier, 1.25) * Math.sqrt(RARITY_VALUE[sp.rarity]) * Math.sqrt(sp.pow * sp.stam);
+  const fairValue = bulkOf(s.kg) * perBulk * clamp(Math.sqrt(weightF), 0.8, 1.5);
+  const collectorValue = sp.value * weightF * (1 + 0.35 * regionBonus(s.lvl));
+  return Math.max(1, Math.round(Math.max(collectorValue, fairValue) * variants));
 }
 
 export function rollSpecimen(rng: Rng, sp: Species, lvl: number, biome: BiomeId, now: number, uid: string, colorBoost = 1): Specimen {
@@ -81,15 +93,16 @@ export interface FightStats {
 }
 
 /** Statistiques de combat d'un individu. Le niveau régional renforce surtout le « point fort » de l'espèce. */
-export function fightStats(sp: Species, spec: Pick<Specimen, 'len' | 'tough' | 'lvl'> & {trait?:SpecimenTrait}): FightStats {
+export function fightStats(sp: Species, spec: Pick<Specimen, 'len' | 'tough' | 'lvl'> & {trait?:SpecimenTrait; biome?: BiomeId}): FightStats {
   const bonus = regionBonus(spec.lvl);
+  const tier = encounterTier(sp, spec.lvl, spec.biome);
   const sizeF = clamp(spec.len / ((sp.lmin + sp.lmax) / 2), 0.6, 2.2);
   const f = (k: Focus): number => 1 + (sp.focus === k ? 0.5 : 0.15) * bonus;
   return {
-    stamina: 84 * Math.pow(sp.tier, 0.8) * sp.stam * Math.pow(sizeF, 0.8) * (spec.tough ? 1.35 : 1) * (spec.trait==='armored'?1.18:spec.trait==='relentless'?1.1:spec.trait==='swift'?0.92:1) * f('endurant'),
-    power: 6.5 * Math.pow(sp.tier, 0.92) * sp.pow * Math.pow(sizeF, 0.5) * (spec.tough ? 1.15 : 1) * (spec.trait==='relentless'?1.15:1) * f('puissant'),
-    speed: Math.min(2.6, (0.6 + 0.1 * Math.pow(sp.tier, 0.62)) * sp.spd * Math.sqrt(f('vif'))*(spec.trait==='swift'?1.18:spec.trait==='armored'?0.92:spec.trait==='cunning'?1.06:1)),
-    zone: (spec.trait==='cunning'?0.85:1)*clamp((0.25 - 0.0035 * sp.tier) / Math.sqrt(f('ruse')), 0.1, 0.25),
+    stamina: 84 * Math.pow(tier, 0.8) * sp.stam * Math.pow(sizeF, 0.8) * (spec.tough ? 1.35 : 1) * (spec.trait==='armored'?1.18:spec.trait==='relentless'?1.1:spec.trait==='swift'?0.92:1) * f('endurant'),
+    power: 6.5 * Math.pow(tier, 0.92) * sp.pow * Math.pow(sizeF, 0.5) * (spec.tough ? 1.15 : 1) * (spec.trait==='relentless'?1.15:1) * f('puissant'),
+    speed: Math.min(2.6, (0.6 + 0.1 * Math.pow(tier, 0.62)) * sp.spd * Math.sqrt(f('vif'))*(spec.trait==='swift'?1.18:spec.trait==='armored'?0.92:spec.trait==='cunning'?1.06:1)),
+    zone: (spec.trait==='cunning'?0.85:1)*clamp((0.25 - 0.0035 * tier) / Math.sqrt(f('ruse')), 0.1, 0.25),
     aggr: sp.aggr,
     profile: sp.profile,
   };

@@ -4,7 +4,7 @@ import { randomInt, randomUUID } from 'node:crypto';
 import {
   Rng, tileAt, isLand, startPort, portInRange, spawnShadows, speciesForShadow, slotOf, rollSpecimen, fightStats, makeBiteScript,
   judgeHook, makeCombatParams, replayCombat, gearOf, applyCatch, noteBiome, evalTrophies, bumpDaily, dailyChallenges,
-  dayKey, opSell, opUpgrade, opBuyNet, opRepair, opKeep, opRelease, applyDamage, holdFree, bulkOf, regionBonus,
+  dayKey, opSell, opUpgrade, opBuyNet, opRepair, opKeep, opRelease, applyDamage, holdFree, bulkOf, regionBonus, encounterTier,
   SPECIES, SPECIES_BY_ID, HOSTILES, HOSTILE_BY_ID, BIOMES, NETS, NET_COOLDOWN_MS, NET_DISTANCE, RARITY_WEIGHT,
   adventureOf, adventurePortOp, nearbyLandmarks, landmarkById, discoverPoint, pointOp, chartOp, noteAdventureCatch,
   maritimeOp, nearbyTreasures,
@@ -153,7 +153,7 @@ export class Game {
     save.netProgress = 0;
     save.netAt = now;
     const tile = tileAt(this.seed, Math.floor(save.x), Math.floor(save.y));
-    const pool = SPECIES.filter((s) => s.sil === 'small' && s.rarity <= 1 && s.tier <= net.maxTier && s.biomes.includes(tile.biome));
+    const pool = SPECIES.filter((s) => s.sil === 'small' && s.rarity <= 1 && encounterTier(s, tile.level, tile.biome) <= net.maxTier + (save.up.nets ?? 0) * 0.12 && s.biomes.includes(tile.biome));
     if (!pool.length) return [];
     const rng = new Rng(this.randomSeed());
     const population = spawnShadows(this.seed, Math.floor(save.x / CHUNK), Math.floor(save.y / CHUNK), slotOf(now)).length;
@@ -161,7 +161,7 @@ export class Game {
     const got: Specimen[] = [];
     for (let i = 0; i < count; i++) {
       const sp = rng.weighted(pool, pool.map((s) => RARITY_WEIGHT[s.rarity]));
-      const spec = rollSpecimen(rng, sp, 1, tile.biome, now, randomUUID());
+      const spec = rollSpecimen(rng, sp, tile.level, tile.biome, now, randomUUID());
       if (bulkOf(spec.kg) > holdFree(save)) break;
       save.cargo.push(spec);
       const e = (save.bestiary[sp.id] ??= { n: 0, maxLen: 0, maxKg: 0, first: now, biomes: [] });

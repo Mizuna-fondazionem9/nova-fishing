@@ -4,7 +4,7 @@ import type { Adventure } from './adventure';
 import { hashN, Rng } from './rng';
 import { startPort, nearestPort, BIOME_IDS, BIOMES, type BiomeId } from './world';
 import { SPECIES, SPECIES_BY_ID, type Species } from './species';
-import { bulkOf, priceOf, type Specimen } from './fish';
+import { bulkOf, priceOf, encounterTier, type Specimen } from './fish';
 import { gearOf, gearTier, upgradeCost, zeroLevels, NETS, UPGRADE_BY_KEY, type Levels, type UpgradeKey } from './gear';
 
 export const SAVE_VERSION = 4;
@@ -241,7 +241,7 @@ export function applyCatch(s: Save, spec: Specimen, crits: number, now: number):
   s.stats.maxKg = Math.max(s.stats.maxKg, spec.kg);
   if (sp.rarity === 4) s.stats.legend++;
   if (sp.rarity === 5) s.stats.myth++;
-  s.stats.underdog = Math.max(s.stats.underdog, Math.round((sp.tier / gearTier(gearOf(s.up,s.vessel,s.kit).rod)) * 100) / 100);
+  s.stats.underdog = Math.max(s.stats.underdog, Math.round((encounterTier(sp, spec.lvl, spec.biome) / gearTier(gearOf(s.up,s.vessel,s.kit).rod)) * 100) / 100);
   const stored = bulkOf(spec.kg) <= holdFree(s);
   if (stored) s.cargo.push(spec);
   return { stored, record, first };

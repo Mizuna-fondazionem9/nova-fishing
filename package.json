@@ -16,7 +16,8 @@
     "balance": "tsx scripts/balance.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:e2e:adventure": "tsx tests/e2e/adventure.ts",
-    "preview:sprites": "tsx scripts/sprite-preview.ts"
+    "preview:sprites": "tsx scripts/sprite-preview.ts",
+    "balance:progression": "tsx scripts/progression-audit.ts"
   },
   "dependencies": {
     "esbuild": "^0.28.0",
