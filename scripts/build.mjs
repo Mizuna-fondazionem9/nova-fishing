@@ -19,6 +19,11 @@ await build({
   define: { 'process.env.NODE_ENV': dev ? '"development"' : '"production"' },
   logLevel: 'info',
 });
+await build({
+  entryPoints: ['packages/client/src/community.ts'],
+  bundle: true, outfile: 'dist/client/community.js', format: 'esm', target: 'es2020',
+  minify: !dev, sourcemap: dev, logLevel: 'info',
+});
 cpSync('packages/client/index.html', 'dist/client/index.html');
 
 await build({

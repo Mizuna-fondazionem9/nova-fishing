@@ -5,7 +5,7 @@ import type { Config } from './config';
 import { App, HttpError, HANDLED, RateLimiter, num, str, type Ctx } from './http';
 import { Auth, safeEqual } from './auth';
 import { Game } from './game';
-import { MemoryStore, type Store, type RewardStatus } from './store';
+import { MemoryStore, type Store, type RewardStatus, publicSummary } from './store';
 import { PgStore } from './pg-store';
 
 export function makeStore(cfg: Config, log: (m: string) => void = console.log): Store {
@@ -63,6 +63,37 @@ export function buildServer(cfg: Config, store: Store, log: (m: string) => void 
   });
   app.get('/api/config', () => ({ devAuth: cfg.devAuth && !cfg.prod, discord: !!cfg.discord.clientId }));
   app.get('/api/me', async (ctx) => game.me(await auth.require(ctx)));
+
+  // Lecture publique : projection explicite, aucune session ni sauvegarde complète exposée.
+  const publicLimiter = new RateLimiter(45,1);
+  const publicRead = (ctx:Ctx):void => {
+    if(!publicLimiter.take(ctx.ip)) throw new HttpError(429,'Trop de consultations. Réessayez dans quelques instants.');
+    ctx.res.setHeader('Cache-Control','public, max-age=15');
+  };
+  app.get('/api/public/leaderboard', async ctx=>{
+    publicRead(ctx);
+    const offset=Number(ctx.url.searchParams.get('offset')??0);
+    if(!Number.isInteger(offset)||offset<0||offset>10000)throw new HttpError(400,'Page invalide.');
+    const search=(ctx.url.searchParams.get('q')??'').trim();
+    if(search.length>80)throw new HttpError(400,'Recherche trop longue.');
+    const players=await store.listPublicPlayers(25,offset,search);
+    return {players:players.slice(0,24),hasMore:players.length>24 && offset+24<=10000,offset,ranked:!search};
+  });
+  app.get('/api/public/profile', async ctx=>{
+    publicRead(ctx);
+    const id=ctx.url.searchParams.get('id')??'';
+    if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))throw new HttpError(400,'Profil invalide.');
+    const p=await store.getPlayer(id);
+    if(!p)throw new HttpError(404,'Ce pêcheur est introuvable.');
+    const s=p.save, stats=s.stats, tank=s.adventure?.aquarium;
+    return {...publicSummary(p), joinedAt:s.createdAt, vessel:s.vessel??'skiff',paint:s.paint??0,
+      stats:{caught:stats.caught,sold:stats.sold,earned:stats.earned,crits:stats.crits,maxKg:stats.maxKg,
+        species:Object.keys(s.bestiary).length,biomes:stats.biomes.length,trophies:Object.keys(s.trophies).length,netted:stats.netted},
+      aquarium:{name:tank?.name??'Mon jardin marin',theme:tank?.theme??'sand',fish:s.aquarium.map(f=>({
+        sp:f.sp,len:f.len,kg:f.kg,size:f.size,color:f.color,tough:f.tough,trait:f.trait,featured:tank?.featured===f.uid
+      }))}};
+  });
+
   app.post('/api/logout', async (ctx) => {
     await auth.logout(ctx);
     return { ok: true };

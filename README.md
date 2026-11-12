@@ -279,3 +279,15 @@ Les prises peuvent être minuscules ou colossales, cuivrées, azur ou nacrées, 
 Le bouton œil en haut de l'écran masque le HUD. La navigation sur la mer, le lancer et toute l'interface de pêche restent disponibles. Le même bouton réaffiche le HUD. Le réglage de taille visuelle du bateau est supprimé ; les différences de dimensions entre modèles restent.
 
 `npm run preview:sprites` génère les planches de contrôle à partir des véritables sprites Canvas dans `docs/art-preview/`.
+
+
+### Profils publics et aquariums du Hub
+
+Le Hub NovaBot ouvre `/nova-fishing` : classement par pièces actuellement possédées, recherche de pseudo, puis profils partageables `/nova-fishing/joueurs/<uuid>`. Le jeu fournit le bundle public `community.js` et deux lectures sans connexion :
+
+- `GET /api/public/leaderboard?offset=0&q=` : 24 joueurs par page, fortune décroissante, égalités départagées par identifiant. Recherche littérale insensible à la casse ; en recherche, aucun rang global trompeur n'est affiché.
+- `GET /api/public/profile?id=<uuid>` : pseudo, avatar, fortune, bateau, statistiques sélectionnées et poissons effectivement conservés dans l'aquarium (taille, couleur, trait, pièce maîtresse).
+
+Les routes fonctionnent aussi avec le préfixe `/fishing`. Aucune écriture, aucun identifiant Discord, session, position, cargaison, détail de matériel ou sauvegarde complète n'est publié. Lectures limitées par IP, réponse pouvant être mise en cache 15 secondes. Le stockage PostgreSQL et le stockage de développement proposent les mêmes lectures.
+
+**Ordre d'intégration :** déployer d'abord cette version du jeu, puis la mise à jour du Hub. Le relais `FISHING_URL` déjà utilisé transmet les nouveaux endpoints et le bundle ; aucune nouvelle variable ni migration de base n'est nécessaire. Les anciens clients du jeu restent compatibles. Les profils exposent volontairement les statistiques et aquariums demandés ; les visiteurs ne peuvent ni vendre ni déplacer les prises.

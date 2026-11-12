@@ -14,6 +14,20 @@ export interface PlayerRow {
   save: Save;
 }
 
+export interface PublicPlayerSummary {
+  id: string;
+  name: string;
+  avatar: string | null;
+  coins: number;
+  caught: number;
+  aquariumCount: number;
+}
+
+export function publicSummary(p: PlayerRow): PublicPlayerSummary {
+  return { id:p.id, name:p.name, avatar:p.avatar, coins:p.save.coins,
+    caught:p.save.stats.caught, aquariumCount:p.save.aquarium.length };
+}
+
 export type RewardStatus = 'pending' | 'synced' | 'failed';
 export interface RewardEvent {
   id: string;
@@ -38,6 +52,7 @@ export interface Store {
   health(): Promise<boolean>;
   upsertPlayer(discordId: string, name: string, avatar: string | null, makeSave: () => Save): Promise<PlayerRow>;
   getPlayer(id: string): Promise<PlayerRow | null>;
+  listPublicPlayers(limit:number, offset:number, search:string): Promise<PublicPlayerSummary[]>;
   /**
    * Charge la sauvegarde sous verrou exclusif, applique `fn` (synchrone), puis écrit le résultat.
    * Si `fn` lève une exception, rien n'est écrit. Deux appels concurrents pour un même joueur s'exécutent l'un après l'autre.
@@ -132,6 +147,12 @@ export class MemoryStore implements Store {
     this.byDiscord.set(discordId, p.id);
     this.touch();
     return structuredClone(p);
+  }
+
+  async listPublicPlayers(limit:number, offset:number, search:string): Promise<PublicPlayerSummary[]> {
+    return [...this.players.values()].filter(p=>p.name.toLowerCase().includes(search.toLowerCase()))
+      .sort((a,b)=>b.save.coins-a.save.coins || a.id.localeCompare(b.id))
+      .slice(offset,offset+limit).map(publicSummary);
   }
 
   async getPlayer(id: string): Promise<PlayerRow | null> {
