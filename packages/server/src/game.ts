@@ -7,7 +7,7 @@ import {
   dayKey, opSettleCatch, opSell, opUpgrade, opBuyNet, opRepair, opKeep, opRelease, applyDamage, holdFree, bulkOf, regionBonus, eligibleNetSpecies,
   SPECIES, SPECIES_BY_ID, HOSTILES, HOSTILE_BY_ID, BIOMES, NETS, NET_COOLDOWN_MS, NET_DISTANCE, RARITY_WEIGHT,
   adventureOf, adventurePortOp, nearbyLandmarks, landmarkById, discoverPoint, pointOp, chartOp, noteAdventureCatch,
-  maritimeOp, nearbyTreasures,
+  maritimeOp, nearbyTreasures, predatorForShadow, predatorKind, predatorCombatDamage, playerProgress, playerBonuses, HARPOON_LAUNCHER_PRICE, HARPOON_AMMO_PRICE, HARPOON_MAX_AMMO, priceOf,
   MAX_COMBAT_TICKS, TICK_HZ, CHUNK, UPGRADE_BY_KEY,
   type CombatTap, type Save, type Specimen, type Species, type BiteScript, type CombatParams, type Shadow, type UpgradeKey, type Op,
   type MeResponse, type Mutation, type SyncResponse, type CastResponse, type HookResponse, type ResolveResponse, type HitResponse, type Encounter,
@@ -28,9 +28,14 @@ interface FishingSession {
   state: 'wait' | 'fight';
   hookAt: number;
   combat: CombatParams | null;
+  harpoon?: boolean;
+  damagePaid?: number;
 }
 
 interface ActiveEncounter {
+  shadowKey?: string;
+  speciesId?: string;
+  x?: number; y?: number;
   id: string;
   kind: string;
   expires: number;
@@ -178,21 +183,26 @@ export class Game {
 
   private rollEncounter(playerId: string, save: Save): Encounter | undefined {
     const now = this.now();
-    if (this.encounters.has(playerId) || this.fishing.has(playerId)) return;
-    if (now - (this.lastEncounter.get(playerId) ?? 0) < 90_000 && !this.forceEncounter) return;
+    const active=this.encounters.get(playerId);
+    if(active && now<active.expires && active.x!==undefined && Math.hypot(active.x-save.x,active.y!-save.y)<=20 && !save.consumed.includes(active.shadowKey??''))return {id:active.id,kind:active.kind,shadowKey:active.shadowKey,speciesId:active.speciesId,x:active.x,y:active.y,angle:0,dist:8};
+    if(active)this.encounters.delete(playerId);
+    if (this.fishing.has(playerId)) return;
+    if (now - (this.lastEncounter.get(playerId) ?? 0) < 8_000 && !this.forceEncounter) return;
     if (portInRange(this.seed, save.x, save.y)) return;
     const tile = tileAt(this.seed, Math.floor(save.x), Math.floor(save.y));
-    const danger = BIOMES[tile.biome].danger;
-    const pool = HOSTILES.filter((h) => h.biomes.includes(tile.biome));
-    const rng = new Rng(this.randomSeed());
-    const p = 0.035 * danger * Math.min(2, 0.6 + tile.level / 10);
-    if (!this.forceEncounter && (!pool.length || !rng.chance(p))) return;
-    const h = pool.length ? rng.pick(pool) : HOSTILES[0];
-    this.forceEncounter = false;
-    const e: ActiveEncounter = { id: randomUUID(), kind: h.id, expires: now + (h.persist + 20) * 1000, hits: 0, lastHit: 0 };
-    this.encounters.set(playerId, e);
-    this.lastEncounter.set(playerId, now);
-    return { id: e.id, kind: h.id, angle: rng.range(0, Math.PI * 2), dist: 15 };
+    const cx=Math.floor(save.x/CHUNK),cy=Math.floor(save.y/CHUNK);
+    const targets: Shadow[]=[];
+    for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++)targets.push(...spawnShadows(this.seed,cx+dx,cy+dy,slotOf(now)));
+    const target=targets.filter(sh=>!save.consumed.includes(sh.key)&&predatorForShadow(sh)&&Math.hypot(sh.x-save.x,sh.y-save.y)<=11).sort((a,b)=>Math.hypot(a.x-save.x,a.y-save.y)-Math.hypot(b.x-save.x,b.y-save.y))[0];
+    // The legacy forced test encounter is retained only through the explicit test hook.
+    if(!target && !this.forceEncounter)return;
+    const sp=target?predatorForShadow(target)!:undefined;
+    const kind=sp?predatorKind(sp):HOSTILES[0].id;
+    this.forceEncounter=false;
+    const x=target?.x??save.x+8,y=target?.y??save.y;
+    const e:ActiveEncounter={id:randomUUID(),kind,shadowKey:target?.key,speciesId:sp?.id,x,y,expires:now+35000,hits:0,lastHit:0};
+    this.encounters.set(playerId,e);this.lastEncounter.set(playerId,now);
+    return {id:e.id,kind,shadowKey:e.shadowKey,speciesId:e.speciesId,x,y,angle:Math.atan2(y-save.y,x-save.x),dist:Math.hypot(x-save.x,y-save.y)};
   }
 
   async sync(playerId: string, x: number, y: number): Promise<SyncResponse> {
@@ -217,7 +227,7 @@ export class Game {
 
   // ---------- Pêche ----------
 
-  async cast(playerId: string, key: string, x: number, y: number): Promise<CastResponse> {
+  async cast(playerId: string, key: string, x: number, y: number, tool = 'rod'): Promise<CastResponse> {
     const now = this.now();
     const m = /^(-?\d{1,7}),(-?\d{1,7}),(\d{1,9}),(\d)$/.exec(key);
     if (!m) throw new HttpError(400, 'Cible invalide.');
@@ -236,28 +246,35 @@ export class Game {
       if (save.pendingCatch) throw new HttpError(409, 'Choisis d’abord quoi faire de la prise en attente.');
       if (!this.move(save, x, y, [])) throw new HttpError(409, 'Position du bateau refusée.');
       if (save.consumed.includes(key)) throw new HttpError(409, 'Ce poisson est déjà parti.');
-      if (Math.hypot(shadow.x - save.x, shadow.y - save.y) > CAST_RANGE + CAST_SLACK) throw new HttpError(409, 'Trop loin pour lancer.');
+      const predator=predatorForShadow(shadow);
+      if(predator && tool!=='harpoon') throw new HttpError(409,'Prédateur dangereux : utilise un harpon à corde.');
+      if(!predator && tool==='harpoon') throw new HttpError(400,'Le harpon est réservé aux prédateurs dangereux.');
+      if(predator && (!save.harpoonOwned || save.harpoons<1)) throw new HttpError(409,'Achète un lance-harpon et des recharges au port.');
+      if (Math.hypot(shadow.x - save.x, shadow.y - save.y) > (predator ? 22 : CAST_RANGE + CAST_SLACK)) throw new HttpError(409, 'Trop loin pour lancer.');
       const rng = new Rng(this.randomSeed());
       const a=adventureOf(save);
       const bait=a.bait && (a.baits[a.bait]??0)>0 ? a.bait : 'none';
-      const pick = speciesForShadow(rng, this.seed, shadow,bait);
+      const bonuses=playerBonuses(playerProgress(save.xp).level);
+      const pick = speciesForShadow(rng, this.seed, shadow,bait,bonuses.rare);
       if (!pick) throw new HttpError(409, 'Rien ne mord ici.');
       const lagoon=nearbyLandmarks(this.seed,shadow.x,shadow.y).some(p=>p.kind==='lagoon'&&Math.hypot(p.x-shadow.x,p.y-shadow.y)<18);
-      const spec = rollSpecimen(rng, pick.sp, pick.tile.level, pick.tile.biome, now, randomUUID(),lagoon?2:1);
-      if(bait!=='none')a.baits[bait]--;
-      const script = makeBiteScript(rng, pick.sp, gearOf(save.up,save.vessel,save.kit).rod.reel);
-      if(bait==='gentle') {
+      const spec = rollSpecimen(rng, pick.sp, pick.tile.level, pick.tile.biome, now, randomUUID(),lagoon?2:1,bonuses.variants);
+      if(predator){spec.predator=true;spec.value=priceOf(spec);save.harpoons--;this.encounters.delete(playerId);}
+      if(bait!=='none'&&!predator)a.baits[bait]--;
+      let script = makeBiteScript(rng, pick.sp, gearOf(save.up,save.vessel,save.kit).rod.reel);
+      if(predator){const at=rng.int(1400,2300);script={events:[{t:at,kind:'bite'}],biteAt:at,window:450,end:at+950};}
+      if(bait==='gentle'&&!predator) {
         script.window=Math.round(script.window*1.15);
         // Un départ sans morsure est parfois transformé en vraie touche.
         if(script.biteAt===null && rng.chance(0.65)) {
           script.events=script.events.filter(e=>e.kind!=='leave');script.biteAt=script.end;script.window=950;script.events.push({t:script.biteAt,kind:'bite'});script.end+=2150;
         }
       }
-      const s: FishingSession = { sid: randomUUID(), key, sp: pick.sp, spec, script, createdAt: this.now(), state: 'wait', hookAt: 0, combat: null };
+      const s: FishingSession = { sid: randomUUID(), key, harpoon:!!predator, sp: pick.sp, spec, script, createdAt: this.now(), state: 'wait', hookAt: 0, combat: null };
       return s;
     });
     this.fishing.set(playerId, session);
-    return { sid: session.sid, script: session.script };
+    return { sid: session.sid, script: session.script, harpoon:session.harpoon, save: (await this.store.getPlayer(playerId))!.save };
   }
 
   private session(playerId: string, sid: string, state: 'wait' | 'fight'): FishingSession {
@@ -276,16 +293,21 @@ export class Game {
     const e = Math.min(server + 300, Math.max(server - 4000, elapsed));
     const verdict = judgeHook(s.script, e);
     if (verdict === 'ok') {
-      const save = (await this.store.getPlayer(playerId))!.save;
       s.state = 'fight';
+      let hookWrecked=false;
+      const save = await this.store.withSave(playerId,sv=>{if(s.harpoon){const hit=predatorCombatDamage(s.sp);s.damagePaid=hit;hookWrecked=applyDamage(sv,hit,this.seed).wrecked;}return sv;});
+      if(hookWrecked){this.fishing.delete(playerId);return {verdict:'none',save,wrecked:true};}
       s.hookAt = now;
       s.combat = makeCombatParams(fightStats(s.sp, s.spec), gearOf(save.up,save.vessel,save.kit).rod, this.randomSeed());
+      const bonuses=playerBonuses(playerProgress(save.xp).level);
+      s.combat.forgive=bonuses.forgive;s.combat.luckyCrit=bonuses.luckyCrit;
+      if(s.harpoon){s.combat.hostileDamage=predatorCombatDamage(s.sp);s.combat.hull=save.hull+(s.damagePaid??0);}
       if (s.sp.sil === 'crab') { s.combat.mode = 'crab'; s.combat.crabPrecision = gearOf(save.up,save.vessel,save.kit).rod.precision; s.combat.aggr = 0; }
-      return { verdict, combat: s.combat };
+      return { verdict, combat: s.combat, save };
     }
     this.fishing.delete(playerId);
     const save = await this.store.withSave(playerId, (sv) => {
-      if (verdict !== 'none') {
+      if (verdict !== 'none' && !s.harpoon) {
         this.consume(sv, s.key);
         sv.stats.escaped++;
       }
@@ -338,12 +360,18 @@ export class Game {
       const notes: string[] = [];
       if (save.pendingCatch) throw new HttpError(409, 'Une prise attend déjà ton choix.');
       this.consume(save, s.key);
-      if (!win) {
+      const hullHit=s.harpoon?Math.max(0,replay.hullDamage-(s.damagePaid??0)):0;
+      const wrecked=hullHit>0?applyDamage(save,hullHit,this.seed).wrecked:false;
+      if(hullHit>0)notes.push(`Le prédateur inflige ${hullHit} dégâts supplémentaires à la coque.`);
+      if (!win || wrecked) {
         save.stats.escaped++;
         if (tooFast) notes.push('Combat refusé : durée incohérente.');
         return { ...this.mutation(save, notes), outcome: 'lose' as const };
       }
+      const oldLevel=playerProgress(save.xp).level;
       const r = applyCatch(save, s.spec, replay.crits, now);
+      const newLevel=playerProgress(save.xp).level;
+      if(newLevel>oldLevel)notes.push(`Niveau ${newLevel} atteint ! Tes bonus de chance augmentent.`);
       noteBiome(save, s.spec.biome);
       noteAdventureCatch(save,s.spec,now);
       for (const c of bumpDaily(save, { kind: 'catch', sp: s.sp, kg: s.spec.kg, biome: s.spec.biome }, now))
@@ -379,7 +407,9 @@ export class Game {
     return this.store.withSave(playerId, (save, tx) => {
       const notes: string[] = [];
       const tile = tileAt(this.seed, Math.floor(save.x), Math.floor(save.y));
-      const damage = Math.round(HOSTILE_BY_ID[e.kind].damage * (1 + 0.3 * regionBonus(tile.level)));
+      if(this.fishing.has(playerId)||save.pendingCatch)throw new HttpError(409,'Cette créature est déjà engagée.');
+      if(e.x!==undefined && Math.hypot(e.x-save.x,e.y!-save.y)>20)throw new HttpError(409,'La créature a abandonné la poursuite.');
+      const damage = e.speciesId?predatorCombatDamage(SPECIES_BY_ID[e.speciesId]):Math.round(HOSTILE_BY_ID[e.kind].damage * (1 + 0.3 * regionBonus(tile.level)));
       const { wrecked } = applyDamage(save, damage, this.seed);
       if (wrecked) {
         this.encounters.delete(playerId);
@@ -453,6 +483,22 @@ export class Game {
       save.treasures.push(id); save.coins+=treasure.coins; save.stats.earned+=treasure.coins;
       const notes=[`Trésor ouvert : +${treasure.coins} pièces !`];
       this.finish(save,tx,notes); return this.mutation(save,notes);
+    });
+  }
+
+  harpoonShop(playerId:string, action:unknown, count:unknown):Promise<Mutation>{
+    return this.atPort(playerId,(save,notes)=>{
+      if(action==='launcher'){
+        if(save.harpoonOwned)return {ok:false,error:'Lance-harpon déjà possédé.'};
+        if(save.coins<HARPOON_LAUNCHER_PRICE)return {ok:false,error:'Pièces insuffisantes.'};
+        save.coins-=HARPOON_LAUNCHER_PRICE;save.harpoonOwned=true;notes.push('Lance-harpon à corde acheté.');return {ok:true};
+      }
+      if(action!=='ammo'||!Number.isInteger(count)||(count as number)<1||(count as number)>20)return {ok:false,error:'Quantité de harpons invalide.'};
+      if(!save.harpoonOwned)return {ok:false,error:'Achète d’abord un lance-harpon.'};
+      if(save.harpoons+(count as number)>HARPOON_MAX_AMMO)return {ok:false,error:'Réserve de harpons pleine.'};
+      const cost=(count as number)*HARPOON_AMMO_PRICE;
+      if(save.coins<cost)return {ok:false,error:'Pièces insuffisantes.'};
+      save.coins-=cost;save.harpoons+=count as number;notes.push(`${count} recharge(s) de harpon achetée(s).`);return {ok:true};
     });
   }
 

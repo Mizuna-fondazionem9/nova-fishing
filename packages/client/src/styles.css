@@ -591,3 +591,8 @@ button.crab-target, button.crab-target:hover:not(:disabled), button.crab-target:
   .hud-top .card.tr .row button.icon { width: 32px; min-width: 32px; height: 36px; min-height: 36px; }
   .hud-top .biome { font-size: 11px; letter-spacing: .03em; }
 }
+
+.player-level { display: flex; align-items: center; gap: 8px; font: 600 10px var(--f-num); color: #d5bdf4; }.player-level .bar { flex: 1; }
+.harpoon-aim { position: relative; height: 24px; margin: 10px 8px; background: #0b1e29; border: 1px solid #6e8791; border-radius: 6px; overflow: hidden; }
+.harpoon-aim i { position: absolute; top: 0; bottom: 0; background: #448d68; }.harpoon-aim > span { position: absolute; top: 0; bottom: 0; width: 4px; background: #fff2ce; box-shadow: 0 0 6px #fff; }
+.hunt-status { background: #3c2630eb; color: #f7b6aa; padding: 8px 12px; border-radius: 8px; font-size: 12px; text-align: center; }

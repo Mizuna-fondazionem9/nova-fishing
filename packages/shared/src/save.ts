@@ -1,3 +1,4 @@
+import { catchXp } from './player-progression';
 import type { Adventure } from './adventure';
 // Sauvegarde d'un joueur et opérations de jeu PURES (aucun accès réseau ni base ici).
 // Le serveur charge la sauvegarde sous verrou, applique une de ces opérations, puis réécrit.
@@ -7,7 +8,7 @@ import { SPECIES, SPECIES_BY_ID, type Species } from './species';
 import { bulkOf, priceOf, encounterTier, type Specimen } from './fish';
 import { gearOf, gearTier, upgradeCost, zeroLevels, NETS, UPGRADE_BY_KEY, compressLegacyLevel, type Levels, type UpgradeKey } from './gear';
 
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 
 export interface BestiaryEntry {
   n: number;
@@ -60,6 +61,9 @@ export interface Save {
   hull: number;
   up: Levels;
   net: number;
+  xp: number;
+  harpoonOwned: boolean;
+  harpoons: number;
   cargo: Specimen[];
   /** One verified catch awaiting an explicit cargo decision; persisted across reconnects. */
   pendingCatch?: Specimen;
@@ -82,7 +86,7 @@ export function newSave(seed: number, now: number): Save {
   return {
     kit:'standard',vessel:'skiff',vessels:['skiff'],paint:0,paints:[0],treasures:[],
     v: SAVE_VERSION, x: p.x + 0.5, y: p.y + 0.5, lastPort: p.id, coins: 40, hull: gearOf(up).hullMax, up, net: 0,
-    cargo: [], aquarium: [], bestiary: {},
+    xp: 0, harpoonOwned: false, harpoons: 0, cargo: [], aquarium: [], bestiary: {},
     stats: { caught: 0, escaped: 0, sold: 0, earned: 0, dist: 0, wrecks: 0, crits: 0, legend: 0, myth: 0, maxKg: 0, underdog: 0, biomes: [], ports: [p.id], netted: 0 },
     trophies: {}, daily: { day: '', prog: {}, done: [] }, consumed: [], netProgress: 0, netAt: 0, syncAt: now, createdAt: now,
   };
@@ -99,6 +103,14 @@ export function migrateSave(raw: unknown, seed: number, now: number): Save {
       if (key !== 'aquarium') s.up[key] = compressLegacyLevel(s.up[key]);
     }
   }
+  if (r.xp === undefined) {
+    const entries=Object.entries(s.bestiary),total=entries.reduce((n,[,e])=>n+e.n,0);
+    const activeRatio=total?Math.min(1,s.stats.caught/total):0;
+    s.xp=Math.round(entries.reduce((xp,[id,entry])=>xp+(SPECIES_BY_ID[id]?entry.n*catchXp(SPECIES_BY_ID[id]):0),0)*activeRatio);
+  }
+  s.xp=Math.max(0,Math.floor(Number.isFinite(s.xp)?s.xp:0));
+  s.harpoons=Math.max(0,Math.min(99,Math.floor(Number.isFinite(s.harpoons)?s.harpoons:0)));
+  s.harpoonOwned=s.harpoonOwned===true;
   s.v = SAVE_VERSION;
   delete (s as Save & {boatSize?:number}).boatSize;
   s.cargo = (s.cargo ?? []).filter((c) => SPECIES_BY_ID[c.sp]);
@@ -244,6 +256,7 @@ export function applyCatch(s: Save, spec: Specimen, crits: number, now: number):
   if (!e.biomes.includes(spec.biome)) e.biomes.push(spec.biome);
   s.bestiary[sp.id] = e;
   s.stats.caught++;
+  s.xp += catchXp(sp, spec.lvl, spec.predator);
   s.stats.crits += crits;
   s.stats.maxKg = Math.max(s.stats.maxKg, spec.kg);
   if (sp.rarity === 4) s.stats.legend++;

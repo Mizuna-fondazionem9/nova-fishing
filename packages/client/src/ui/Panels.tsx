@@ -3,7 +3,7 @@ import '../aquarium.css';
 import { Captaincy, AquariumWorkshop } from './Adventure';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
-  KIT_DEFS, BAITS, VESSELS, PAINTS, CAT_PRICE, catReady, getPort,
+  playerProgress, playerBonuses, HARPOON_LAUNCHER_PRICE, HARPOON_AMMO_PRICE, HARPOON_MAX_AMMO, KIT_DEFS, BAITS, VESSELS, PAINTS, CAT_PRICE, catReady, getPort,
   TRAIT_NAMES, type SpecimenTrait, COLOR_NAMES, SIZE_NAMES, BIOMES, BIOME_IDS, NETS, RARITY_COLORS, SILHOUETTE_NAMES, SPECIES, TROPHIES, UPGRADES,
   bulkOf, cargoBulk, dayKey, fishingAdvice, rodStars, netFishingProfile, depthMeters, gearOf, priceOf, upgradeCost,
   type Specimen, type Species, type UpgradeDef,
@@ -60,6 +60,26 @@ function FishRow({ f, children }: { f: Specimen; children?: ReactNode }) {
 }
 
 // ---------- Port ----------
+
+function HarpoonShop() {
+  const save=useStore(s=>s.save)!;
+  const [busy,run]=useBusy();
+  return <Section title="Harpon à corde" aside={`${save.harpoons} / ${HARPOON_MAX_AMMO} recharges`}>
+    <p className="note">Les prédateurs signalés par « ! » s’accrochent au harpon. Chaque tentative consomme une recharge, même si le tir manque. Ils peuvent abîmer la coque même avec un combat parfait.</p>
+    {!save.harpoonOwned ? <button disabled={busy||save.coins<HARPOON_LAUNCHER_PRICE} onClick={()=>run(()=>portOp('/api/port/harpoon',{action:'launcher'}))}>Acheter le lance-harpon <Coins n={HARPOON_LAUNCHER_PRICE}/></button> : <div className="row">{[1,5,10].map(count=><button key={count} disabled={busy||save.coins<count*HARPOON_AMMO_PRICE||save.harpoons+count>HARPOON_MAX_AMMO} onClick={()=>run(()=>portOp('/api/port/harpoon',{action:'ammo',count}))}>+{count} harpon(s) <Coins n={count*HARPOON_AMMO_PRICE}/></button>)}</div>}
+  </Section>;
+}
+
+function PlayerProgression() {
+  const save=useStore(s=>s.save)!;
+  const p=playerProgress(save.xp),b=playerBonuses(p.level);
+  return <Section title={`Pêcheur · niveau ${p.level} / 50`} aside={p.next?`${p.current} / ${p.next} XP`:'Niveau maximum'}>
+    <Bar value={p.next?p.current:1} max={p.next||1} color="#b49ee8"/>
+    <p className="note">L’XP vient des captures actives, même relâchées ou en attente de place. Les filets ne donnent pas d’XP.</p>
+    <dl className="facts"><div><dt>Variantes</dt><dd>×{fmt1(b.variants)}</dd></div><div><dt>Tirage des rares</dt><dd>×{fmt1(b.rare)}</dd></div><div><dt>Ratés pardonnés</dt><dd>{Math.round(b.forgive*100)} %</dd></div><div><dt>Critiques chanceux</dt><dd>{Math.round(b.luckyCrit*100)} %</dd></div></dl>
+    <p className="note">Au maximum, 1 raté sur 6 peut être pardonné, avec deux déclenchements au plus par combat. Les chances de variantes atteignent ×3 et le poids de tirage des espèces rares ×2 au niveau 50.</p>
+  </Section>;
+}
 
 function UpgradeRow({ u }: { u: UpgradeDef }) {
   const save = useStore((s) => s.save)!;
@@ -210,9 +230,12 @@ export function PortPanel() {
       {tab === 'captaincy' && <Captaincy />}
       {tab === 'yard' && <YardTab />}
       {tab === 'rod' && (
+        <>
+        <HarpoonShop />
         <Section title="Canne à pêche">
           {UPGRADES.filter((u) => u.group === 'rod').map((u) => <UpgradeRow key={u.key} u={u} />)}
         </Section>
+        </>
       )}
       {tab === 'aqua' && (
         <>
@@ -240,6 +263,8 @@ export function ShipPanel() {
   const g = gearOf(save.up,save.vessel,save.kit);
   return (
     <Modal title="Cale et équipement" wide>
+      <PlayerProgression />
+      <p className="note">Harpon : {save.harpoonOwned ? `${save.harpoons} recharge(s)` : 'Lance-harpon à acheter au port'}</p>
       <Section title="Cale" aside={`${cargoBulk(save)} / ${g.hold} unités`}>
         {!save.cargo.length && <p className="empty">La cale est vide.</p>}
         {save.cargo.map((f) => (

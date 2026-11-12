@@ -97,6 +97,7 @@ export function Tags({ f }: { f: Specimen }) {
     <>
       {f.size > 0 && <span className="tag gold">{SIZE_NAMES[f.size]}</span>}
       {f.color > 0 && <span className="tag violet">{COLOR_NAMES[f.color]}</span>}
+      {f.predator && <span className="tag red">Prédateur · prime de risque</span>}
       {f.tough && <span className="tag red">Coriace</span>}
       {f.trait && <span className="tag green">{TRAIT_NAMES[f.trait]}</span>}
     </>

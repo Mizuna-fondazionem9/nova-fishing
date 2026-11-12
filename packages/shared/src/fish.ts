@@ -1,3 +1,4 @@
+import { predatorForShadow } from './predators';
 // Spécimens (individus), variantes procédurales, prix, statistiques de combat et apparition des ombres.
 import { Rng, hashN, clamp } from './rng';
 import { CHUNK, BIOMES, tileAt, timeOfDay, weatherAt, type BiomeId, type Tile, type TimeOfDay, type Weather } from './world';
@@ -5,6 +6,7 @@ import { SPECIES, SPECIES_BY_ID, RARITY_VALUE, RARITY_WEIGHT, type Species, type
 
 export interface Specimen {
   uid: string;
+  predator?: boolean;
   sp: string;
   /** Longueur en cm, poids en kg. */
   len: number;
@@ -42,7 +44,7 @@ export function encounterTier(sp: Species, lvl: number, biome: BiomeId = sp.biom
   return Math.max(sp.tier, regional);
 }
 
-export function priceOf(s: Pick<Specimen, 'sp' | 'kg' | 'size' | 'color' | 'tough' | 'lvl'> & {trait?:SpecimenTrait; biome?: BiomeId}): number {
+export function priceOf(s: Pick<Specimen, 'sp' | 'kg' | 'size' | 'color' | 'tough' | 'lvl'> & {trait?:SpecimenTrait; biome?: BiomeId; predator?: boolean}): number {
   const sp = SPECIES_BY_ID[s.sp];
   if (!sp) return 0;
   const avgLen = sp.lmin + (sp.lmax - sp.lmin) * 0.4;
@@ -54,12 +56,14 @@ export function priceOf(s: Pick<Specimen, 'sp' | 'kg' | 'size' | 'color' | 'toug
   const perBulk = 12 * Math.pow(tier, 1.25) * Math.sqrt(RARITY_VALUE[sp.rarity]) * Math.sqrt(sp.pow * sp.stam);
   const fairValue = bulkOf(s.kg) * perBulk * clamp(Math.sqrt(weightF), 0.8, 1.5);
   const collectorValue = sp.value * weightF * (1 + 0.35 * regionBonus(s.lvl));
-  return Math.max(1, Math.round(Math.max(collectorValue, fairValue) * variants));
+  const base = Math.max(collectorValue, fairValue) * variants;
+  return Math.max(1, Math.round(s.predator ? base * 1.35 + 75 : base));
 }
 
-export function rollSpecimen(rng: Rng, sp: Species, lvl: number, biome: BiomeId, now: number, uid: string, colorBoost = 1): Specimen {
-  colorBoost = Math.max(1,Math.min(2,Number.isFinite(colorBoost)?colorBoost:1));
-  const boost = 1 + regionBonus(lvl);
+export function rollSpecimen(rng: Rng, sp: Species, lvl: number, biome: BiomeId, now: number, uid: string, colorBoost = 1, variantBoost = 1): Specimen {
+  variantBoost=Math.max(1,Math.min(3,variantBoost));
+  colorBoost = Math.max(1,Math.min(6,Math.max(1,Math.min(2,Number.isFinite(colorBoost)?colorBoost:1))*variantBoost));
+  const boost = (1 + regionBonus(lvl))*variantBoost;
   const r = rng.next();
   const size = r < 0.00015*boost ? 5 : r < 0.0008 * boost ? 3 : r < 0.008 * boost ? 2 : r < 0.05 * boost ? 1 : r > 0.965 ? 4 : 0;
   let len = sp.lmin + (sp.lmax - sp.lmin) * Math.pow(rng.next(), 1.5);
@@ -119,13 +123,13 @@ function weightOf(sp: Species, tile: Tile, tod: TimeOfDay, weather: Weather): nu
 }
 
 /** Tire une espèce pour une tuile. Si `sil` est fourni, seules les espèces de cette silhouette sont candidates. */
-export function pickSpecies(rng: Rng, tile: Tile, tod: TimeOfDay, weather: Weather, sil?: Silhouette, excludeCrabs = false, bait = 'none'): Species | null {
+export function pickSpecies(rng: Rng, tile: Tile, tod: TimeOfDay, weather: Weather, sil?: Silhouette, excludeCrabs = false, bait = 'none', rareBoost = 1): Species | null {
   const items: Species[] = [];
   const weights: number[] = [];
   for (const sp of SPECIES) {
     if (sil && sp.sil !== sil) continue;
     if (excludeCrabs && sp.sil === 'crab') continue;
-    const w = weightOf(sp, tile, tod, weather)*(bait==='glimmer'&&sp.rarity>=2?1.75:1);
+    const w = weightOf(sp, tile, tod, weather)*(bait==='glimmer'&&sp.rarity>=2?1.75:1)*(sp.rarity>=2?Math.max(1,Math.min(2,rareBoost)):1);
     if (w > 0) {
       items.push(sp);
       weights.push(w);
@@ -208,9 +212,9 @@ export function spawnShadows(seed: number, cx: number, cy: number, slot: number)
 }
 
 /** Côté serveur : espèce réelle d'une ombre, parmi celles qui partagent sa silhouette. */
-export function speciesForShadow(secret: Rng, seed: number, sh: Shadow, bait = 'none'): { sp: Species; tile: Tile } | null {
+export function speciesForShadow(secret: Rng, seed: number, sh: Shadow, bait = 'none', rareBoost = 1): { sp: Species; tile: Tile } | null {
   const tile = tileAt(seed, Math.floor(sh.x), Math.floor(sh.y));
   const ms = sh.slot * SLOT_MS;
-  const sp = pickSpecies(secret, tile, timeOfDay(ms), weatherAt(seed, ms, sh.x, sh.y), sh.sil,false,bait);
+  const sp = predatorForShadow(sh) ?? pickSpecies(secret, tile, timeOfDay(ms), weatherAt(seed, ms, sh.x, sh.y), sh.sil,false,bait,rareBoost);
   return sp ? { sp, tile } : null;
 }

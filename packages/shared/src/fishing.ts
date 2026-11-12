@@ -94,6 +94,10 @@ export interface CombatParams {
   critMult: number;
   combo: number;
   aggr: number;
+  hostileDamage?: number;
+  hull?: number;
+  forgive?: number;
+  luckyCrit?: number;
 }
 
 export function makeCombatParams(f: FightStats, rod: RodStats, seed: number): CombatParams {
@@ -161,10 +165,18 @@ export class Combat {
   private nextRush: number;
   private erraticMul = 1;
   private erraticLeft = 0;
+  hullDamage=0;
+  forgiven=0;
+  luckyCrits=0;
+  luckEvent: 'forgiven' | 'critical' | null=null;
+  private lastMissHull=-120;
+  private luckRng: Rng;
   private rng: Rng;
 
   constructor(public readonly p: CombatParams) {
     this.rng = new Rng(p.seed);
+    this.luckRng = new Rng((p.seed ^ 0x72af9831) >>> 0);
+    this.hullDamage=p.hostileDamage??0;
     this.phase = this.rng.next() * 2;
     this.pos = this.phase < 1 ? this.phase : 2 - this.phase;
     this.fish = p.stamina;
@@ -201,6 +213,8 @@ export class Combat {
   step(): void {
     if (this.state !== 'run') return;
     this.tick++;
+    if(this.p.hostileDamage && this.tick%(8*TICK_HZ)===0) this.hullDamage+=this.p.hostileDamage+Math.min(3,Math.floor(this.tick/(30*TICK_HZ)));
+    if(this.p.hull!==undefined && this.hullDamage>=this.p.hull){this.state='lose';return;} 
     if (this.p.mode === 'crab' && this.tick > this.targetAt + 66) {
       this.misses++; this.streak = 0; this.comboN = 0;
       this.line -= this.p.missTension;
@@ -235,9 +249,11 @@ export class Combat {
     const d = crab ? (Math.hypot(x! - this.targetX, y! - this.targetY) <= this.targetRadius ? 0 : 1) : Math.abs(this.pos - this.zoneC);
     if (!crab && d > this.p.zone / 2 && this.grace > 0) return 'locked';
     this.lock = LOCK_TICKS;
+    this.luckEvent=null;
     let res: TapResult;
     if (d <= this.p.zone / 2) {
-      const crit = crab ? (this.tick - this.targetAt) * 1000 / TICK_HZ <= this.perfectMs : d <= (this.p.zone * this.p.crit) / 2;
+      let crit = crab ? (this.tick - this.targetAt) * 1000 / TICK_HZ <= this.perfectMs : d <= (this.p.zone * this.p.crit) / 2;
+      if(!crit && this.luckRng.chance(Math.min(.2,this.p.luckyCrit??0))){crit=true;this.luckyCrits++;this.luckEvent='critical';}
       res = crit ? 'crit' : 'hit';
       if (crit) this.crits++;
       else this.hits++;
@@ -253,6 +269,8 @@ export class Combat {
         this.state = 'win';
       }
     } else {
+      if(this.forgiven<2 && this.luckRng.chance(Math.min(1/6,this.p.forgive??0))){this.forgiven++;this.luckEvent='forgiven';this.last='hit';return 'hit';}
+      if(this.p.hostileDamage && this.tick-this.lastMissHull>=120){this.hullDamage+=this.p.hostileDamage;this.lastMissHull=this.tick;}
       res = 'miss';
       this.misses++;
       this.comboN = 0;
@@ -275,6 +293,7 @@ export interface ReplayResult {
   crits: number;
   hits: number;
   misses: number;
+  hullDamage: number;
 }
 
 /** Rejoue un combat à partir des ticks d'appui (triés). C'est le verdict du serveur. */
@@ -294,7 +313,7 @@ export function replayCombat(p: CombatParams, taps: readonly CombatTap[], endTic
     if (c.state !== 'run' || c.tick >= max) break;
     c.step();
   }
-  return { state: c.state, tick: c.tick, crits: c.crits, hits: c.hits, misses: c.misses };
+  return { state: c.state, tick: c.tick, crits: c.crits, hits: c.hits, misses: c.misses, hullDamage:c.hullDamage };
 }
 
 // ---------- Joueurs simulés (tests d'équilibrage) ----------

@@ -2,12 +2,12 @@
 // Le rendu se fait à la résolution « pixel art » puis est agrandi sans lissage par le navigateur.
 import {
   TILE, CHUNK, CELL, Rng, hash2, clamp, tileAt, getPort, portInRange, daylight, timeOfDay, weatherAt, spawnShadows, slotOf,
-  nearbyLandmarks, SPECIES_BY_ID, nearbyTreasures, findPath, gearOf, Combat, HOSTILE_BY_ID,
+  nearbyLandmarks, SPECIES_BY_ID, nearbyTreasures, findPath, gearOf, Combat, HOSTILE_BY_ID, predatorForShadow,
   type Pt, type Shadow, type BiteScript, type Port, type Weather, type Hostile, type Silhouette,
   type CastResponse, type HookResponse, type ResolveResponse, type SyncResponse, type HitResponse, type Mutation, type Encounter,
 } from '../../../shared/src/index';
 import { Terrain, CHUNK_PX } from './terrain';
-import { boatSprite, shadowFrames, getDecor, resetSprites, SHADOW_FRAMES } from './sprites';
+import { boatSprite, fishSprite, shadowFrames, getDecor, resetSprites, SHADOW_FRAMES } from './sprites';
 import { comboColor, comboTier } from './combo';
 import { sfx, setAmbience, unlockAudio, pauseAudio } from './audio';
 import { getState, setState, toast, api, applyMutation, serverNow, type FishStage } from '../store';
@@ -43,6 +43,7 @@ interface Particle {
 }
 
 export interface Fishing {
+  harpoon?: boolean;
   stage: FishStage;
   target: ShadowView;
   bx: number;
@@ -65,6 +66,9 @@ export interface Fishing {
 }
 
 interface HostileState {
+  shadowKey?: string;
+  speciesId?: string;
+  originX?: number; originY?: number;
   id: string;
   kind: Hostile;
   x: number;
@@ -414,7 +418,7 @@ export class Game {
         hud: {
           biome: tile.biome, x: Math.round(this.boat.x), y: Math.round(this.boat.y), level: tile.level,
           port: this.boat.speed < 0.5 ? portInRange(this.seed, this.boat.x, this.boat.y) : null,
-          moving: this.boat.path.length > 0, canCast: !this.fish && !this.hostile && !!this.castTarget(),
+          moving: this.boat.path.length > 0, canCast: !this.fish && !!this.castTarget(),
           tod: timeOfDay(serverNow()), weather: this.weather, danger: !!this.hostile, fps: this.fps,
           landmark: nearbyLandmarks(this.seed,this.boat.x,this.boat.y).find(p=>Math.hypot(p.x-this.boat.x,p.y-this.boat.y)<8),
           treasure: nearbyTreasures(this.seed,this.boat.x,this.boat.y,serverNow()).find(t=>Math.hypot(t.x-this.boat.x,t.y-this.boat.y)<5 && !getState().save?.treasures?.includes(t.id)),
@@ -570,6 +574,7 @@ export class Game {
 
   /** Ombre la plus proche à portée de lancer, bateau à l'arrêt. */
   castTarget(): ShadowView | null {
+    if(this.hostile?.shadowKey && Math.hypot(this.hostile.x-this.boat.x,this.hostile.y-this.boat.y)<12){const v=this.activeViews().find(v=>v.sh.key===this.hostile!.shadowKey);if(v)return v;}
     if (this.boat.speed > 0.6) return null;
     let best: ShadowView | null = null;
     let bd = CAST_RANGE;
@@ -607,7 +612,7 @@ export class Game {
 
   async cast(view?: ShadowView): Promise<void> {
     if (this.fish) return;
-    if (this.hostile) return toast('Une créature rôde : impossible de pêcher !');
+
     const target = view ?? this.castTarget();
     if (!target) return;
     this.cancelMove();
@@ -620,12 +625,15 @@ export class Game {
     this.stage('casting');
     sfx('cast');
     try {
-      const r = await api<CastResponse>('/api/fishing/cast', { shadow: target.sh.key, x: this.boat.x, y: this.boat.y });
+      const r = await api<CastResponse>('/api/fishing/cast', { shadow: target.sh.key, x: this.boat.x, y: this.boat.y, tool:predatorForShadow(target.sh)?'harpoon':'rod' });
       if (this.fish !== f) return;
       this.syncTimer = 0;
       this.lastSync = { x: this.boat.x, y: this.boat.y };
       f.sid = r.sid;
       f.script = r.script;
+      f.harpoon = r.harpoon;
+      if(r.save)applyMutation({save:r.save,notes:[]});
+      if(r.harpoon)this.hostile=null;
       f.ready = true;
     } catch (e) {
       if (this.fish === f) {
@@ -728,6 +736,8 @@ export class Game {
     try {
       const r = await api<HookResponse>('/api/fishing/hook', { sid: f.sid, elapsed });
       if (this.fish !== f) return;
+      if(r.save)setState({save:r.save});
+      if(r.wrecked && r.save){this.endFishing(false);this.teleport(r.save.x,r.save.y);toast('Naufrage : le prédateur a brisé la coque.');return;}
       if (r.verdict === 'ok' && r.combat) {
         f.combat = new Combat(r.combat);
         f.fightT0 = performance.now() + 1100;
@@ -738,7 +748,7 @@ export class Game {
       }
       if (r.save) setState({ save: r.save });
       sfx('miss');
-      toast(r.verdict === 'early' ? 'Ferré trop tôt ! Le poisson a pris peur.' : r.verdict === 'late' ? 'Ferré trop tard… il a recraché l’hameçon.' : 'Rien au bout de la ligne : ce n’était pas une touche.');
+      toast(f.harpoon ? 'Tir manqué : le harpon est perdu, le prédateur reste dangereux.' : r.verdict === 'early' ? 'Ferré trop tôt ! Le poisson a pris peur.' : r.verdict === 'late' ? 'Ferré trop tard… il a recraché l’hameçon.' : 'Rien au bout de la ligne : ce n’était pas une touche.');
       this.endFishing(r.verdict !== 'none');
     } catch (e) {
       if (this.fish === f) {
@@ -758,7 +768,7 @@ export class Game {
     f.taps.push(c.p.mode === 'crab' ? { tick, x: x!, y: y! } : tick);
     // Série de coups critiques : 1 pour un critique isolé, puis 2, 3... tant qu'ils s'enchaînent.
     const streak = r === 'crit' ? c.streak : 0;
-    const text = r === 'crit' ? (streak >= 2 ? `CRITIQUE ×${streak} !` : 'CRITIQUE !') : r === 'hit' ? 'Touché !' : 'Raté !';
+    const text = c.luckEvent==='forgiven'?'SECONDE CHANCE !':c.luckEvent==='critical'?'CRITIQUE CHANCEUX !':r === 'crit' ? (streak >= 2 ? `CRITIQUE ×${streak} !` : 'CRITIQUE !') : r === 'hit' ? 'Touché !' : 'Raté !';
     f.flash = { text, kind: r, at: performance.now() };
     f.combo = streak >= 2 ? { n: streak, at: performance.now() } : null;
     sfx(r, streak);
@@ -832,14 +842,16 @@ export class Game {
   private startEncounter(e: Encounter): void {
     const kind = HOSTILE_BY_ID[e.kind];
     if (!kind || this.hostile) return;
-    this.hostile = { id: e.id, kind, x: this.boat.x + Math.cos(e.angle) * e.dist, y: this.boat.y + Math.sin(e.angle) * e.dist, angle: e.angle + Math.PI, mode: 'stalk', t: 0, elapsed: 0, hitDone: false };
+    this.hostile = { id: e.id, kind, shadowKey:e.shadowKey,speciesId:e.speciesId,originX:e.x,originY:e.y,x:e.x??this.boat.x+Math.cos(e.angle)*e.dist,y:e.y??this.boat.y+Math.sin(e.angle)*e.dist, angle: e.angle + Math.PI, mode: 'stalk', t: 0, elapsed: 0, hitDone: false };
     sfx('alarm');
-    toast(`${kind.name} en approche ! Esquivez ses charges ou rejoignez un port.`, 6000);
+    toast(`${e.speciesId?SPECIES_BY_ID[e.speciesId].name:kind.name} : prédateur dangereux. Approche au harpon ou contourne-le.`,6000);
   }
 
   private updateHostile(dt: number): void {
     const h = this.hostile;
-    if (!h) return;
+    if (!h || this.fish) return;
+    const view=h.shadowKey?this.activeViews().find(v=>v.sh.key===h.shadowKey):undefined;
+    if(view){view.x=h.x;view.y=h.y;view.angle=h.angle;}
     const b = this.boat;
     h.elapsed += dt;
     h.t -= dt;
@@ -854,7 +866,7 @@ export class Game {
         h.y = ny;
       }
     };
-    if (h.mode !== 'leave' && h.mode !== 'charge' && (h.elapsed > h.kind.persist || d > 26 || portInRange(this.seed, b.x, b.y))) {
+    if (h.mode !== 'leave' && h.mode !== 'charge' && (h.elapsed > h.kind.persist || d > 20 || (h.originX!==undefined && Math.hypot(b.x-h.originX,b.y-h.originY!)>18) || portInRange(this.seed, b.x, b.y))) {
       h.mode = 'leave';
       h.t = 3.5;
       toast('La créature abandonne la poursuite.');
@@ -1041,6 +1053,8 @@ export class Game {
     const drawShadows = (deepOnly = false): void => {
     const views = this.activeViews();
     for (const v of views) {
+      if(this.hostile?.shadowKey===v.sh.key)continue;
+      const predator=predatorForShadow(v.sh);
       const deep = ['deep','abyss','volcanic','spectral'].includes(v.sh.biome);
       if (deepOnly !== deep) continue;
       const px = X(v.x);
@@ -1048,16 +1062,17 @@ export class Game {
       if (px < -50 || py < -50 || px > vw + 50 || py > vh + 50) continue;
       const frames = shadowFrames(v.sh.sil,deep);
       const fast = this.fish?.target === v && (this.fish.stage === 'fight' || this.fish.stage === 'countdown');
-      const fr = frames[Math.floor(t * (fast ? 16 : 5 + SPEED[v.sh.sil] * 4) + v.sh.seed) % SHADOW_FRAMES];
+      const fr = predator?fishSprite(predator,0,Math.floor(t*3)%2):frames[Math.floor(t * (fast ? 16 : 5 + SPEED[v.sh.sil] * 4) + v.sh.seed) % SHADOW_FRAMES];
       const scale = v.sh.sil === 'giant' ? 0.9 + v.sh.size * 0.5 : 0.8 + v.sh.size * 0.45;
       const alpha = (deep ? 0.65 : clamp(0.5 - v.sh.depth * 0.2, 0.25, 0.5)) * Math.min(1, (t - v.born) * 0.8 + 0.05) * (v.flee > 0 ? Math.min(1, v.flee) : 1);
+      if(predator){ctx.fillStyle='#ff7d76';ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.fillText('!',px,py-18);}
       const n = v.sh.school;
       for (let i = 0; i < n; i++) {
         const oa = i * 2.4 + t * 0.6;
         const ddx = i ? Math.cos(oa) * (5 + i * 2) : 0;
         const ddy = i ? Math.sin(oa * 1.3) * (4 + i * 2) : 0;
         ctx.save();
-        ctx.globalAlpha = alpha;
+        ctx.globalAlpha = predator?.95:alpha;
         ctx.translate(px + Math.round(ddx), py + Math.round(ddy));
         ctx.rotate(v.angle);
         ctx.scale(scale, scale);
@@ -1188,9 +1203,9 @@ export class Game {
     }
     ctx.globalAlpha = 1;
 
-    // Ligne et bouchon
+    // Ordinary line/bobber, or a taut harpoon cable after the precision shot.
     const f = this.fish;
-    if (f) {
+    if (f && (!f.harpoon || ['hooking','countdown','fight','resolving'].includes(f.stage??''))) {
       const rodX = X(b.x + Math.cos(b.angle) * 0.6);
       const rodY = Y(b.y + Math.sin(b.angle) * 0.6) - 4;
       let bx = X(f.bx);
@@ -1201,16 +1216,18 @@ export class Game {
         by = Math.round(rodY + (by - rodY) * k - Math.sin(k * Math.PI) * 26);
       }
       const taut = f.stage === 'fight' || f.stage === 'countdown' || f.stage === 'resolving';
-      ctx.strokeStyle = taut && f.combat && f.combat.line / f.combat.p.line < 0.3 ? '#ff6a5a' : '#f4f4f4';
+      ctx.strokeStyle = taut && f.combat && f.combat.line / f.combat.p.line < .3 ? '#ff6a5a' : f.harpoon?'#b8a47a':'#f4f4f4';
+      ctx.lineWidth=f.harpoon?2:1;
       ctx.globalAlpha = 0.85;
       ctx.beginPath();
       ctx.moveTo(rodX + 0.5, rodY + 0.5);
       ctx.quadraticCurveTo((rodX + bx) / 2, (rodY + by) / 2 + (taut ? 0 : 7), bx + 0.5, by + 0.5);
       ctx.stroke();
-      ctx.globalAlpha = 1;
+      ctx.globalAlpha = 1;ctx.lineWidth=1;
+      if(f.harpoon){ctx.fillStyle='#dae5e5';ctx.fillRect(bx-4,by-1,8,2);ctx.beginPath();ctx.moveTo(bx+6,by);ctx.lineTo(bx+1,by-3);ctx.lineTo(bx+1,by+3);ctx.fill();}
       const bob = f.stage === 'casting' ? 0 : Math.round(Math.sin(t * 3) * 0.8);
       const sink = Math.round(f.dip * 4);
-      if (f.dip < 0.95) {
+      if (!f.harpoon && f.dip < 0.95) {
         ctx.drawImage(dec.bobber, 0, 0, 5, 5 - Math.min(4, sink), bx - 2, by - 3 + bob + sink, 5, 5 - Math.min(4, sink));
       }
       if (f.stage === 'bitten') ctx.drawImage(dec.alert, bx - 2, by - 18 + Math.round(Math.sin(t * 20) * 1.5));
@@ -1238,8 +1255,8 @@ export class Game {
       const biome = tileAt(this.seed,Math.floor(h.x),Math.floor(h.y)).biome;
       const bright = ['deep','abyss','volcanic','spectral'].includes(biome) || this.light < 0.5;
       const frames = shadowFrames(kind,bright);
-      const fr = frames[Math.floor(t * (h.mode === 'charge' ? 18 : 8)) % SHADOW_FRAMES];
-      const sc = kind === 'shark' ? 1.5 : kind === 'long' ? 2.4 : 2.2;
+      const fr=h.speciesId?fishSprite(SPECIES_BY_ID[h.speciesId],0,Math.floor(t*4)%2):frames[Math.floor(t * (h.mode === 'charge' ? 18 : 8)) % SHADOW_FRAMES];
+      const sc=h.speciesId?Math.min(1.4,65/fr.width):kind==='shark'?1.5:kind==='long'?2.4:2.2;
       ctx.save();
       ctx.globalAlpha = h.mode === 'leave' ? Math.max(0, h.t / 3.5) * 0.8 : 0.82;
       ctx.translate(hx, hy);
