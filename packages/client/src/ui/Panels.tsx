@@ -260,6 +260,7 @@ export function ShipPanel() {
           <div><dt>Aquarium</dt><dd>{g.aquarium} places</dd></div>
         </dl>
       </Section>
+      <p className="note"><a href="https://novabot-hub.fr/nova-fishing#guide-canne" target="_blank" rel="noreferrer">Quelle zone pour ma canne ? Consulter les niveaux conseillés ↗</a></p>
       <Section title="Niveaux d’amélioration">
         <div className="upgrade-groups">
           {([['boat', 'Bateau'], ['rod', 'Canne & ligne'], ['aquarium', 'Aquarium']] as const).map(([group, title]) => (

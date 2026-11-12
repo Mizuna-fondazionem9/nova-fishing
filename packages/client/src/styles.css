@@ -530,8 +530,13 @@ button.crab-target, button.crab-target:hover:not(:disabled), button.crab-target:
 .upgrade-level-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 12px; line-height: 1.4; color: #e0e8ec; }
 .upgrade-level-heading b { flex: none; color: #cbb2ff; font: 600 14px var(--f-num); }
 .upgrade-level-heading small { color: #849aa9; font-size: 10px; font-weight: 400; }
-.upgrade-meter { height: 7px; margin: 10px 0 8px; background: #203440; border-radius: 3px; overflow: hidden; }
+.upgrade-meter { height: 16px; margin: 10px 0 8px; background: #203440; border-radius: 5px; overflow: hidden; }
 .upgrade-meter > span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#7365ba,#c3a5ed); transition: width .3s ease; }
 .upgrade-level p { margin: 0; font-size: 11px; color: #94acba; }
 .upgrade-level.complete .upgrade-meter > span { background: #77d9b3; }
 @media(max-width:440px) { .upgrade-levels { grid-template-columns: minmax(0,1fr); } }
+
+.showcase { min-width: 0; overflow: hidden; }
+.showcase canvas { display: block; margin: auto; max-width: 100%; object-fit: contain; }
+.upgrade-meter > span { box-shadow: 0 0 10px #c3a5ed55; min-width: 0; }
+.upgrade-level-heading b { font-size: 17px; }

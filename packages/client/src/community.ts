@@ -1,3 +1,5 @@
+import './rod-guide.css';
+import { renderRodGuide } from './rod-guide';
 import './aquarium.css';
 // Vitrine publique du Hub : mêmes sprites et catalogue que le jeu, lectures seules.
 import { fishSprite, boatSprite } from './game/sprites';
@@ -52,6 +54,8 @@ const aquariumStyles = document.createElement('link');
 aquariumStyles.rel = 'stylesheet';
 aquariumStyles.href = new URL('./community.css', import.meta.url).href;
 document.head.append(aquariumStyles);
+const guide = document.getElementById('fishing-rod-guide');
+if (guide) renderRodGuide(guide);
 const root = document.getElementById('fishing-community');
 const apiBase = new URL('./api/public/', import.meta.url);
 const fmt = (n: number) =>

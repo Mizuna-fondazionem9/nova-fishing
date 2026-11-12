@@ -5,9 +5,9 @@ import { hashN, Rng } from './rng';
 import { startPort, nearestPort, BIOME_IDS, BIOMES, type BiomeId } from './world';
 import { SPECIES, SPECIES_BY_ID, type Species } from './species';
 import { bulkOf, priceOf, encounterTier, type Specimen } from './fish';
-import { gearOf, gearTier, upgradeCost, zeroLevels, NETS, UPGRADE_BY_KEY, type Levels, type UpgradeKey } from './gear';
+import { gearOf, gearTier, upgradeCost, zeroLevels, NETS, UPGRADE_BY_KEY, compressLegacyLevel, type Levels, type UpgradeKey } from './gear';
 
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 
 export interface BestiaryEntry {
   n: number;
@@ -92,6 +92,11 @@ export function migrateSave(raw: unknown, seed: number, now: number): Save {
   if (!raw || typeof raw !== 'object') return base;
   const r = raw as Partial<Save>;
   const s: Save = { ...base, ...r, up: { ...base.up, ...(r.up ?? {}) }, stats: { ...base.stats, ...(r.stats ?? {}) }, daily: { ...base.daily, ...(r.daily ?? {}) } };
+  if ((r.v ?? 0) < 5) {
+    for (const key of Object.keys(s.up) as UpgradeKey[]) {
+      if (key !== 'aquarium') s.up[key] = compressLegacyLevel(s.up[key]);
+    }
+  }
   s.v = SAVE_VERSION;
   delete (s as Save & {boatSize?:number}).boatSize;
   s.cargo = (s.cargo ?? []).filter((c) => SPECIES_BY_ID[c.sp]);

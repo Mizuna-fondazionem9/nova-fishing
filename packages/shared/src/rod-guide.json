@@ -1,0 +1,408 @@
+{
+  "target": 0.75,
+  "samplesPerSpecies": 20,
+  "bands": [
+    {
+      "min": 1,
+      "max": 3
+    },
+    {
+      "min": 4,
+      "max": 8
+    },
+    {
+      "min": 9,
+      "max": 15
+    },
+    {
+      "min": 16,
+      "max": 30
+    }
+  ],
+  "rows": [
+    {
+      "biome": "coastal",
+      "name": "Eaux côtières",
+      "min": 1,
+      "max": 3,
+      "debutant": 5,
+      "moyen": 1
+    },
+    {
+      "biome": "tropical",
+      "name": "Mer tropicale",
+      "min": 1,
+      "max": 3,
+      "debutant": 7,
+      "moyen": 2
+    },
+    {
+      "biome": "reef",
+      "name": "Récifs coralliens",
+      "min": 1,
+      "max": 3,
+      "debutant": 6,
+      "moyen": 1
+    },
+    {
+      "biome": "temperate",
+      "name": "Océan tempéré",
+      "min": 1,
+      "max": 3,
+      "debutant": 8,
+      "moyen": 2
+    },
+    {
+      "biome": "polar",
+      "name": "Eaux polaires",
+      "min": 1,
+      "max": 3,
+      "debutant": 12,
+      "moyen": 5
+    },
+    {
+      "biome": "deep",
+      "name": "Océan profond",
+      "min": 1,
+      "max": 3,
+      "debutant": 15,
+      "moyen": 7
+    },
+    {
+      "biome": "abyss",
+      "name": "Fosses abyssales",
+      "min": 1,
+      "max": 3,
+      "debutant": 39,
+      "moyen": 16
+    },
+    {
+      "biome": "mystic",
+      "name": "Eaux mystérieuses",
+      "min": 1,
+      "max": 3,
+      "debutant": null,
+      "moyen": 25
+    },
+    {
+      "biome": "volcanic",
+      "name": "Océan volcanique",
+      "min": 1,
+      "max": 3,
+      "debutant": 38,
+      "moyen": 12
+    },
+    {
+      "biome": "crystal",
+      "name": "Mer de cristal",
+      "min": 1,
+      "max": 3,
+      "debutant": 18,
+      "moyen": 10
+    },
+    {
+      "biome": "spectral",
+      "name": "Mer spectrale",
+      "min": 1,
+      "max": 3,
+      "debutant": 39,
+      "moyen": 17
+    },
+    {
+      "biome": "river",
+      "name": "Rivières insulaires",
+      "min": 1,
+      "max": 3,
+      "debutant": 4,
+      "moyen": 0
+    },
+    {
+      "biome": "coastal",
+      "name": "Eaux côtières",
+      "min": 4,
+      "max": 8,
+      "debutant": 15,
+      "moyen": 7
+    },
+    {
+      "biome": "tropical",
+      "name": "Mer tropicale",
+      "min": 4,
+      "max": 8,
+      "debutant": 19,
+      "moyen": 9
+    },
+    {
+      "biome": "reef",
+      "name": "Récifs coralliens",
+      "min": 4,
+      "max": 8,
+      "debutant": 16,
+      "moyen": 8
+    },
+    {
+      "biome": "temperate",
+      "name": "Océan tempéré",
+      "min": 4,
+      "max": 8,
+      "debutant": 18,
+      "moyen": 8
+    },
+    {
+      "biome": "polar",
+      "name": "Eaux polaires",
+      "min": 4,
+      "max": 8,
+      "debutant": 22,
+      "moyen": 11
+    },
+    {
+      "biome": "deep",
+      "name": "Océan profond",
+      "min": 4,
+      "max": 8,
+      "debutant": 43,
+      "moyen": 13
+    },
+    {
+      "biome": "abyss",
+      "name": "Fosses abyssales",
+      "min": 4,
+      "max": 8,
+      "debutant": null,
+      "moyen": 21
+    },
+    {
+      "biome": "mystic",
+      "name": "Eaux mystérieuses",
+      "min": 4,
+      "max": 8,
+      "debutant": null,
+      "moyen": 27
+    },
+    {
+      "biome": "volcanic",
+      "name": "Océan volcanique",
+      "min": 4,
+      "max": 8,
+      "debutant": null,
+      "moyen": 17
+    },
+    {
+      "biome": "crystal",
+      "name": "Mer de cristal",
+      "min": 4,
+      "max": 8,
+      "debutant": 39,
+      "moyen": 13
+    },
+    {
+      "biome": "spectral",
+      "name": "Mer spectrale",
+      "min": 4,
+      "max": 8,
+      "debutant": 45,
+      "moyen": 21
+    },
+    {
+      "biome": "river",
+      "name": "Rivières insulaires",
+      "min": 4,
+      "max": 8,
+      "debutant": 15,
+      "moyen": 8
+    },
+    {
+      "biome": "coastal",
+      "name": "Eaux côtières",
+      "min": 9,
+      "max": 15,
+      "debutant": null,
+      "moyen": 18
+    },
+    {
+      "biome": "tropical",
+      "name": "Mer tropicale",
+      "min": 9,
+      "max": 15,
+      "debutant": null,
+      "moyen": 23
+    },
+    {
+      "biome": "reef",
+      "name": "Récifs coralliens",
+      "min": 9,
+      "max": 15,
+      "debutant": null,
+      "moyen": 19
+    },
+    {
+      "biome": "temperate",
+      "name": "Océan tempéré",
+      "min": 9,
+      "max": 15,
+      "debutant": null,
+      "moyen": 19
+    },
+    {
+      "biome": "polar",
+      "name": "Eaux polaires",
+      "min": 9,
+      "max": 15,
+      "debutant": null,
+      "moyen": 23
+    },
+    {
+      "biome": "deep",
+      "name": "Océan profond",
+      "min": 9,
+      "max": 15,
+      "debutant": null,
+      "moyen": 26
+    },
+    {
+      "biome": "abyss",
+      "name": "Fosses abyssales",
+      "min": 9,
+      "max": 15,
+      "debutant": null,
+      "moyen": 39
+    },
+    {
+      "biome": "mystic",
+      "name": "Eaux mystérieuses",
+      "min": 9,
+      "max": 15,
+      "debutant": null,
+      "moyen": 34
+    },
+    {
+      "biome": "volcanic",
+      "name": "Océan volcanique",
+      "min": 9,
+      "max": 15,
+      "debutant": null,
+      "moyen": 32
+    },
+    {
+      "biome": "crystal",
+      "name": "Mer de cristal",
+      "min": 9,
+      "max": 15,
+      "debutant": null,
+      "moyen": 26
+    },
+    {
+      "biome": "spectral",
+      "name": "Mer spectrale",
+      "min": 9,
+      "max": 15,
+      "debutant": null,
+      "moyen": 35
+    },
+    {
+      "biome": "river",
+      "name": "Rivières insulaires",
+      "min": 9,
+      "max": 15,
+      "debutant": 39,
+      "moyen": 18
+    },
+    {
+      "biome": "coastal",
+      "name": "Eaux côtières",
+      "min": 16,
+      "max": 30,
+      "debutant": null,
+      "moyen": null
+    },
+    {
+      "biome": "tropical",
+      "name": "Mer tropicale",
+      "min": 16,
+      "max": 30,
+      "debutant": null,
+      "moyen": null
+    },
+    {
+      "biome": "reef",
+      "name": "Récifs coralliens",
+      "min": 16,
+      "max": 30,
+      "debutant": null,
+      "moyen": null
+    },
+    {
+      "biome": "temperate",
+      "name": "Océan tempéré",
+      "min": 16,
+      "max": 30,
+      "debutant": null,
+      "moyen": null
+    },
+    {
+      "biome": "polar",
+      "name": "Eaux polaires",
+      "min": 16,
+      "max": 30,
+      "debutant": null,
+      "moyen": null
+    },
+    {
+      "biome": "deep",
+      "name": "Océan profond",
+      "min": 16,
+      "max": 30,
+      "debutant": null,
+      "moyen": null
+    },
+    {
+      "biome": "abyss",
+      "name": "Fosses abyssales",
+      "min": 16,
+      "max": 30,
+      "debutant": null,
+      "moyen": null
+    },
+    {
+      "biome": "mystic",
+      "name": "Eaux mystérieuses",
+      "min": 16,
+      "max": 30,
+      "debutant": null,
+      "moyen": null
+    },
+    {
+      "biome": "volcanic",
+      "name": "Océan volcanique",
+      "min": 16,
+      "max": 30,
+      "debutant": null,
+      "moyen": null
+    },
+    {
+      "biome": "crystal",
+      "name": "Mer de cristal",
+      "min": 16,
+      "max": 30,
+      "debutant": null,
+      "moyen": null
+    },
+    {
+      "biome": "spectral",
+      "name": "Mer spectrale",
+      "min": 16,
+      "max": 30,
+      "debutant": null,
+      "moyen": null
+    },
+    {
+      "biome": "river",
+      "name": "Rivières insulaires",
+      "min": 16,
+      "max": 30,
+      "debutant": null,
+      "moyen": null
+    }
+  ]
+}
