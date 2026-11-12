@@ -1,4 +1,4 @@
-import { BIOMES, NETS, cargoBulk, gearOf, rodStars, dayKey, fishingAdvice, netFishingProfile } from '../../../shared/src/index';
+import { BIOMES, NETS, cargoBulk, gearOf, rodStars, dayKey, fishingAdvice } from '../../../shared/src/index';
 import { useStore, setState, serverNow, portOp, type Panel } from '../store';
 import { sfx, unlockAudio } from '../game/audio';
 import { rt, Bar, Coins, fmt1 } from './common';
@@ -36,7 +36,6 @@ export function Hud() {
   const bulk = cargoBulk(save);
   const skill = useStore(s => s.fishingProfile);
   const advice = hud ? fishingAdvice(save.up, hud.biome, hud.level, skill) : null;
-  const netProfile = hud ? netFishingProfile(save.net, save.up, hud.biome, hud.level, bulk >= g.hold) : null;
   const dest = rt.game?.boat.dest ?? null;
   const net = NETS[save.net];
   const dailyLeft = daily.length - (save.daily.day === dayKey(serverNow()) ? save.daily.done.length : 0);
@@ -44,6 +43,7 @@ export function Hud() {
   return (
     <div className={`hud ${hidden?'is-minimal':''}`}>
       <button className="hud-toggle" aria-label={hidden?'Afficher l’interface':'Masquer l’interface'} title={hidden?'Afficher l’interface':'Masquer l’interface'} aria-pressed={hidden} onClick={()=>setState({hudHidden:!hidden})}><svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>{hidden&&<path d="M3 3l18 18"/>}</svg></button>
+      <div className="hud-top">
       <div className="card tl">
         <div className="who">
           {user?.avatar ? <img src={user.avatar} alt="" /> : <span className="avatar">{(user?.name ?? '?').slice(0, 1).toUpperCase()}</span>}
@@ -70,11 +70,10 @@ export function Hud() {
         {hud && (
           <>
             <b className={`biome ${advice?.state ?? ''}`}>{BIOMES[hud.biome].name}</b>
-            <button className={`sector-badge zone-rating ${advice?.state}`} onClick={open('ship')} title="Repère de difficulté et équipement">
-              <span>{advice?.sector}</span><strong>{advice?.title}</strong>
-              <span>Canne ★{fmt1(rodStars(save.up))} · {advice?.target === null ? 'Zone très exigeante' : `★${advice?.target} conseillées`}</span>
-            </button>
-            {netProfile && <span className={`net-rating ${netProfile.state}`}>Filet · {netProfile.title}</span>}
+            <div className={`region-summary ${advice?.state}`}>
+              <span>{advice?.sector}</span>
+              <span className="region-stars" aria-label={advice?.target == null ? 'Repère non disponible pour ce secteur' : `Repère de la zone : ${advice.target} étoiles`}>{advice?.target == null ? '★—' : `★${advice.target}`}</span>
+            </div>
             <span className="coords">X {hud.x} · Y {hud.y}</span>
             <span className="k">{TOD[hud.tod]} · {WEATHER[hud.weather]}</span>
           </>
@@ -84,6 +83,7 @@ export function Hud() {
           <button className="icon" onClick={() => rt.game?.changeZoom(1)} aria-label="Zoomer" title="Zoomer (+)">+</button>
           <button className="icon" onClick={() => rt.game?.changeZoom(-1)} aria-label="Dézoomer" title="Dézoomer (-)">−</button>
         </div>
+      </div>
       </div>
 
       {!fishing && (

@@ -569,3 +569,25 @@ button.crab-target, button.crab-target:hover:not(:disabled), button.crab-target:
 .net-rating { display: block; font-size: 10px; margin: 5px 0; line-height: 1.3; }
 .net-rating.ready { color: #8ce0b4; }.net-rating.careful { color: #f0ba69; }.net-rating.hard { color: #f18d9e; }.net-rating.none { color: #a7bac7; }
 @media(max-width:560px) { .card.tr .zone-rating { display: grid; gap: 3px; }.zone-rating strong { font-size: 10px; }.net-rating { font-size: 9px; } }
+
+/* Keep the two HUD cards apart and let each shrink inside its own column. */
+.hud-top { position: absolute; top: max(10px,env(safe-area-inset-top)); left: max(10px,env(safe-area-inset-left)); right: max(10px,env(safe-area-inset-right)); display: grid; grid-template-columns: minmax(0,232px) minmax(0,240px); justify-content: space-between; align-items: start; gap: 16px; pointer-events: none; }
+.hud-top .card.tl,.hud-top .card.tr { position: static; width: 100%; max-width: none; min-width: 0; pointer-events: auto; }
+.hud-top .card.tr { gap: 6px; }
+.hud-top .biome { max-width: 100%; overflow-wrap: anywhere; }
+.region-summary { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 4px 10px; font: 600 12px var(--f-num); }
+.region-summary.ready { color: #8ce0b4; }.region-summary.careful { color: #f0ba69; }.region-summary.hard { color: #f18d9e; }
+.region-stars { white-space: nowrap; }
+@media(max-width:560px) {
+  .hud-top { grid-template-columns: minmax(0,1.1fr) minmax(0,1fr); gap: 16px; }
+  .hud-top .card { padding: 9px; }
+  .region-summary { font-size: 10px; gap: 4px 8px; }
+}
+@media(max-width:360px) {
+  .hud-top .card { padding: 8px; }
+  .hud-top .stat { grid-template-columns: 32px minmax(0,1fr) auto; gap: 4px; }
+  .hud-top .stat .k,.hud-top .stat .v { font-size: 10px; }
+  .hud-top .card.tr .row { gap: 5px; }
+  .hud-top .card.tr .row button.icon { width: 32px; min-width: 32px; height: 36px; min-height: 36px; }
+  .hud-top .biome { font-size: 11px; letter-spacing: .03em; }
+}
