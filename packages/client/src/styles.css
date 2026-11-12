@@ -540,3 +540,16 @@ button.crab-target, button.crab-target:hover:not(:disabled), button.crab-target:
 .showcase canvas { display: block; margin: auto; max-width: 100%; object-fit: contain; }
 .upgrade-meter > span { box-shadow: 0 0 10px #c3a5ed55; min-width: 0; }
 .upgrade-level-heading b { font-size: 17px; }
+
+.pending-catch { width: 100%; min-width: 0; border-top: 1px solid #42606a; margin-top: 12px; padding-top: 16px; text-align: left; }
+.pending-catch h3 { margin: 0 0 12px; color: #ead19b; font-size: 18px; }
+.pending-catch p { font-size: 13px; line-height: 1.6; color: #bcced4; }
+.cargo-choices { display: grid; gap: 8px; max-height: 280px; overflow-y: auto; }
+.cargo-choices label { display: grid; grid-template-columns: 20px 72px minmax(0,1fr); align-items: center; gap: 8px; padding: 9px; border: 1px solid #355361; border-radius: 9px; cursor: pointer; background: #102733; }
+.cargo-choices label.selected { border-color: #c5a6f0; background: #2b2942; }
+.cargo-choices input { accent-color: #c5a6f0; width: 18px; height: 18px; }
+.cargo-choices canvas { max-width: 72px; height: auto !important; justify-self: center; }
+.cargo-choices label > span { min-width: 0; display: grid; gap: 5px; font-size: 12px; overflow-wrap: anywhere; }
+.cargo-choices small { font-size: 11px; color: #a5bec7; }
+.pending-catch button { width: 100%; margin-top: 10px; white-space: normal; }
+.release-pending { padding: 12px; border: 1px solid #846774; border-radius: 8px; background: #382832; color: #efdce2; }

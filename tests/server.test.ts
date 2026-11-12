@@ -508,6 +508,7 @@ test('persistance : la progression survit à un redémarrage du serveur', async 
   await a.built.store.withSave(me.user.id, (s) => {
     s.coins = 4321;
     s.up.speed = 2;
+    s.pendingCatch = { uid: 'pending-durable', sp: 'bar', len: 50, kg: 16, size: 0, color: 0, tough: false, lvl: 1, value: 1, at: 0, biome: 'coastal' };
     s.bestiary.bar = { n: 2, maxLen: 60, maxKg: 3, first: 1, biomes: ['coastal'] };
   });
   await a.built.close();
@@ -517,6 +518,7 @@ test('persistance : la progression survit à un redémarrage du serveur', async 
   assert.equal(again.user.id, me.user.id);
   assert.equal(again.save.coins, 4321);
   assert.equal(again.save.up.speed, 2);
+  assert.equal(again.save.pendingCatch.uid, 'pending-durable');
   assert.equal(again.save.bestiary.bar.n, 2);
   rmSync(dir, { recursive: true, force: true });
 });
@@ -735,4 +737,32 @@ test('les sept décors WebP et la feuille partagée sont servis sous /fishing av
     }
     const css=await fetch(`${base}/fishing/community.css`);assert.equal(css.status,200);assert.match(css.headers.get('content-type')!,/text\/css/);assert.match(await css.text(),/\.nova-aquarium/);
   } finally { rmSync(dir,{recursive:true,force:true}); }
+});
+
+
+test('prise en attente : validation atomique, double requête et sélection périmée', async () => {
+  const r=await rig('pending');
+  const mk=(uid:string,kg=1)=>({uid,sp:'bar',len:50,kg,size:0,color:0,tough:false,lvl:1,value:999999,at:0,biome:'coastal' as const});
+  await r.patch(s=>{s.cargo=Array.from({length:20},(_,i)=>mk('old'+i));s.pendingCatch=mk('new',16);});
+  const before=await r.save();
+  assert.equal(await status(r.game.settleCatch(r.id,'new','keep',['old0'])),409);
+  assert.deepEqual((await r.save()).cargo,before.cargo);
+  assert.equal(await status(r.game.settleCatch(r.id,'new','keep',['old0','old0'])),409);
+  assert.equal(await status(r.game.settleCatch(r.id,'new','keep','invalid')),400);
+  const ids=['old0','old1','old2','old3'];
+  const results=await Promise.allSettled([r.game.settleCatch(r.id,'new','keep',ids),r.game.settleCatch(r.id,'new','keep',ids)]);
+  assert.equal(results.filter(r=>r.status==='fulfilled').length,1);
+  const after=await r.save();assert.equal(after.pendingCatch,undefined);assert.equal(after.cargo.filter(f=>f.uid==='new').length,1);assert.equal(after.coins,before.coins);
+  assert.equal(after.stats.caught,before.stats.caught);
+});
+
+test('prise en attente : déplacement et nouveau lancer refusés jusqu’au choix, relâcher ne supprime que la prise', async () => {
+  const r=await rig('pending-sync'),o=startPort(SEED);
+  await r.patch(s=>{s.pendingCatch={uid:'waiting',sp:'bar',len:50,kg:16,size:0,color:0,tough:false,lvl:1,value:1,at:0,biome:'coastal'};});
+  const shadow=(await r.shadowsNear())[0];
+  await assert.rejects(r.game.cast(r.id,shadow.key,o.x+.5,o.y+.5),/Choisis d’abord/);
+  const response=await r.game.sync(r.id,o.x+1,o.y+1);
+  assert.equal(response.corrected,true);assert.equal(response.save.pendingCatch?.uid,'waiting');
+  await r.game.settleCatch(r.id,'waiting','release',[]);
+  assert.equal((await r.save()).pendingCatch,undefined);
 });

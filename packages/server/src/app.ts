@@ -104,6 +104,7 @@ export function buildServer(cfg: Config, store: Store, log: (m: string) => void 
   api('/api/fishing/cast', (id, { body }) => game.cast(id, str(body.shadow, 'shadow', 40), num(body.x, 'x'), num(body.y, 'y')));
   api('/api/fishing/hook', (id, { body }) => game.hook(id, str(body.sid, 'sid', 40), num(body.elapsed, 'elapsed', 0, 120_000)));
   api('/api/fishing/cancel', (id, { body }) => game.cancel(id, str(body.sid, 'sid', 40)));
+  api('/api/fishing/settle', (id, { body }) => game.settleCatch(id, str(body.uid, 'uid', 40), body.action, body.releaseUids));
   api('/api/fishing/resolve', (id, { body }) => game.resolve(id, str(body.sid, 'sid', 40), body.taps, body.end));
   api('/api/encounter/hit', (id, { body }) => game.encounterHit(id, str(body.id, 'id', 40)));
   api('/api/encounter/end', (id, { body }) => game.encounterEnd(id, str(body.id, 'id', 40)));
