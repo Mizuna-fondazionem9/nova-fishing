@@ -4,7 +4,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Save } from '../../shared/src/index';
-import type { Hydrate, PlayerRow, RewardEvent, RewardStatus, Store, Tx } from './store';
+import type { Hydrate, PlayerRow, RewardEvent, RewardStatus, Store, Tx, PublicPlayerSummary } from './store';
 
 interface PgClient {
   query(text: string, values?: unknown[]): Promise<{ rows: any[]; rowCount: number | null }>;
@@ -30,6 +30,11 @@ export const SQL = {
     'INSERT INTO %S.reward_events (id, discord_id, reward_key, type, payload) VALUES ($1, $2, $3, $4, $5::jsonb) ' +
     'ON CONFLICT (discord_id, reward_key) DO NOTHING',
   createSession: 'INSERT INTO %S.sessions (token_hash, player_id, expires_at) VALUES ($1, $2, to_timestamp($3::double precision / 1000))',
+  listPublicPlayers: `SELECT id, name, avatar, COALESCE((save->>'coins')::numeric,0) AS coins,
+    COALESCE((save->'stats'->>'caught')::numeric,0) AS caught,
+    jsonb_array_length(COALESCE(save->'aquarium','[]'::jsonb)) AS aquarium_count
+    FROM %S.players WHERE position(lower($3::text) in lower(name)) > 0
+    ORDER BY coins DESC, id ASC LIMIT $1 OFFSET $2`,
   getSession: 'SELECT player_id, (extract(epoch FROM expires_at) * 1000)::bigint AS expires_at FROM %S.sessions WHERE token_hash = $1 AND expires_at > now()',
   deleteSession: 'DELETE FROM %S.sessions WHERE token_hash = $1',
   purgeSessions: 'DELETE FROM %S.sessions WHERE expires_at <= now()',
@@ -122,6 +127,11 @@ export class PgStore implements Store {
   async upsertPlayer(discordId: string, name: string, avatar: string | null, makeSave: () => Save): Promise<PlayerRow> {
     const r = await this.pool.query(this.q.upsertPlayer, [randomUUID(), discordId, name, avatar, JSON.stringify(makeSave())]);
     return this.row(r.rows[0]);
+  }
+
+  async listPublicPlayers(limit:number, offset:number, search:string): Promise<PublicPlayerSummary[]> {
+    const r = await this.pool.query(this.q.listPublicPlayers,[limit,offset,search]);
+    return r.rows.map(p=>({id:p.id,name:p.name,avatar:p.avatar,coins:Number(p.coins),caught:Number(p.caught),aquariumCount:Number(p.aquarium_count)}));
   }
 
   async getPlayer(id: string): Promise<PlayerRow | null> {
