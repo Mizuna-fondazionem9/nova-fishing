@@ -4,7 +4,7 @@ import { randomInt, randomUUID } from 'node:crypto';
 import {
   Rng, tileAt, isLand, startPort, portInRange, spawnShadows, speciesForShadow, slotOf, rollSpecimen, fightStats, makeBiteScript,
   judgeHook, makeCombatParams, replayCombat, gearOf, applyCatch, noteBiome, evalTrophies, bumpDaily, dailyChallenges,
-  dayKey, opSell, opUpgrade, opBuyNet, opRepair, opKeep, opRelease, applyDamage, holdFree, bulkOf, regionBonus, encounterTier, effectiveUpgradeLevel,
+  dayKey, opSettleCatch, opSell, opUpgrade, opBuyNet, opRepair, opKeep, opRelease, applyDamage, holdFree, bulkOf, regionBonus, encounterTier, effectiveUpgradeLevel,
   SPECIES, SPECIES_BY_ID, HOSTILES, HOSTILE_BY_ID, BIOMES, NETS, NET_COOLDOWN_MS, NET_DISTANCE, RARITY_WEIGHT,
   adventureOf, adventurePortOp, nearbyLandmarks, landmarkById, discoverPoint, pointOp, chartOp, noteAdventureCatch,
   maritimeOp, nearbyTreasures,
@@ -201,7 +201,7 @@ export class Game {
       const notes: string[] = [];
       let corrected = false;
       let netted: Specimen[] = [];
-      if (!this.fishing.has(playerId)) {
+      if (!this.fishing.has(playerId) && !save.pendingCatch) {
         corrected = !this.move(save, x, y, notes);
         if (!corrected) {
           netted = this.haulNet(save, notes);
@@ -209,6 +209,7 @@ export class Game {
           for(const p of nearbyLandmarks(this.seed,save.x,save.y))if(Math.hypot(p.x-save.x,p.y-save.y)<20)notes.push(...discoverPoint(save,p,this.now()));
         }
       }
+      if (save.pendingCatch) corrected = true;
       this.finish(save, tx, notes);
       return { ...this.mutation(save, notes), corrected, encounter, netted };
     });
@@ -232,6 +233,7 @@ export class Game {
     const shadow: Shadow | undefined = spawnShadows(this.seed, cx, cy, slot).find((s) => s.idx === idx);
     if (!shadow) throw new HttpError(409, 'Cette ombre n’existe pas.');
     const session = await this.store.withSave(playerId, (save) => {
+      if (save.pendingCatch) throw new HttpError(409, 'Choisis d’abord quoi faire de la prise en attente.');
       if (!this.move(save, x, y, [])) throw new HttpError(409, 'Position du bateau refusée.');
       if (save.consumed.includes(key)) throw new HttpError(409, 'Ce poisson est déjà parti.');
       if (Math.hypot(shadow.x - save.x, shadow.y - save.y) > CAST_RANGE + CAST_SLACK) throw new HttpError(409, 'Trop loin pour lancer.');
@@ -334,6 +336,7 @@ export class Game {
 
     return this.store.withSave(playerId, (save, tx) => {
       const notes: string[] = [];
+      if (save.pendingCatch) throw new HttpError(409, 'Une prise attend déjà ton choix.');
       this.consume(save, s.key);
       if (!win) {
         save.stats.escaped++;
@@ -346,9 +349,21 @@ export class Game {
       for (const c of bumpDaily(save, { kind: 'catch', sp: s.sp, kg: s.spec.kg, biome: s.spec.biome }, now))
         notes.push(`Défi réussi : ${c.label} (+${c.reward} pièces)`);
       if (s.sp.rarity >= 4) tx.reward(`capture:${s.sp.id}`, 'capture', { species: s.sp.id, name: s.sp.name, kg: s.spec.kg, rarity: s.sp.rarity });
-      if (!r.stored) notes.push('Cale pleine : le poisson a été relâché après la photo.');
+      if (!r.stored) notes.push('Cale pleine : ta prise est en attente. Choisis les poissons à relâcher pour la garder.');
       this.finish(save, tx, notes);
       return { ...this.mutation(save, notes), outcome: 'win' as const, specimen: s.spec, stored: r.stored, record: r.record, first: r.first };
+    });
+  }
+
+  async settleCatch(playerId: string, uid: string, action: unknown, releaseUids: unknown): Promise<Mutation> {
+    if ((action !== 'keep' && action !== 'release') || !Array.isArray(releaseUids) || releaseUids.length > 1000 ||
+        releaseUids.some(id => typeof id !== 'string' || id.length > 40)) throw new HttpError(400, 'Choix de cargaison invalide.');
+    return this.store.withSave(playerId, (save, tx) => {
+      const result = opSettleCatch(save, uid, action, releaseUids as string[]);
+      if (!result.ok) throw new HttpError(409, result.error);
+      const notes = [action === 'keep' ? 'Nouvelle prise rangée dans la cale.' : 'Nouvelle prise relâchée.'];
+      this.finish(save, tx, notes);
+      return this.mutation(save, notes);
     });
   }
 

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { RARITY_COLORS, SILHOUETTE_NAMES, bulkOf, priceOf } from '../../../shared/src/index';
-import { useStore, setState } from '../store';
+import { RARITY_COLORS, SILHOUETTE_NAMES, bulkOf, priceOf, gearOf, cargoBulk, type Specimen } from '../../../shared/src/index';
+import { useStore, setState, api, applyMutation, toast, type CatchResult } from '../store';
+import type { Mutation } from '../../../shared/src/index';
 import { sfx, unlockAudio } from '../game/audio';
 import { comboColor, comboTier, comboWord } from '../game/combo';
 import { rt, Coins, FishIcon, Rarity, Tags, speciesOf, fmtKg, fmtLen } from './common';
@@ -168,10 +169,57 @@ export function FishingOverlay() {
   );
 }
 
+function PendingCatchChoice({ fish }: { fish: Specimen }) {
+  const save = useStore(s => s.save)!;
+  const [selected, setSelected] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
+  const capacity = gearOf(save.up, save.vessel, save.kit).hold;
+  const needed = bulkOf(fish.kg);
+  const chosen = save.cargo.filter(f => selected.includes(f.uid));
+  const freed = chosen.reduce((n, f) => n + bulkOf(f.kg), 0);
+  const free = capacity - cargoBulk(save);
+  const missing = Math.max(0, needed - free - freed);
+  const tooLarge = needed > capacity;
+  const settle = async (action: 'keep' | 'release') => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const response = await api<Mutation>('/api/fishing/settle', {
+        uid: fish.uid, action, releaseUids: action === 'keep' ? chosen.map(f => f.uid) : [],
+      });
+      applyMutation(response);
+      setState({ result: null });
+    } catch (e) { toast((e as Error).message); }
+    finally { setBusy(false); }
+  };
+  return <section className="pending-catch" aria-label="Faire de la place pour cette prise">
+    <h3>Garder cette prise</h3>
+    <p>Ta prise reste en attente. Elle occupe <b>{needed} unités</b> ; ta cale offre actuellement <b>{Math.max(0, free)} unités libres sur {capacity}</b>.</p>
+    {tooLarge ? <p className="warn">Ce poisson dépasse à lui seul la capacité totale de ta cale. Même vide, elle ne pourrait pas le contenir. Aucun poisson de ta cale ne sera supprimé.</p> : <>
+      <p>Sélectionne les poissons de la cale à relâcher pour lui faire une place. Rien n’est relâché avant ta validation.</p>
+      <div className="cargo-choices">
+        {save.cargo.map(f => <label key={f.uid} className={selected.includes(f.uid) ? 'selected' : ''}>
+          <input type="checkbox" disabled={busy} checked={selected.includes(f.uid)} onChange={e => setSelected(ids => e.target.checked ? [...ids, f.uid] : ids.filter(id => id !== f.uid))} />
+          <FishIcon sp={speciesOf(f)} color={f.color} fit />
+          <span><b>{speciesOf(f).name}</b><small>{bulkOf(f.kg)} unités · <Coins n={priceOf(f)} /></small></span>
+        </label>)}
+      </div>
+      <p role="status">{freed} unités sélectionnées · {missing > 0 ? `encore ${missing} à libérer` : 'Assez de place pour la nouvelle prise'}.</p>
+      {!!chosen.length && <p>Valeur des poissons sélectionnés : <Coins n={chosen.reduce((n, f) => n + priceOf(f), 0)} />. Ils seront relâchés, pas vendus.</p>}
+      <button className="big" data-testid="keep-pending" disabled={busy || missing > 0} onClick={() => void settle('keep')}>
+        {busy ? 'Validation…' : chosen.length ? `Relâcher ${chosen.length} poisson(s) et garder cette prise` : 'Garder cette prise'}
+      </button>
+    </>}
+    <button className="release-pending" data-testid="release-pending" disabled={busy} onClick={() => void settle('release')}>Relâcher uniquement la nouvelle prise</button>
+  </section>;
+}
+
 export function ResultModal() {
-  const r = useStore((s) => s.result);
+  const result = useStore((s) => s.result);
+  const pending = useStore((s) => s.save?.pendingCatch);
+  const r: CatchResult | null = result ?? (pending ? { outcome: 'win', specimen: pending, stored: false } : null);
   useEffect(() => {
-    if (!r) return;
+    if (!r || pending) return;
     const key = (e: KeyboardEvent): void => {
       if (e.code === 'Enter' || e.code === 'Space' || e.code === 'Escape') {
         e.preventDefault();
@@ -183,9 +231,10 @@ export function ResultModal() {
       clearTimeout(id);
       window.removeEventListener('keydown', key);
     };
-  }, [r]);
+  }, [r, pending]);
   if (!r) return null;
   const close = (): void => {
+    if (pending) return;
     sfx('click');
     setState({ result: null });
   };
@@ -211,7 +260,7 @@ export function ResultModal() {
               <div><dt>Encombrement</dt><dd>{bulkOf(f.kg)} unités</dd></div>
             </dl>
             <p className="desc">{speciesOf(f).desc}</p>
-            {r.stored ? <p className="ok">Rangé dans la cale.</p> : <p className="warn">Cale pleine : relâché après la photo (le bestiaire en garde la trace).</p>}
+            {r.stored ? <p className="ok">Rangé dans la cale.</p> : <p className="warn">{pending ? 'Cale pleine : choisis quoi faire de cette prise.' : 'Prise relâchée (le bestiaire en garde la trace).'}</p>}
           </>
         ) : (
           <>
@@ -228,7 +277,7 @@ export function ResultModal() {
             <div><dt>Durée</dt><dd>{r.stats.seconds.toFixed(1).replace('.', ',')} s</dd></div>
           </dl>
         )}
-        <button className="big" onClick={close}>Continuer</button>
+        {pending ? <PendingCatchChoice key={pending.uid} fish={pending} /> : <button className="big" onClick={close}>Continuer</button>}
       </div>
     </div>
   );

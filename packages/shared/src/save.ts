@@ -61,6 +61,8 @@ export interface Save {
   up: Levels;
   net: number;
   cargo: Specimen[];
+  /** One verified catch awaiting an explicit cargo decision; persisted across reconnects. */
+  pendingCatch?: Specimen;
   aquarium: Specimen[];
   bestiary: Record<string, BestiaryEntry>;
   stats: Stats;
@@ -249,11 +251,32 @@ export function applyCatch(s: Save, spec: Specimen, crits: number, now: number):
   s.stats.underdog = Math.max(s.stats.underdog, Math.round((encounterTier(sp, spec.lvl, spec.biome) / gearTier(gearOf(s.up,s.vessel,s.kit).rod)) * 100) / 100);
   const stored = bulkOf(spec.kg) <= holdFree(s);
   if (stored) s.cargo.push(spec);
+  else s.pendingCatch = spec;
   return { stored, record, first };
 }
 
 export function noteBiome(s: Save, biome: BiomeId): void {
   if (!s.stats.biomes.includes(biome)) s.stats.biomes.push(biome);
+}
+
+/** Atomically make room and keep a pending catch, or explicitly release only that catch. */
+export function opSettleCatch(s: Save, uid: string, action: 'keep' | 'release', releaseUids: string[]): Op {
+  const fish = s.pendingCatch;
+  if (!fish || fish.uid !== uid) return fail('Cette prise n’est plus en attente.');
+  if (action === 'release') {
+    if (releaseUids.length) return fail('Aucun poisson de la cale ne doit être sélectionné pour relâcher cette prise.');
+    delete s.pendingCatch;
+    return { ok: true };
+  }
+  if (action !== 'keep') return fail('Choix invalide.');
+  if (new Set(releaseUids).size !== releaseUids.length || releaseUids.some(id => !s.cargo.some(f => f.uid === id)))
+    return fail('La sélection a changé. Vérifie les poissons de ta cale.');
+  const keep = s.cargo.filter(f => !releaseUids.includes(f.uid));
+  if (keep.reduce((n, f) => n + bulkOf(f.kg), 0) + bulkOf(fish.kg) > gearOf(s.up, s.vessel, s.kit).hold)
+    return fail('Il manque encore de la place : aucun poisson n’a été relâché.');
+  s.cargo = [...keep, fish];
+  delete s.pendingCatch;
+  return { ok: true };
 }
 
 // ---------- Port : vente, améliorations, réparations, aquarium ----------
@@ -337,6 +360,7 @@ export function opRelease(s: Save, uid: string, from: 'cargo' | 'aquarium'): Op 
 export function applyShipwreck(s: Save, seed: number): void {
   const p = nearestPort(seed, s.x, s.y);
   s.cargo = [];
+  delete s.pendingCatch;
   s.x = p.x + 0.5;
   s.y = p.y + 0.5;
   s.lastPort = p.id;

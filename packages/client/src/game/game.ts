@@ -248,7 +248,7 @@ export class Game {
       const st = getState();
       if (e.code === 'Space') {
         e.preventDefault();
-        if (!e.repeat && !st.panel && !st.result) this.action();
+        if (!e.repeat && !st.panel && !st.result && !st.save?.pendingCatch) this.action();
       } else if (e.code === 'Escape') {
         if (st.panel) setState({ panel: null });
         else if (this.fish) void this.reelIn();
@@ -290,7 +290,7 @@ export class Game {
 
   /** Toucher / clic dans le monde. */
   private tap(x: number, y: number): void {
-    if (getState().panel || getState().result) return;
+    if (getState().panel || getState().result || getState().save?.pendingCatch) return;
     if (this.fish) return this.action();
     const hit = this.shadowAt(x, y);
     if (hit) {
