@@ -1,5 +1,6 @@
 // Vitrine publique du Hub : mêmes sprites et catalogue que le jeu, lectures seules.
 import { fishSprite, boatSprite } from './game/sprites';
+import { mountAquarium } from './public-aquarium';
 import {
   SPECIES_BY_ID,
   SIZE_NAMES,
@@ -332,21 +333,7 @@ async function profile(host: HTMLElement, id: string): Promise<void> {
     const theme = p.aquarium.theme in THEME_NAMES ? p.aquarium.theme : 'sand';
     const tank = el('div', 'public-tank theme-' + theme);
     tank.setAttribute('aria-label', 'Aquarium de ' + p.name);
-    tank.append(el('div', 'aquarium-light'), el('div', 'aquarium-ornament'));
-    const floorShapes = ['shell', 'shrimp', 'crab'];
-    for (const [i, f] of p.aquarium.fish.entries()) {
-      const sp = SPECIES_BY_ID[f.sp];
-      if (!sp) continue;
-      const fish = sprite(fishSprite(sp, f.color, i % 2), sp.name, 110, 54);
-      fish.classList.add('tank-fish');
-      fish.style.left = `${24 + ((i * 23) % 50)}%`;
-      fish.style.top = `${floorShapes.includes(sp.shape) ? 70 + (i % 3) * 4 : 16 + ((i * 19) % 45)}%`;
-      fish.style.setProperty('--swim-delay', `-${i * 1.7}s`);
-      fish.style.setProperty('--swim-duration', `${8 + (i % 6)}s`);
-      if (floorShapes.includes(sp.shape)) fish.classList.add('bottom-dweller');
-      if (f.featured) fish.classList.add('featured');
-      tank.append(fish);
-    }
+    mountAquarium(tank, theme, p.aquarium.fish);
     if (!p.aquarium.fish.length)
       tank.append(
         el(
