@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { AddressInfo } from 'node:net';
 import {
-  newSave, migrateSave, startPort, spawnShadows, slotOf, findPath, isLand, simulateBot, BOTS, Rng, priceOf, upgradeCost, dayKey,
+  predatorForShadow, predatorCombatDamage, newSave, migrateSave, startPort, spawnShadows, slotOf, findPath, isLand, simulateBot, BOTS, Rng, priceOf, upgradeCost, dayKey,
   landmarkAt, adventureOf, portContracts, noteAdventureCatch, nearbyTreasures, CAT_INTERVAL, SPECIES_BY_ID, NETS, CHUNK, gearOf, type Shadow, type Save,
 } from '../packages/shared/src/index';
 import { loadConfig, type Config } from '../packages/server/src/config';
@@ -507,6 +507,7 @@ test('persistance : la progression survit à un redémarrage du serveur', async 
   const me = await (await get(a.base, '/api/me', jar)).json();
   await a.built.store.withSave(me.user.id, (s) => {
     s.coins = 4321;
+    s.xp = 12345; s.harpoonOwned = true; s.harpoons = 17;
     s.up.speed = 2;
     s.pendingCatch = { uid: 'pending-durable', sp: 'bar', len: 50, kg: 16, size: 0, color: 0, tough: false, lvl: 1, value: 1, at: 0, biome: 'coastal' };
     s.bestiary.bar = { n: 2, maxLen: 60, maxKg: 3, first: 1, biomes: ['coastal'] };
@@ -517,6 +518,7 @@ test('persistance : la progression survit à un redémarrage du serveur', async 
   const again = await (await get(b.base, '/api/me', jar)).json(); // même cookie de session
   assert.equal(again.user.id, me.user.id);
   assert.equal(again.save.coins, 4321);
+  assert.equal(again.save.xp,12345); assert.equal(again.save.harpoonOwned,true); assert.equal(again.save.harpoons,17);
   assert.equal(again.save.up.speed, 2);
   assert.equal(again.save.pendingCatch.uid, 'pending-durable');
   assert.equal(again.save.bestiary.bar.n, 2);
@@ -765,4 +767,47 @@ test('prise en attente : déplacement et nouveau lancer refusés jusqu’au choi
   assert.equal(response.corrected,true);assert.equal(response.save.pendingCatch?.uid,'waiting');
   await r.game.settleCatch(r.id,'waiting','release',[]);
   assert.equal((await r.save()).pendingCatch,undefined);
+});
+
+
+test('harpon : achat, tir précis, dégâts garantis et récompense unique validés par le serveur', async () => {
+  const r=await rig('harpon');
+  await r.patch(s=>{s.coins=10000;});
+  await r.game.harpoonShop(r.id,'launcher',1);
+  const owned=await r.save();
+  assert.equal(owned.harpoonOwned,true); assert.equal(owned.coins,8800);
+  assert.equal(await status(r.game.harpoonShop(r.id,'launcher',1)),400);
+  assert.equal((await r.save()).coins,8800,'aucun second paiement');
+  await r.game.harpoonShop(r.id,'ammo',5);
+  assert.equal((await r.save()).harpoons,5); assert.equal((await r.save()).coins,8675);
+  assert.equal(await status(r.game.harpoonShop(r.id,'ammo',-1)),400);
+  assert.equal((await r.save()).harpoons,5);
+  let target:Shadow|undefined;
+  const slot=slotOf(r.clock.t);
+  for(let cy=-35;cy<=35&&!target;cy++)for(let cx=-35;cx<=35&&!target;cx++)
+    target=spawnShadows(SEED,cx,cy,slot).find(sh=>predatorForShadow(sh)?.id==='requin_tigre');
+  assert.ok(target,'prédateur canonique trouvé');
+  const sh=target!;
+  await r.patch(s=>{s.x=sh.x;s.y=sh.y;s.hull=100;for(const k of ['rodPower','rodRes','line','reel','recovery','precision'] as const)s.up[k]=50;});
+  r.clock.t+=1000;
+  assert.equal(await status(r.game.cast(r.id,sh.key,sh.x,sh.y)),409,'canne refusée');
+  r.clock.t+=1000;
+  const cast=await r.game.cast(r.id,sh.key,sh.x,sh.y,'harpoon');
+  assert.equal(cast.harpoon,true); assert.equal((await r.save()).harpoons,4);
+  assert.equal(await status(r.game.cast(r.id,sh.key,sh.x,sh.y,'harpoon')),409);
+  assert.equal((await r.save()).harpoons,4,'aucune double consommation');
+  r.clock.t+=cast.script.biteAt!+20;
+  const hook=await r.game.hook(r.id,cast.sid,cast.script.biteAt!+20);
+  assert.equal(hook.verdict,'ok');
+  assert.equal(hook.save!.hull,100-predatorCombatDamage(predatorForShadow(sh)!));
+  const bot=simulateBot(hook.combat!,BOTS.parfait,new Rng(19));
+  assert.ok(bot.win);
+  r.clock.t+=Math.ceil(bot.seconds*1000)+1300;
+  const result=await r.game.resolve(r.id,cast.sid,bot.taps,Math.round(bot.seconds*60));
+  assert.equal(result.outcome,'win'); assert.equal(result.specimen!.sp,'requin_tigre');
+  assert.equal(result.specimen!.predator,true); assert.equal(result.specimen!.value,priceOf(result.specimen!));
+  assert.ok(result.save.xp>0); assert.ok(result.save.hull<100);
+  const xp=result.save.xp;
+  assert.equal(await status(r.game.resolve(r.id,cast.sid,bot.taps,Math.round(bot.seconds*60))),409);
+  assert.equal((await r.save()).xp,xp);
 });

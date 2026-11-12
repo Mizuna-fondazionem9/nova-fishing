@@ -101,9 +101,10 @@ export function buildServer(cfg: Config, store: Store, log: (m: string) => void 
 
   // --- Jeu ---
   api('/api/sync', (id, { body }) => game.sync(id, num(body.x, 'x'), num(body.y, 'y')));
-  api('/api/fishing/cast', (id, { body }) => game.cast(id, str(body.shadow, 'shadow', 40), num(body.x, 'x'), num(body.y, 'y')));
+  api('/api/fishing/cast', (id, { body }) => game.cast(id, str(body.shadow, 'shadow', 40), num(body.x, 'x'), num(body.y, 'y'), body.tool===undefined?'rod':str(body.tool,'tool',16)));
   api('/api/fishing/hook', (id, { body }) => game.hook(id, str(body.sid, 'sid', 40), num(body.elapsed, 'elapsed', 0, 120_000)));
   api('/api/fishing/cancel', (id, { body }) => game.cancel(id, str(body.sid, 'sid', 40)));
+  api('/api/port/harpoon', (id,{body})=>game.harpoonShop(id,body.action,body.count));
   api('/api/fishing/settle', (id, { body }) => game.settleCatch(id, str(body.uid, 'uid', 40), body.action, body.releaseUids));
   api('/api/fishing/resolve', (id, { body }) => game.resolve(id, str(body.sid, 'sid', 40), body.taps, body.end));
   api('/api/encounter/hit', (id, { body }) => game.encounterHit(id, str(body.id, 'id', 40)));

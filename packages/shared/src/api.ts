@@ -28,6 +28,9 @@ export interface Mutation {
 export interface Encounter {
   id: string;
   kind: string;
+  shadowKey?: string;
+  speciesId?: string;
+  x?: number; y?: number;
   /** Angle d'arrivée (radians) et distance d'apparition (tuiles). */
   angle: number;
   dist: number;
@@ -43,10 +46,13 @@ export interface SyncResponse extends Mutation {
 export interface CastResponse {
   sid: string;
   script: BiteScript;
+  harpoon?: boolean;
+  save?: Save;
 }
 
 export interface HookResponse {
   verdict: 'ok' | 'early' | 'late' | 'none';
+  wrecked?: boolean;
   combat?: CombatParams;
   save?: Save;
 }

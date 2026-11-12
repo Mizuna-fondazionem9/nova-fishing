@@ -142,28 +142,43 @@ function CrabGauge() {
   </div>;
 }
 
+function HarpoonAim() {
+  const cursor=useRef<HTMLSpanElement>(null);
+  const f=rt.game?.fish;
+  useEffect(()=>{
+    let id=0;
+    const tick=()=>{if(cursor.current&&f?.script){const duration=(f.script.biteAt??0)+f.script.window;cursor.current.style.left=`${Math.min(100,(performance.now()-f.t0)/duration*100)}%`;}id=requestAnimationFrame(tick);};id=requestAnimationFrame(tick);return()=>cancelAnimationFrame(id);
+  },[f]);
+  const duration=(f?.script?.biteAt??0)+(f?.script?.window??1),start=(f?.script?.biteAt??0)/duration*100;
+  return <div className="harpoon-aim" aria-label="Tirer lorsque le viseur entre dans la zone verte"><i style={{left:`${start}%`,width:`${100-start}%`}}/><span ref={cursor}/></div>;
+}
+
 export function FishingOverlay() {
   const stage = useStore((s) => s.fishing);
   if (!stage) return null;
   const sil = rt.game?.fish?.target.sh.sil;
+  const harpoon = rt.game?.fish?.harpoon;
   return (
     <div className="fishing">
       {(stage === 'casting' || stage === 'waiting' || stage === 'bitten' || stage === 'hooking') && (
         <div className="waitbox">
           <p className="hint">
-            {stage === 'casting' && 'La ligne file…'}
-            {stage === 'waiting' && <>{sil==='giant'&&<span className="presence">Une présence immense glisse sous la coque… </span>}Silhouette : <b>{sil ? SILHOUETTE_NAMES[sil] : '?'}</b>. Patience : attendez que le bouchon <b>plonge franchement</b>. Les petites secousses sont des feintes.</>}
-            {stage === 'bitten' && <b className="bite">ÇA MORD ! FERREZ !</b>}
-            {stage === 'hooking' && 'Ferrage…'}
+            {stage === 'casting' && (harpoon?'Préparation du harpon…':'La ligne file…')}
+            {stage === 'waiting' && !harpoon && <>{sil==='giant'&&<span className="presence">Une présence immense glisse sous la coque… </span>}Silhouette : <b>{sil ? SILHOUETTE_NAMES[sil] : '?'}</b>. Patience : attendez que le bouchon <b>plonge franchement</b>. Les petites secousses sont des feintes.</>}
+            {stage === 'bitten' && <b className="bite">{harpoon?'TIRE MAINTENANT !':'ÇA MORD ! FERREZ !'}</b>}
+            {stage==='waiting'&&harpoon&&<>Vise puis tire quand le curseur entre dans la zone verte. Une tentative = un harpon.</>}
+            {stage === 'hooking' && (harpoon?'Accrochage de la corde…':'Ferrage…')}
           </p>
+          {harpoon && <HarpoonAim />}
           <div className="row">
             <button className={`big ${stage === 'bitten' ? 'pulse' : ''}`} disabled={stage === 'casting' || stage === 'hooking'} onClick={() => rt.game?.action()}>
-              Ferrer <kbd>Espace</kbd>
+              {harpoon?'Tirer le harpon':'Ferrer'} <kbd>Espace</kbd>
             </button>
-            <button disabled={stage === 'hooking'} onClick={() => void rt.game?.reelIn()}>Remonter la ligne</button>
+            <button disabled={stage === 'hooking'} onClick={() => void rt.game?.reelIn()}>{harpoon?'Abandonner la tentative':'Remonter la ligne'}</button>
           </div>
         </div>
       )}
+      {harpoon && rt.game?.fish?.combat && <p className="hunt-status">Coque : −{rt.game.fish.combat.hullDamage} PC · les ratés et la durée aggravent les attaques</p>}
       {(stage === 'countdown' || stage === 'fight' || stage === 'resolving') && (rt.game?.fish?.combat?.p.mode === 'crab' ? <CrabGauge /> : <Gauge />)}
     </div>
   );

@@ -420,7 +420,7 @@ test('anciens bateaux et variantes : migration sans perte et traits mémorisés 
   old.aquarium.push(a);
   const s = migrateSave(old, SEED, 2);
   assert.equal('boatSize' in s, false);
-  assert.equal(s.v, 5);
+  assert.equal(s.v, 6);
   assert.equal(s.coins, 12345);
   assert.deepEqual(s.paints, [0,3]);
   assert.deepEqual(s.aquarium, [a]);

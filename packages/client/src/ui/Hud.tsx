@@ -1,4 +1,4 @@
-import { BIOMES, NETS, cargoBulk, gearOf, rodStars, dayKey, fishingAdvice } from '../../../shared/src/index';
+import { BIOMES, NETS, cargoBulk, gearOf, rodStars, dayKey, fishingAdvice, playerProgress, predatorForShadow } from '../../../shared/src/index';
 import { useStore, setState, serverNow, portOp, type Panel } from '../store';
 import { sfx, unlockAudio } from '../game/audio';
 import { rt, Bar, Coins, fmt1 } from './common';
@@ -34,6 +34,11 @@ export function Hud() {
   const daily = useStore((s) => s.daily);
   const g = gearOf(save.up,save.vessel,save.kit);
   const bulk = cargoBulk(save);
+  const progress = playerProgress(save.xp);
+  const predatorTarget = rt.game?.castTarget();
+  const harpoonTarget = predatorTarget ? predatorForShadow(predatorTarget.sh) : undefined;
+  const combat = rt.game?.fish?.combat;
+  const hull = Math.max(0,save.hull-(combat?.p.hostileDamage?Math.max(0,combat.hullDamage-combat.p.hostileDamage):0));
   const skill = useStore(s => s.fishingProfile);
   const advice = hud ? fishingAdvice(save.up, hud.biome, hud.level, skill) : null;
   const dest = rt.game?.boat.dest ?? null;
@@ -49,11 +54,12 @@ export function Hud() {
           {user?.avatar ? <img src={user.avatar} alt="" /> : <span className="avatar">{(user?.name ?? '?').slice(0, 1).toUpperCase()}</span>}
           <b>{user?.name}</b>
         </div>
+        <div className="player-level"><span>Niv. {progress.level}</span><Bar value={progress.next?progress.current:1} max={progress.next||1} color="#b49ee8" /></div>
         <div className="purse"><Coins n={save.coins} testid="coins" /></div>
         <div className="stat">
           <span className="k">Coque</span>
-          <Bar value={save.hull} max={g.hullMax} color={hullRatio < 0.3 ? '#ff5a4a' : hullRatio < 0.6 ? '#f0b429' : '#6fe3a1'} />
-          <span className="v">{Math.round(save.hull)}<i>/{g.hullMax}</i></span>
+          <Bar value={hull} max={g.hullMax} color={hullRatio < 0.3 ? '#ff5a4a' : hullRatio < 0.6 ? '#f0b429' : '#6fe3a1'} />
+          <span className="v">{Math.round(hull)}<i>/{g.hullMax}</i></span>
         </div>
         <div className="stat">
           <span className="k">Cale</span>
@@ -88,11 +94,11 @@ export function Hud() {
 
       {!fishing && (
         <div className="context">
-          {hud?.danger && <div className="alert">Créature hostile — éloignez-vous de sa trajectoire</div>}
+          {hud?.danger && <div className="alert">Prédateur — capture au harpon ou contourne sa zone</div>}
           {hud?.landmark && !hud.danger && <button onClick={()=>setState({panel:'journal',landmarkId:hud.landmark!.id})}>Explorer · {hud.landmark.name}</button>}
           {hud?.treasure && !hud.danger && <button onClick={()=>void portOp('/api/treasure/open',{id:hud.treasure!.id})}>Ouvrir le coffre · {hud.treasure.coins} pièces</button>}
           {hud?.canCast && (
-            <button className="big pulse" data-testid="cast" onClick={() => rt.game?.action()}>Lancer la ligne <kbd>Espace</kbd></button>
+            <button disabled={!!harpoonTarget && (!save.harpoonOwned || save.harpoons<1)} className="big pulse" data-testid="cast" onClick={() => rt.game?.action()}>{harpoonTarget ? `Viser au harpon · ${save.harpoons} recharge(s)` : 'Lancer la ligne'} <kbd>Espace</kbd></button>
           )}
           {hud?.port && (
             <button className="big" data-testid="port" onClick={() => { sfx('port'); setState({ panel: 'port' }); }}>
