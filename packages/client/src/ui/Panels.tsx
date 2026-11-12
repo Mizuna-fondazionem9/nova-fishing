@@ -2,7 +2,7 @@ import { Captaincy, AquariumWorkshop } from './Adventure';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   KIT_DEFS, BAITS, VESSELS, PAINTS, CAT_PRICE, catReady, getPort,
-  COLOR_NAMES, SIZE_NAMES, BIOMES, BIOME_IDS, NETS, RARITY_COLORS, SILHOUETTE_NAMES, SPECIES, TROPHIES, UPGRADES,
+  TRAIT_NAMES, type SpecimenTrait, COLOR_NAMES, SIZE_NAMES, BIOMES, BIOME_IDS, NETS, RARITY_COLORS, SILHOUETTE_NAMES, SPECIES, TROPHIES, UPGRADES,
   bulkOf, cargoBulk, dayKey, depthMeters, gearOf, gearTier, priceOf, upgradeCost,
   type Specimen, type Species, type UpgradeDef,
 } from '../../../shared/src/index';
@@ -181,7 +181,7 @@ function MaritimeTab() {
     <Section title="Peinture">
       <div className="paint-grid">{PAINTS.map((color,i)=><button key={color} aria-label={`Peinture ${i+1}`} aria-pressed={(save.paint ?? 0)===i} disabled={busy} onClick={()=>action('paint',String(i))}><span style={{background:color,width:26,height:22,borderRadius:4}}/>{(save.paints ?? [0]).includes(i)?'Possédée':'350 pièces'}</button>)}</div>
     </Section>
-    <Section title="Taille d’affichage"><p className="note">Réglage purement visuel ; capacité et vitesse dépendent du modèle.</p><div className="row">{[0.85,1,1.15].map((size,i)=><button key={size} disabled={busy} aria-pressed={(save.boatSize ?? 1)===size} onClick={()=>action('size',String(size))}>{['Compact','Normal','Grand'][i]}</button>)}</div></Section>
+
   </>;
 }
 
@@ -288,6 +288,7 @@ export function BestiaryPanel() {
   const save = useStore((s) => s.save)!;
   const bestiary = save.bestiary;
   const [color, setColor] = useState(0);
+  const [trait,setTrait]=useState<SpecimenTrait|undefined>();
   const [query, setQuery] = useState('');
   const [pick, setPick] = useState<Species | null>(null);
   const groups = useMemo(() => BIOME_IDS.map((b) => [b, SPECIES.filter((s) => s.biomes[0] === b)] as const), []);
@@ -296,20 +297,20 @@ export function BestiaryPanel() {
     const e = bestiary[pick.id];
     const variants = [...(e?.variants ?? [])];
     for (const f of [...save.cargo, ...save.aquarium].filter(f => f.sp === pick.id)) {
-      if (!variants.some(v => v.color === f.color && v.size === f.size && v.tough === f.tough)) variants.push(f);
+      if (!variants.some(v => v.color === f.color && v.size === f.size && v.tough === f.tough && v.trait === f.trait)) variants.push(f);
     }
     return (
       <Modal title="Bestiaire" onClose={() => setPick(null)}>
         <div className="showcase"><FishIcon sp={pick} color={color} scale={4} animate hidden={!e} /></div>
         <h3 className="species" style={{ color: RARITY_COLORS[pick.rarity] }}>{e ? pick.name : 'Espèce à découvrir'}</h3>
-        <p className="tags"><Rarity r={pick.rarity} /><span className="tag">{SILHOUETTE_NAMES[pick.sil]}</span></p>
+        <p className="tags"><Rarity r={pick.rarity} /><span className="tag">{SILHOUETTE_NAMES[pick.sil]}</span>{trait&&<span className="tag green">{TRAIT_NAMES[trait]}</span>}</p>
         <p className="desc">{e ? pick.desc : 'Une silhouette manque encore à votre carnet. Voici où tenter votre chance.'}</p>
         <Section title="Quand lancer la ligne ?">
           <div className="conditions"><span>◷ {pick.prefs.time ? `Plus fréquent : ${pick.prefs.time}` : 'À toute heure'}</span><span>☁ {pick.prefs.weather ? `Météo favorable : ${pick.prefs.weather}` : 'Toute météo'}</span></div>
           <p className="note">Ces préférences augmentent les chances de rencontre. Aucune exclusivité horaire ou météo.</p>
         </Section>
         {e && <Section title="Variantes capturées" aside={`${variants.length} formes consignées`}>
-          <div className="variant-grid">{variants.map((v, i) => <button key={i} aria-pressed={color === v.color} onClick={() => setColor(v.color)}><FishIcon sp={pick} color={v.color} /><b>{COLOR_NAMES[v.color] || 'Naturelle'}</b><small>{SIZE_NAMES[v.size] || 'Taille standard'}{v.tough ? ' · Coriace' : ''}</small></button>)}</div>
+          <div className="variant-grid">{variants.map((v, i) => <button key={i} aria-pressed={color === v.color && trait===v.trait} onClick={() => {setColor(v.color);setTrait(v.trait);}}><FishIcon sp={pick} color={v.color} /><b>{COLOR_NAMES[v.color] || 'Naturelle'}</b><small>{SIZE_NAMES[v.size] || 'Taille standard'}{v.tough ? ' · Coriace' : ''}{v.trait?` · ${TRAIT_NAMES[v.trait]}`:''}</small></button>)}</div>
           {!e.variants && <p className="note">Les anciennes prises vendues n’enregistraient pas leurs variantes. Vos prises conservées sont visibles ; les prochaines seront mémorisées définitivement.</p>}
         </Section>}
         <dl className="facts">
@@ -333,7 +334,7 @@ export function BestiaryPanel() {
       <input className="search" aria-label="Rechercher une espèce découverte" placeholder="Rechercher une espèce découverte…" value={query} onChange={e => setQuery(e.target.value)} />
       {groups.map(([b, all]) => [b, all.filter(sp => !query || (bestiary[sp.id] && sp.name.toLocaleLowerCase('fr').includes(query.toLocaleLowerCase('fr'))))] as const).filter(([, list]) => list.length).map(([b, list]) => (
         <Section key={b} title={BIOMES[b].name} aside={`${list.filter((s) => bestiary[s.id]).length} / ${list.length}`}>
-          <div className="spgrid">{list.map((sp) => <SpeciesCard key={sp.id} sp={sp} onPick={sp => { setColor(0); setPick(sp); }} />)}</div>
+          <div className="spgrid">{list.map((sp) => <SpeciesCard key={sp.id} sp={sp} onPick={sp => { setColor(0); setTrait(undefined); setPick(sp); }} />)}</div>
         </Section>
       ))}
     </Modal>

@@ -86,6 +86,17 @@ try {
   mkdirSync(shots, { recursive: true });
   await page.goto(base + '/auth/dev/login?name=' + name);
   await page.getByTestId('port').waitFor();
+  // Le mode discret masque le HUD et reste réversible sur ordinateur et mobile.
+  for (const viewport of [{width:1280,height:850},{width:390,height:844}]) {
+    await page.setViewportSize(viewport);
+    await page.getByRole('button', {name:'Masquer l’interface',exact:true}).click();
+    assert.equal(await page.getByRole('navigation', {name:'Carnet de bord'}).isVisible(), false);
+    assert.equal(await page.locator('.hud .card.tl').isVisible(), false);
+    assert.equal(await page.locator('canvas.world').isVisible(), true);
+    await page.getByRole('button', {name:'Afficher l’interface',exact:true}).click();
+    await page.getByTestId('port').waitFor();
+  }
+  await page.setViewportSize({width:1280,height:850});
   await page.getByTestId('port').click();
   await page.getByRole('tab', { name: 'Capitainerie', exact: true }).click();
   await page

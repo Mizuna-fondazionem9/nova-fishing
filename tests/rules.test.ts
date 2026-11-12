@@ -59,19 +59,23 @@ test('espèces : au moins 50, identifiants uniques, tous les biomes et silhouett
 test('spécimens : variantes bornées et cohérentes avec l’espèce', () => {
   const rng = new Rng(7);
   const s = sp('bar');
-  const sizes = [0, 0, 0, 0];
+  const sizes = [0, 0, 0, 0, 0, 0];
   let colored = 0;
   for (let i = 0; i < 20000; i++) {
     const f = rollSpecimen(rng, s, 1 + (i % 40), 'coastal', 0, `u${i}`);
     sizes[f.size]++;
     if (f.color) colored++;
-    assert.ok(f.len >= s.lmin && f.len <= s.lmax * 1.51);
-    assert.ok(f.kg > 0 && f.kg <= s.kgMax * 1.51 ** 3 * 1.11);
+    assert.ok(f.size >= 0 && f.size <= 5 && f.color >= 0 && f.color <= 7);
+    const min = f.size === 4 ? s.lmin * 0.45 : s.lmin;
+    const max = f.size === 5 ? s.lmax * 1.65 : f.size === 4 ? s.lmin * 0.75 : s.lmax * 1.5;
+    assert.ok(f.len >= min - 0.051 && f.len <= max + 0.051);
+    assert.ok(f.kg > 0 && f.kg <= s.kgMax * 1.65 ** 3 * 1.11);
     assert.ok(Number.isSafeInteger(f.value) && f.value >= 1);
     assert.equal(f.sp, s.id);
   }
-  assert.ok(sizes[0] > 17000 && sizes[1] > 500 && sizes[2] > 50 && sizes[3] < 80);
-  assert.ok(colored > 200 && colored < 1200);
+  assert.ok(sizes[0] > 16000 && sizes[1] > 500 && sizes[2] > 50 && sizes[3] < 80);
+  assert.ok(sizes[4] > 400 && sizes[4] < 1000 && sizes[5] > 0 && sizes[5] < 30);
+  assert.ok(colored > 600 && colored < 1200);
 });
 
 test('prix : déterministes, croissants avec le poids, majorés par les variantes', () => {
@@ -389,4 +393,40 @@ test('le bestiaire conserve les variantes uniques après vente et reprend les an
   s.aquarium.push(a);
   applyCatch(s, { ...a, uid: 'variant-c', color: 4 }, 0, 3);
   assert.deepEqual((s.bestiary.bar.variants as unknown as { color: number }[]).map(v => v.color), [3, 4]);
+});
+
+
+test('nouvelles variantes : prix et comportements distincts, anciennes prises compatibles', () => {
+  const a = fish('bar', 3, 'a');
+  const base = fightStats(sp(a.sp), a);
+  const swift = fightStats(sp(a.sp), {...a, trait:'swift'});
+  const armored = fightStats(sp(a.sp), {...a, trait:'armored'});
+  const relentless = fightStats(sp(a.sp), {...a, trait:'relentless'});
+  const cunning = fightStats(sp(a.sp), {...a, trait:'cunning'});
+  assert.ok(swift.speed > base.speed && swift.stamina < base.stamina);
+  assert.ok(armored.stamina > base.stamina && armored.speed < base.speed);
+  assert.ok(relentless.power > base.power && relentless.stamina > base.stamina);
+  assert.ok(cunning.zone < base.zone);
+  for (const trait of ['swift','armored','relentless','cunning'] as const) assert.ok(priceOf({...a,trait}) > priceOf(a));
+  for (const color of [5,6,7]) assert.ok(priceOf({...a,color}) > priceOf(a));
+  assert.ok(priceOf({...a,size:5}) > priceOf({...a,size:3}));
+  assert.ok(priceOf({...a,size:4}) < priceOf(a));
+  assert.deepEqual(fightStats(sp(a.sp), a), fightStats(sp(a.sp), {...a,trait:undefined}));
+});
+
+test('anciens bateaux et variantes : migration sans perte et traits mémorisés après vente', () => {
+  const old = {...newSave(SEED, 0), v:3, boatSize:1.15, coins:12345, paint:3, paints:[0,3]};
+  const a = {...fish('bar', 3, 'a'), color:7, trait:'armored' as const};
+  old.aquarium.push(a);
+  const s = migrateSave(old, SEED, 2);
+  assert.equal('boatSize' in s, false);
+  assert.equal(s.v, 4);
+  assert.equal(s.coins, 12345);
+  assert.deepEqual(s.paints, [0,3]);
+  assert.deepEqual(s.aquarium, [a]);
+  applyCatch(s, {...a,uid:'b'}, 0, 3);
+  applyCatch(s, {...a,uid:'c',trait:'swift'}, 0, 4);
+  applyCatch(s, {...a,uid:'d',trait:'swift'}, 0, 5);
+  s.cargo=[]; s.aquarium=[];
+  assert.deepEqual(s.bestiary.bar.variants?.map(v=>v.trait), ['armored','swift']);
 });

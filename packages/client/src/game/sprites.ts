@@ -98,6 +98,10 @@ function variantColors(sp: Species, color: number): [string, string, string] {
   if (color === 1) return ['#f4efe6', '#ffffff', '#f2b8c0'];
   if (color === 2) return ['#2c2c36', '#4c4c5a', '#15151a'];
   if (color === 3) return ['#e8b830', '#fff2a8', '#b07a10'];
+  if (color === 4) return ['#8bc5d1','#f4dfef','#7964a2'];
+  if (color === 5) return ['#bd7c58','#f2cf9e','#754c4b'];
+  if (color === 6) return ['#588ec6','#c6e9f2','#3d4f91'];
+  if (color === 7) return ['#d1c9d7','#fff4df','#9a9ab3'];
   return sp.colors;
 }
 
@@ -118,9 +122,9 @@ function paintBody(g: Grid, sp: Species, cols: [string, string, string], iris: b
 
 function profileFish(sp: Species, cols: [string, string, string], iris: boolean, frame: number, p: Prof): Spr {
   const W = p.W ?? 56;
-  const Hh = 36;
+  const Hh = sp.detail ? 44 : 36;
   const g = new Grid(W, Hh);
-  const cy = 18;
+  const cy = sp.detail ? 22 : 18;
   const tailLen = p.tail === 'lunate' ? 7 : p.tail === 'shark' ? 9 : 6;
   const x1 = W - 3 - (p.bill ?? 0); // museau
   const x0 = x1 - p.L;
@@ -162,8 +166,9 @@ function profileFish(sp: Species, cols: [string, string, string], iris: boolean,
     const [d0, d1, dh] = p.dorsal;
     if (u >= d0 && u <= d1) {
       const k = (u - d0) / (d1 - d0);
-      const fh = p.tail === 'shark' || sp.shape === 'tuna' ? dh * (1 - k) : dh * Math.sin(Math.PI * (0.25 + 0.75 * k));
-      for (let y = 1; y <= Math.round(fh); y++) g.set(x, cy - Math.round(h) - y, fin);
+      let fh = p.tail === 'shark' || sp.shape === 'tuna' ? dh * (1 - k) : dh * Math.sin(Math.PI * (0.25 + 0.75 * k));
+      if(sp.detail==='spiny')fh*=Math.floor(k*11)%2===0?1.2:.4;
+      for (let y = 1; y <= Math.round(fh); y++) g.set(x, cy - Math.round(h) - y, sp.detail&&x%3===0?mix(fin,cols[1],.55):fin);
     }
     if (u > 0.62 && u < 0.76 && p.H > 5) for (let y = 1; y <= 2; y++) g.set(x, cy + Math.round(h) + y, fin);
   }
@@ -327,22 +332,74 @@ function crabSprite(cols: [string, string, string], frame: number): Spr {
   return canvas;
 }
 
-function shellSprite(cols: [string,string,string], shrimp = false): Spr {
-  const [s,c]=makeCanvas(28,20);
-  c.fillStyle=cols[2];
-  if(shrimp) {
-    for(let i=0;i<6;i++) { c.fillStyle=i%2?cols[0]:cols[1]; c.fillRect(7+i*2,6+Math.round(Math.sin(i/2)*3),3,5); }
-    c.fillStyle=cols[0]; c.fillRect(4,5,6,3); c.fillRect(21,8,4,6);
-    c.fillStyle=cols[2]; c.fillRect(4,4,1,1);
-    for(let i=0;i<4;i++) c.fillRect(9+i*3,13,1,4);
-    c.fillRect(1,2,7,1);
-  } else {
-    c.beginPath(); c.ellipse(14,11,10,7,0,0,Math.PI*2); c.fill();
-    c.fillStyle=cols[0]; c.beginPath(); c.ellipse(14,9,9,6,0,0,Math.PI*2); c.fill();
-    c.strokeStyle=cols[1]; c.lineWidth=1;
-    for(let i=0;i<5;i++) { c.beginPath(); c.moveTo(14,15); c.lineTo(6+i*4,6); c.stroke(); }
+function pixelLine(g:Grid,x0:number,y0:number,x1:number,y1:number,color:string):void {
+  const steps=Math.max(Math.abs(x1-x0),Math.abs(y1-y0));
+  for(let i=0;i<=steps;i++){const t=steps?i/steps:0;g.set(x0+(x1-x0)*t,y0+(y1-y0)*t,color);}
+}
+function shellSprite(sp:Species,cols:[string,string,string]):Spr {
+  const g=new Grid(40,30),[main,light,dark]=cols;
+  const form=sp.id.startsWith('moule')?'mussel':sp.id==='huitre'?'oyster':sp.id==='coquille_saint_jacques'?'scallop':sp.id==='coquillage_spectral'?'spiral':'clam';
+  if(form==='mussel'){
+    for(let x=7;x<=33;x++){
+      const u=(x-7)/26,cy=22-u*12,w=Math.sin(Math.PI*u)**0.72*(4+u*(sp.id==='moule_de_braise'?7:5));
+      for(let y=-Math.round(w);y<=Math.round(w);y++){
+        const ridge=Math.floor(u*30)%6===0;
+        g.set(x,cy+y,ridge?mix(main,dark,.35):y< -1?mix(main,light,.38):main);
+      }
+    }
+    pixelLine(g,13,19,26,9,light);pixelLine(g,14,21,30,12,mix(main,light,.3));
+    if(sp.id==='moule_de_braise')for(let i=0;i<4;i++)pixelLine(g,18+i*3,20-i*2,18+i*3,23-i*2,light);
+  }else if(form==='scallop'){
+    for(let y=3;y<=24;y++)for(let x=3;x<=37;x++){
+      const dx=x-20,dy=y-24,r=Math.hypot(dx,dy),angle=Math.atan2(dy,dx);
+      if(dy>0||r>19+Math.cos(angle*12)*.7)continue;
+      const rib=Math.abs(Math.sin((angle+Math.PI)*6));
+      g.set(x,y,rib<.2?dark:rib<.5?mix(main,light,.65):main);
+    }
+    for(let x=16;x<=24;x++)for(let y=23;y<=26;y++)g.set(x,y,main);
+  }else if(form==='oyster'){
+    for(let y=5;y<=25;y++)for(let x=6;x<=34;x++){
+      const dx=(x-20)/13,dy=(y-15)/9,a=Math.atan2(dy,dx),r=Math.hypot(dx,dy);
+      if(r>1+.12*Math.sin(a*7)+.05*Math.cos(a*13))continue;
+      g.set(x,y,r>.76?(Math.floor(r*16)%2?dark:main):mix(light,main,r*.5));
+    }
+    for(let y=12;y<=18;y++)for(let x=16;x<=23;x++)if(Math.hypot(x-19,y-15)<3.4)g.set(x,y,Math.hypot(x-18,y-14)<1.5?'#fff5df':light);
+    pixelLine(g,10,21,28,19,dark);
+  }else if(form==='spiral'){
+    for(let y=4;y<=25;y++)for(let x=8;x<=32;x++)if(((x-19)/11)**2+((y-15)/10)**2<=1)g.set(x,y,y<13?mix(main,light,.4):main);
+    for(let t=0;t<Math.PI*5;t+=.08){const r=.4+t*.59;g.set(19+Math.cos(t)*r,15+Math.sin(t)*r,light);}
+    for(let x=28;x<=34;x++)for(let y=17;y<=23;y++)if(((x-31)/3)**2+((y-20)/3)**2<=1)g.set(x,y,dark);
+    pixelLine(g,29,23,34,22,light);
+  }else{
+    const opal=sp.id==='palourde_opaline';
+    for(let y=6;y<=25;y++)for(let x=5;x<=35;x++){
+      const dx=(x-20)/(opal?15:13),dy=(y-16)/(opal?8:9),r=Math.hypot(dx,dy);
+      if(r>1)continue;
+      const band=Math.floor(r*10)%3===0;
+      g.set(x,y,band?mix(main,dark,.4):y<16?mix(main,light,.5):main);
+    }
+    pixelLine(g,9,22,31,22,dark);pixelLine(g,12,23,28,23,light);
+    if(opal)for(let x=10;x<31;x+=4)pixelLine(g,x,13,x+2,10,light);
   }
-  return s;
+  return g.outline(.65).toCanvas();
+}
+function shrimpSprite(cols:[string,string,string],frame:number):Spr {
+  const g=new Grid(48,32),[main,light,dark]=cols,bend=frame%2;
+  // Éventail caudal, abdomen articulé et tête translucide, de profil.
+  for(let x=4;x<=12;x++)for(let y=17;y<=26;y++)if(Math.abs(y-22)<= (12-x)*.55+1)g.set(x,y,y%3===0?light:main);
+  for(let i=0;i<7;i++){
+    const cx=12+i*3,cy=20-Math.sin(i/6*Math.PI)*6-i*.65,r=1.9+i*.25;
+    for(let x=-2;x<=2;x++)for(let y=-Math.ceil(r);y<=Math.ceil(r);y++)if((x/2.5)**2+(y/r)**2<=1.2)g.set(cx+x,cy+y,x===-2?dark:y<0?mix(main,light,.45):main);
+  }
+  for(let y=8;y<=17;y++)for(let x=28;x<=38;x++)if(((x-32)/6)**2+((y-13)/4.5)**2<1)g.set(x,y,y<12?mix(main,light,.5):main);
+  for(let i=0;i<5;i++){
+    const x=19+i*3;pixelLine(g,x,17,x-2,22+bend,dark);pixelLine(g,x-2,22+bend,x+1,24+bend,main);
+  }
+  pixelLine(g,36,11,44,7,main);for(let x=38;x<=44;x+=2)g.set(x,8,dark);
+  pixelLine(g,36,10,42,3,light);pixelLine(g,42,3,47,2,light);
+  pixelLine(g,36,12,43,16,main);pixelLine(g,43,16,47,15,main);
+  g.set(35,9,dark);g.set(36,9,dark);g.set(35,8,light);
+  return g.outline(.65).toCanvas();
 }
 
 export function fishSprite(sp: Species, color = 0, frame = 0): Spr {
@@ -360,11 +417,23 @@ export function fishSprite(sp: Species, color = 0, frame = 0): Spr {
     case 'squid': s = cephFish(sp, cols, iris, frame, true); break;
     case 'moon': s = roundFish(sp, cols, iris, frame, true); break;
     case 'angler': s = roundFish(sp, cols, iris, frame, false); break;
-    case 'shell': s = shellSprite(cols); break;
-    case 'shrimp': s = shellSprite(cols,true); break;
+    case 'shell': s = shellSprite(sp,cols); break;
+    case 'shrimp': s = shrimpSprite(cols,frame); break;
     case 'crab': s = crabSprite(cols, frame); break;
     case 'seahorse': s = seahorse(cols); break;
-    default: s = profileFish(sp, cols, iris, frame, PROF[sp.shape] ?? PROF.fusi);
+    default: {
+      const base=PROF[sp.shape]??PROF.fusi;
+      const profile:Prof={...base};
+      if(sp.detail==='sailfin'){profile.dorsal=[.12,.8,12];profile.tail='lunate';profile.W=64;}
+      if(sp.detail==='fan'){profile.dorsal=[.16,.78,8];profile.tail='round';profile.tailW=.36;}
+      if(sp.detail==='butterfly'){profile.H=11;profile.L=23;profile.tail='round';profile.dorsal=[.1,.82,8];}
+      if(sp.detail==='spiny')profile.dorsal=[.15,.8,8];
+      s=profileFish(sp,cols,iris,frame,profile);break;
+    }
+  }
+  if(sp.detail==='lantern') {
+    const c=s.getContext('2d')!;c.fillStyle=cols[1];
+    for(let i=0;i<6;i++)c.fillRect(Math.round(s.width*.25+i*s.width*.085),Math.round(s.height*.65+Math.sin(i)*2),1,1);
   }
   if(sp.ancient) {
     const bone=s.getContext('2d')!;
@@ -461,9 +530,10 @@ export function boatSprite(tier: number, model='skiff', paint=0): Spr {
   const g = new Grid(size, size);
   const c = Math.floor(size / 2);
   const x0 = c - Math.floor(L / 2);
-  const hull = ['#8a5a2b', '#7a4a2a', '#5f4a3a'][tier];
-  const deck = ['#d2a264', '#c99a5b', '#b98f5e'][tier];
-  const trim = PAINTS[paint] ?? PAINTS[0];
+  const paintColor=PAINTS[paint]??PAINTS[0];
+  const hull=shade(paintColor,.65);
+  const deck=mix(paintColor,'#eee3cf',.3);
+  const trim=mix(paintColor,'#ffffff',.25);
   for (let i = 0; i <= L; i++) {
     const u = i / L;
     const w = u < 0.55 ? W * (0.72 + 0.28 * Math.min(1, u * 5)) : W * Math.pow(Math.cos(((u - 0.55) / 0.45) * Math.PI * 0.5), 0.75);
@@ -475,17 +545,17 @@ export function boatSprite(tier: number, model='skiff', paint=0): Spr {
   // Cabine
   const cab0 = x0 + Math.round(L * 0.14);
   const cab1 = x0 + Math.round(L * 0.4);
-  for (let x = cab0; x <= cab1; x++) for (let y = -Math.round(W * 0.55); y <= Math.round(W * 0.55); y++) g.set(x, c + y, x === cab0 || x === cab1 || Math.abs(y) === Math.round(W * 0.55) ? '#e8e2d4' : y < 0 ? '#f6f1e6' : '#ddd6c6');
+  for (let x = cab0; x <= cab1; x++) for (let y = -Math.round(W * 0.55); y <= Math.round(W * 0.55); y++) g.set(x, c + y, x === cab0 || x === cab1 || Math.abs(y) === Math.round(W * 0.55) ? trim : y < 0 ? mix(paintColor,'#ffffff',.45) : mix(paintColor,'#eee3cf',.3));
   g.set(cab1 - 1, c - 1, '#6fc3e8'); g.set(cab1 - 1, c + 1, '#6fc3e8');
   // Mât(s) et voile vue de dessus
   const masts = model==='trawler'?[]:model==='sailboat'||tier===2?[0.45,0.72]:[0.6];
   for (const m of masts) {
     const mx = x0 + Math.round(L * m);
-    for (let y = -Math.round(W * 1.15); y <= Math.round(W * 1.15); y++) { g.set(mx, c + y, '#fbfaf4'); g.set(mx + 1, c + y, Math.abs(y) % 3 === 0 ? '#d9d6ca' : '#f0eee4'); }
+    for (let y = -Math.round(W * 1.15); y <= Math.round(W * 1.15); y++) { g.set(mx, c + y, '#fbfaf4'); g.set(mx + 1, c + y, Math.abs(y) % 3 === 0 ? '#f0eee4' : paintColor); }
     g.set(mx, c, '#5a3a1c'); g.set(mx + 1, c, '#5a3a1c');
   }
   if(model==='trawler') {
-    for(let x=Math.floor(c-3);x<=c+6;x++) for(let y=Math.floor(c-W+2);y<=c+W-2;y++) g.set(x,y,Math.abs(y-c)<2?'#6ab8cb':'#e5e3cf');
+    for(let x=Math.floor(c-3);x<=c+6;x++) for(let y=Math.floor(c-W+2);y<=c+W-2;y++) g.set(x,y,Math.abs(y-c)<2?'#6ab8cb':mix(paintColor,'#eee3cf',.35));
     for(let x=Math.floor(x0+4);x<x0+12;x++) g.set(x,c,'#9e8966');
   }
   s = g.outline(0.45).toCanvas();

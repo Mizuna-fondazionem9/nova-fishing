@@ -671,6 +671,7 @@ export function pointOp(
       f.size = 0;
       f.color = 0;
       f.tough = false;
+      delete f.trait;
       f.value = priceOf(f);
       applyCatch(s, f, 0, now);
     }

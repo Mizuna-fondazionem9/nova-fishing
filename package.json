@@ -15,7 +15,8 @@
     "test:e2e": "tsx tests/e2e/journey.ts",
     "balance": "tsx scripts/balance.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test:e2e:adventure": "tsx tests/e2e/adventure.ts"
+    "test:e2e:adventure": "tsx tests/e2e/adventure.ts",
+    "preview:sprites": "tsx scripts/sprite-preview.ts"
   },
   "dependencies": {
     "esbuild": "^0.28.0",
@@ -30,6 +31,7 @@
     "@types/react-dom": "^19.2.0",
     "playwright": "^1.60.0",
     "tsx": "^4.20.0",
-    "typescript": "^5.9.0 || ^6.0.0"
+    "typescript": "^5.9.0 || ^6.0.0",
+    "@napi-rs/canvas": "1.1.0"
   }
 }

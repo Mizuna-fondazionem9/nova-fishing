@@ -244,7 +244,7 @@ export class Game {
     }, { passive: false });
     this.on(this.canvas, 'contextmenu', (e: Event) => e.preventDefault());
     this.on(window, 'keydown', (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
+      if ((e.target as HTMLElement)?.closest('input,textarea,select,button,[contenteditable=true]')) return;
       const st = getState();
       if (e.code === 'Space') {
         e.preventDefault();
@@ -1267,7 +1267,6 @@ export class Game {
     ctx.fill();
     ctx.globalAlpha = 1;
     ctx.rotate(b.angle + Math.sin(t * 1.7) * 0.03);
-    ctx.scale(save?.boatSize ?? 1,save?.boatSize ?? 1);
     ctx.drawImage(spr, -spr.width / 2, -spr.height / 2);
     ctx.restore();
 

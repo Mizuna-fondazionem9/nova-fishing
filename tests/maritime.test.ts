@@ -20,11 +20,11 @@ test('bateaux : achats permanents, compromis partagés, conservation des dégât
   assert.equal(s.vessel,'trawler');
   const old=migrateSave({coins:55},seed,start);assert.equal(old.vessel,'skiff');assert.deepEqual(old.vessels,['skiff']);
 });
-test('peintures et taille : coût une seule fois, aucune modification des stats par la taille',()=>{
+test('peintures permanentes et ancien réglage de taille supprimé',()=>{
   const s=make(),initial=gearOf(s.up,s.vessel),coins=s.coins;
   for(let i=0;i<2;i++) assert.ok(maritimeOp(s,'paint','2','0:0',start,seed).ok);
   assert.equal(s.coins,coins-350);
-  assert.ok(maritimeOp(s,'size','1.15','0:0',start,seed).ok);
+  assert.equal(maritimeOp(s,'size','1.15','0:0',start,seed).ok,false);
   assert.deepEqual(gearOf(s.up,s.vessel),initial);
   assert.equal(maritimeOp(s,'vessel','__proto__','0:0',start,seed).ok,false);
 });

@@ -9,10 +9,11 @@ export interface Specimen {
   /** Longueur en cm, poids en kg. */
   len: number;
   kg: number;
-  /** 0 normal, 1 grand, 2 géant, 3 record. */
+  /** 0 normal, 1 grand, 2 géant, 3 record, 4 minuscule, 5 colossal. */
   size: number;
-  /** 0 normal, 1 albinos, 2 mélanique, 3 doré, 4 irisé. */
+  /** 0 normal, 1 albinos, 2 mélanique, 3 doré, 4 irisé, 5 cuivré, 6 azur, 7 nacré. */
   color: number;
+  trait?: SpecimenTrait;
   tough: boolean;
   lvl: number;
   value: number;
@@ -20,10 +21,13 @@ export interface Specimen {
   biome: BiomeId;
 }
 
-export const SIZE_NAMES = ['', 'Grand', 'Géant', 'Record'];
-export const COLOR_NAMES = ['', 'Albinos', 'Mélanique', 'Doré', 'Irisé'];
-const SIZE_VALUE = [1, 1.25, 1.8, 3];
-const COLOR_VALUE = [1, 1.5, 1.5, 3, 6];
+export const SIZE_NAMES = ['', 'Grand', 'Géant', 'Record', 'Minuscule', 'Colossal'];
+export const COLOR_NAMES = ['', 'Albinos', 'Mélanique', 'Doré', 'Irisé', 'Cuivré', 'Azur', 'Nacré'];
+export type SpecimenTrait = 'swift'|'armored'|'relentless'|'cunning';
+export const TRAIT_NAMES:Record<SpecimenTrait,string>={swift:'Vif',armored:'Cuirassé',relentless:'Tenace',cunning:'Rusé'};
+export const TRAIT_VALUE:Record<SpecimenTrait,number>={swift:1.15,armored:1.2,relentless:1.18,cunning:1.15};
+const SIZE_VALUE = [1, 1.25, 1.8, 3, 0.65, 4.5];
+const COLOR_VALUE = [1, 1.5, 1.5, 3, 6, 1.8, 2, 2.5];
 
 /** Bonus régional borné (logarithmique) : niveau 1 -> 0,08 ; 12 -> 0,69 ; 60 -> 1,79. */
 export const regionBonus = (lvl: number): number => Math.log(1 + Math.max(0, lvl) / 12);
@@ -31,13 +35,13 @@ export const regionBonus = (lvl: number): number => Math.log(1 + Math.max(0, lvl
 /** Encombrement en cale : racine du poids, borné. 0,2 kg -> 1 ; 25 kg -> 5 ; 400 kg -> 20 ; plafond 40. */
 export const bulkOf = (kg: number): number => clamp(Math.ceil(Math.sqrt(kg)), 1, 40);
 
-export function priceOf(s: Pick<Specimen, 'sp' | 'kg' | 'size' | 'color' | 'tough' | 'lvl'>): number {
+export function priceOf(s: Pick<Specimen, 'sp' | 'kg' | 'size' | 'color' | 'tough' | 'lvl'> & {trait?:SpecimenTrait}): number {
   const sp = SPECIES_BY_ID[s.sp];
   if (!sp) return 0;
   const avgLen = sp.lmin + (sp.lmax - sp.lmin) * 0.4;
   const avgKg = sp.kgMax * Math.pow(avgLen / sp.lmax, 3);
   const weightF = clamp(Math.pow(s.kg / avgKg, 0.55), 0.4, 6);
-  const price = sp.value * weightF * SIZE_VALUE[s.size] * COLOR_VALUE[s.color] * (s.tough ? 1.3 : 1) * (1 + 0.35 * regionBonus(s.lvl));
+  const price = sp.value * weightF * SIZE_VALUE[s.size] * COLOR_VALUE[s.color] * (s.tough ? 1.3 : 1) * (s.trait?TRAIT_VALUE[s.trait]??1:1) * (1 + 0.35 * regionBonus(s.lvl));
   return Math.max(1, Math.round(price));
 }
 
@@ -45,19 +49,24 @@ export function rollSpecimen(rng: Rng, sp: Species, lvl: number, biome: BiomeId,
   colorBoost = Math.max(1,Math.min(2,Number.isFinite(colorBoost)?colorBoost:1));
   const boost = 1 + regionBonus(lvl);
   const r = rng.next();
-  const size = r < 0.0008 * boost ? 3 : r < 0.008 * boost ? 2 : r < 0.05 * boost ? 1 : 0;
+  const size = r < 0.00015*boost ? 5 : r < 0.0008 * boost ? 3 : r < 0.008 * boost ? 2 : r < 0.05 * boost ? 1 : r > 0.965 ? 4 : 0;
   let len = sp.lmin + (sp.lmax - sp.lmin) * Math.pow(rng.next(), 1.5);
   if (size === 1) len = sp.lmax * (1.02 + 0.13 * rng.next());
   if (size === 2) len = sp.lmax * (1.15 + 0.15 * rng.next());
   if (size === 3) len = sp.lmax * (1.32 + 0.18 * rng.next());
+  if(size===4)len=sp.lmin*rng.range(0.45,0.75);
+  if(size===5)len=sp.lmax*rng.range(1.5,1.65);
   const kg = sp.kgMax * Math.pow(len / sp.lmax, 3) * rng.range(0.9, 1.1);
   const c = rng.next();
-  const color = c < 0.001*colorBoost ? 4 : c < 0.005*colorBoost ? 3 : c < 0.015*colorBoost ? 2 : c < 0.025*colorBoost ? 1 : 0;
+  const color = c < 0.001*colorBoost ? 4 : c < 0.005*colorBoost ? 3 : c < 0.015*colorBoost ? 2 : c < 0.025*colorBoost ? 1 : c < 0.031*colorBoost ? 5 : c < 0.037*colorBoost ? 6 : c < 0.043*colorBoost ? 7 : 0;
   const tough = rng.chance(0.06 + 0.02 * regionBonus(lvl));
   const spec: Specimen = {
     uid, sp: sp.id, len: Math.round(len * 10) / 10, kg: Math.max(0.001, Math.round(kg * 1000) / 1000),
     size, color, tough, lvl: Math.round(lvl * 10) / 10, value: 0, at: now, biome,
   };
+  const t=rng.next();
+  if(t<0.12)spec.trait=(['swift','armored','relentless','cunning'] as const)[Math.floor(t/0.03)];
+  if(sp.sil==='crab'&&(spec.trait==='swift'||spec.trait==='cunning'))delete spec.trait;
   spec.value = priceOf(spec);
   return spec;
 }
@@ -72,15 +81,15 @@ export interface FightStats {
 }
 
 /** Statistiques de combat d'un individu. Le niveau régional renforce surtout le « point fort » de l'espèce. */
-export function fightStats(sp: Species, spec: Pick<Specimen, 'len' | 'tough' | 'lvl'>): FightStats {
+export function fightStats(sp: Species, spec: Pick<Specimen, 'len' | 'tough' | 'lvl'> & {trait?:SpecimenTrait}): FightStats {
   const bonus = regionBonus(spec.lvl);
   const sizeF = clamp(spec.len / ((sp.lmin + sp.lmax) / 2), 0.6, 2.2);
   const f = (k: Focus): number => 1 + (sp.focus === k ? 0.5 : 0.15) * bonus;
   return {
-    stamina: 84 * Math.pow(sp.tier, 0.8) * sp.stam * Math.pow(sizeF, 0.8) * (spec.tough ? 1.35 : 1) * f('endurant'),
-    power: 6.5 * Math.pow(sp.tier, 0.92) * sp.pow * Math.pow(sizeF, 0.5) * (spec.tough ? 1.15 : 1) * f('puissant'),
-    speed: Math.min(2.6, (0.6 + 0.1 * Math.pow(sp.tier, 0.62)) * sp.spd * Math.sqrt(f('vif'))),
-    zone: clamp((0.25 - 0.0035 * sp.tier) / Math.sqrt(f('ruse')), 0.1, 0.25),
+    stamina: 84 * Math.pow(sp.tier, 0.8) * sp.stam * Math.pow(sizeF, 0.8) * (spec.tough ? 1.35 : 1) * (spec.trait==='armored'?1.18:spec.trait==='relentless'?1.1:spec.trait==='swift'?0.92:1) * f('endurant'),
+    power: 6.5 * Math.pow(sp.tier, 0.92) * sp.pow * Math.pow(sizeF, 0.5) * (spec.tough ? 1.15 : 1) * (spec.trait==='relentless'?1.15:1) * f('puissant'),
+    speed: Math.min(2.6, (0.6 + 0.1 * Math.pow(sp.tier, 0.62)) * sp.spd * Math.sqrt(f('vif'))*(spec.trait==='swift'?1.18:spec.trait==='armored'?0.92:spec.trait==='cunning'?1.06:1)),
+    zone: (spec.trait==='cunning'?0.85:1)*clamp((0.25 - 0.0035 * sp.tier) / Math.sqrt(f('ruse')), 0.1, 0.25),
     aggr: sp.aggr,
     profile: sp.profile,
   };
