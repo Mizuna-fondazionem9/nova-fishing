@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { RARITY_COLORS, SILHOUETTE_NAMES, bulkOf } from '../../../shared/src/index';
+import { RARITY_COLORS, SILHOUETTE_NAMES, bulkOf, priceOf } from '../../../shared/src/index';
 import { useStore, setState } from '../store';
 import { sfx, unlockAudio } from '../game/audio';
 import { comboColor, comboTier, comboWord } from '../game/combo';
@@ -207,7 +207,7 @@ export function ResultModal() {
             <dl className="facts">
               <div><dt>Poids</dt><dd>{fmtKg(f.kg)}</dd></div>
               <div><dt>Longueur</dt><dd>{fmtLen(f.len)}</dd></div>
-              <div><dt>Valeur</dt><dd><Coins n={f.value} /></dd></div>
+              <div><dt>Valeur</dt><dd><Coins n={priceOf(f)} /></dd></div>
               <div><dt>Encombrement</dt><dd>{bulkOf(f.kg)} unités</dd></div>
             </dl>
             <p className="desc">{speciesOf(f).desc}</p>

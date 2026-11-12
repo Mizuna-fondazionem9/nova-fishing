@@ -521,3 +521,17 @@ button.crab-target, button.crab-target:hover:not(:disabled), button.crab-target:
   .hud-toggle { left: auto; right: max(10px,env(safe-area-inset-right)); top: auto; bottom: calc(110px + env(safe-area-inset-bottom)); transform: none; width: 40px; height: 40px; }
   .hud-toggle:active:not(:disabled) { transform: none; }
 }
+
+/* Upgrade overview: exact level fraction, grouped by equipment. */
+.upgrade-groups { display: grid; gap: 22px; }
+.upgrade-group h4 { margin: 0 0 10px; color: var(--dim); font: 600 11px var(--f-num); text-transform: uppercase; letter-spacing: .12em; }
+.upgrade-levels { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+.upgrade-level { min-width: 0; padding: 13px 14px 11px; background: #0c1c28; border: 1px solid #2c4353; border-radius: 10px; }
+.upgrade-level-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 12px; line-height: 1.4; color: #e0e8ec; }
+.upgrade-level-heading b { flex: none; color: #cbb2ff; font: 600 14px var(--f-num); }
+.upgrade-level-heading small { color: #849aa9; font-size: 10px; font-weight: 400; }
+.upgrade-meter { height: 7px; margin: 10px 0 8px; background: #203440; border-radius: 3px; overflow: hidden; }
+.upgrade-meter > span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#7365ba,#c3a5ed); transition: width .3s ease; }
+.upgrade-level p { margin: 0; font-size: 11px; color: #94acba; }
+.upgrade-level.complete .upgrade-meter > span { background: #77d9b3; }
+@media(max-width:440px) { .upgrade-levels { grid-template-columns: minmax(0,1fr); } }

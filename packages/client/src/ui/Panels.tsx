@@ -1,5 +1,7 @@
+import { mountAquarium } from '../public-aquarium';
+import '../aquarium.css';
 import { Captaincy, AquariumWorkshop } from './Adventure';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   KIT_DEFS, BAITS, VESSELS, PAINTS, CAT_PRICE, catReady, getPort,
   TRAIT_NAMES, type SpecimenTrait, COLOR_NAMES, SIZE_NAMES, BIOMES, BIOME_IDS, NETS, RARITY_COLORS, SILHOUETTE_NAMES, SPECIES, TROPHIES, UPGRADES,
@@ -48,7 +50,7 @@ function FishRow({ f, children }: { f: Specimen; children?: ReactNode }) {
       <div className="info">
         <div className="name"><b style={{ color: RARITY_COLORS[sp.rarity] }}>{sp.name}</b><Tags f={f} /></div>
         <div className="meta">
-          <span>{fmtKg(f.kg)}</span><span>{fmtLen(f.len)}</span><span>Encombrement {bulkOf(f.kg)}</span>
+          <span>{fmtKg(f.kg)}</span><span>{fmtLen(f.len)}</span><span>{bulkOf(f.kg)} unités de cale</span><span>{fmt(Math.round(priceOf(f) / bulkOf(f.kg)))} pièces / unité</span>
         </div>
       </div>
       <div className="price"><Coins n={priceOf(f)} /></div>
@@ -259,8 +261,24 @@ export function ShipPanel() {
         </dl>
       </Section>
       <Section title="Niveaux d’amélioration">
-        <div className="uplist">
-          {UPGRADES.map((u) => <span key={u.key} className="chip">{u.name}<b>{save.up[u.key] ?? 0}</b></span>)}
+        <div className="upgrade-groups">
+          {([['boat', 'Bateau'], ['rod', 'Canne & ligne'], ['aquarium', 'Aquarium']] as const).map(([group, title]) => (
+            <div className="upgrade-group" key={group}>
+              <h4>{title}</h4>
+              <div className="upgrade-levels">
+                {UPGRADES.filter(u => u.group === group).map(u => {
+                  const level = save.up[u.key] ?? 0;
+                  return <div className={`upgrade-level ${level === u.max ? 'complete' : ''}`} key={u.key}>
+                    <div className="upgrade-level-heading"><span>{u.name}</span><b>{level}<small> / {u.max}</small></b></div>
+                    <div className="upgrade-meter" role="progressbar" aria-label={u.name} aria-valuemin={0} aria-valuemax={u.max} aria-valuenow={level}>
+                      <span style={{ width: `${100 * level / u.max}%` }} />
+                    </div>
+                    <p>{u.fmt(u.effect(level))}</p>
+                  </div>;
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       </Section>
     </Modal>
@@ -344,22 +362,14 @@ export function BestiaryPanel() {
 // ---------- Aquarium ----------
 
 function Tank({ fish }: { fish: Specimen[] }) {
-  return (
-    <div className={`tank theme-${useStore(s=>s.save?.adventure?.aquarium.theme)??'sand'}`}>
-      <div className="tank-ornament" aria-hidden="true"/>
-      <div className="sand" />
-      {fish.map((f, i) => {
-        const sp = speciesOf(f);
-        const big = sp.lmax > 400 ? 3 : sp.lmax > 120 ? 2.5 : 2;
-        return (
-          <div key={f.uid} className="swim" style={{ top: `${8 + ((i * 37) % 70)}%`, animationDuration: `${14 + ((i * 7) % 12)}s`, animationDelay: `${-((i * 5) % 20)}s` }} title={sp.name}>
-            <FishIcon sp={sp} color={f.color} scale={big} animate />
-          </div>
-        );
-      })}
-      {[12, 30, 55, 78, 90].map((x, i) => <span key={x} className="bubble" style={{ left: `${x}%`, animationDelay: `${i * 1.3}s` }} />)}
-    </div>
-  );
+  const host = useRef<HTMLDivElement>(null);
+  const theme = useStore(s => s.save?.adventure?.aquarium.theme) ?? 'sand';
+  const featured = useStore(s => s.save?.adventure?.aquarium.featured);
+  useEffect(() => {
+    if (!host.current) return;
+    return mountAquarium(host.current, theme, fish.map(f => ({ ...f, featured: f.uid === featured })));
+  }, [fish, theme, featured]);
+  return <div className="nova-aquarium" ref={host} aria-label="Aquarium et poissons exposés" />;
 }
 
 export function AquariumPanel() {

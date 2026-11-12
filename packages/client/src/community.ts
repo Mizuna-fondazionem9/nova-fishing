@@ -1,3 +1,4 @@
+import './aquarium.css';
 // Vitrine publique du Hub : mêmes sprites et catalogue que le jeu, lectures seules.
 import { fishSprite, boatSprite } from './game/sprites';
 import { mountAquarium } from './public-aquarium';
@@ -47,6 +48,10 @@ type Profile = Summary & {
   };
   aquarium: { name: string; theme: string; fish: Fish[] };
 };
+const aquariumStyles = document.createElement('link');
+aquariumStyles.rel = 'stylesheet';
+aquariumStyles.href = new URL('./community.css', import.meta.url).href;
+document.head.append(aquariumStyles);
 const root = document.getElementById('fishing-community');
 const apiBase = new URL('./api/public/', import.meta.url);
 const fmt = (n: number) =>
@@ -331,7 +336,7 @@ async function profile(host: HTMLElement, id: string): Promise<void> {
     );
     tankSection.append(top);
     const theme = p.aquarium.theme in THEME_NAMES ? p.aquarium.theme : 'sand';
-    const tank = el('div', 'public-tank theme-' + theme);
+    const tank = el('div', 'nova-aquarium');
     tank.setAttribute('aria-label', 'Aquarium de ' + p.name);
     mountAquarium(tank, theme, p.aquarium.fish);
     if (!p.aquarium.fish.length)

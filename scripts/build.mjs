@@ -25,6 +25,7 @@ await build({
   minify: !dev, sourcemap: dev, logLevel: 'info',
 });
 cpSync('packages/client/index.html', 'dist/client/index.html');
+cpSync('packages/client/public/assets', 'dist/client/assets', { recursive: true });
 
 await build({
   entryPoints: ['packages/server/src/index.ts'],

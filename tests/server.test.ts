@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { AddressInfo } from 'node:net';
 import {
-  newSave, migrateSave, startPort, spawnShadows, slotOf, findPath, isLand, simulateBot, BOTS, Rng, priceOf, upgradeCost,
+  newSave, migrateSave, startPort, spawnShadows, slotOf, findPath, isLand, simulateBot, BOTS, Rng, priceOf, upgradeCost, dayKey,
   landmarkAt, adventureOf, portContracts, noteAdventureCatch, nearbyTreasures, CAT_INTERVAL, SPECIES_BY_ID, NETS, CHUNK, gearOf, type Shadow, type Save,
 } from '../packages/shared/src/index';
 import { loadConfig, type Config } from '../packages/server/src/config';
@@ -376,7 +376,8 @@ test('économie : vente et achats validés, à quai seulement, sans double paiem
   const r = await rig('marchand');
   const o = startPort(SEED);
   const mk = (uid: string, kg: number) => ({ uid, sp: 'bar', len: 50, kg, size: 0, color: 0, tough: false, lvl: 1, value: 123456, at: 0, biome: 'coastal' as const });
-  await r.patch((s) => void s.cargo.push(mk('a', 2), mk('b', 3), mk('c', 4)));
+  // Isolate sale credit from daily-challenge rewards (higher prices may complete one).
+  await r.patch((s) => { s.cargo.push(mk('a', 2), mk('b', 3), mk('c', 4)); s.daily.done = ['c1', 'c2', 'c3']; });
   const expected = priceOf(mk('a', 2)) + priceOf(mk('b', 3)) + priceOf(mk('c', 4));
 
   // Au large : refus.
@@ -386,6 +387,7 @@ test('économie : vente et achats validés, à quai seulement, sans double paiem
   await r.sail(o.x + 0.5, o.y + 0.5);
 
   // Deux ventes simultanées de la même cargaison : une seule passe.
+  await r.patch(s => { s.daily = { day: dayKey(r.clock.t), prog: {}, done: ['c1', 'c2', 'c3'] }; });
   const coins0 = (await r.save()).coins;
   const res = await Promise.allSettled([r.game.sell(r.id, 'all', 'cargo'), r.game.sell(r.id, 'all', 'cargo'), r.game.sell(r.id, ['a'], 'cargo')]);
   assert.equal(res.filter((x) => x.status === 'fulfilled').length, 1);
@@ -717,4 +719,20 @@ test('aventure : l’appât est consommé une fois au lancer et le matériel ne 
   assert.equal((await r.save()).adventure!.baits.gentle,0);
   assert.equal(await status(r.game.adventureAction(r.id,'kit','abyss')),409);
   await r.game.cancel(r.id,cast.sid);
+});
+
+test('les sept décors WebP et la feuille partagée sont servis sous /fishing avec les bons types MIME', async () => {
+  const { cpSync, copyFileSync } = await import('node:fs');
+  const dir = mkdtempSync(join(tmpdir(), 'nf-aquarium-'));
+  cpSync('packages/client/public/assets', join(dir, 'assets'), { recursive: true });
+  copyFileSync('packages/client/src/aquarium.css', join(dir, 'community.css'));
+  try {
+    const { base } = await startApp({ CLIENT_DIR: dir, PUBLIC_URL: 'https://novabot-hub.fr/fishing/' });
+    for(const theme of ['sand','coral','ruins','ice','aurora','harbor','ancient']) {
+      const res=await fetch(`${base}/fishing/assets/aquariums/${theme}.webp`);
+      assert.equal(res.status,200);assert.equal(res.headers.get('content-type'),'image/webp');
+      const data=Buffer.from(await res.arrayBuffer());assert.equal(data.toString('ascii',0,4),'RIFF');assert.equal(data.toString('ascii',8,12),'WEBP');
+    }
+    const css=await fetch(`${base}/fishing/community.css`);assert.equal(css.status,200);assert.match(css.headers.get('content-type')!,/text\/css/);assert.match(await css.text(),/\.nova-aquarium/);
+  } finally { rmSync(dir,{recursive:true,force:true}); }
 });

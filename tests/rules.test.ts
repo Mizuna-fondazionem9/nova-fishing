@@ -85,7 +85,7 @@ test('prix : déterministes, croissants avec le poids, majorés par les variante
   assert.ok(priceOf({ ...a, color: 3 }) > priceOf(a) * 2.5);
   assert.ok(priceOf({ ...a, tough: true }) > priceOf(a));
   assert.ok(priceOf({ ...a, size: 3 }) > priceOf({ ...a, size: 1 }));
-  assert.ok(priceOf({ ...a, kg: 1e9 }) <= sp('bar').value * 6 * 1.1, 'le prix doit être borné');
+  assert.equal(priceOf({ ...a, kg: 1e9 }), priceOf({ ...a, kg: 1e8 }), 'le prix doit être borné');
   assert.ok(priceOf(fish('leviathan', 20000, 'l')) > priceOf(fish('sardine', 0.1, 's')) * 500);
   assert.equal(priceOf({ ...a, sp: 'inconnu' }), 0);
 });
