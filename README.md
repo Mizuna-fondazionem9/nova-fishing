@@ -261,10 +261,21 @@ POST /internal/rewards/ack   {"ids": ["…"], "status": "synced"}
 
 Les mers abritent des préhistoriques mythiques à plaques osseuses, de grands animaux (dont les orques) et des coquillages. Des grandes îles rares, loin de Port-Nova, sont traversées de rivières : cherchez-y les koïs, les crevettes et les crustacés d'eau douce. Les coffres dorés se récupèrent en approchant puis en cliquant « Ouvrir le coffre ».
 
-Au port, l'onglet **Compagnon & flotte** permet d'adopter un chat pêcheur, de récupérer ses prises, d'acheter ou équiper un bateau et d'en modifier la couleur ou la taille visuelle. Le chat reste au port où il est installé et stocke au maximum six petites prises. Les modèles changent réellement vitesse, stockage et coque ; les peintures et la taille d'affichage sont cosmétiques. Les tarifs et limites sont détaillés dans `BALANCING.md`.
+Au port, l'onglet **Compagnon & flotte** permet d'adopter un chat pêcheur, de récupérer ses prises, d'acheter ou équiper un bateau et d'en modifier la couleur. Le chat reste au port où il est installé et stocke au maximum six petites prises. Les modèles changent réellement vitesse, stockage et coque ; les peintures sont cosmétiques et colorent la coque, le pont et les voiles. Les tarifs et limites sont détaillés dans `BALANCING.md`.
 
 ### Carnet de l'explorateur
 
 Les contrats et le matériel spécialisé sont accessibles au **port → Capitainerie**. Le nouveau bouton **Carnet** rassemble épaves, sanctuaires, lagons et sources volcaniques. Les découvertes sont marquées sur la carte ; les fragments d'épave permettent de révéler de nouvelles destinations. L'aquarium possède un nom, des décors de collection et une prise à l'honneur. Les captures légendaires et préhistoriques bénéficient d'une présentation et d'une signature sonore dédiées.
 
 Voir [le guide du carnet](docs/carnet-explorateur.md) pour les activités, les limites de récompense et les compromis des équipements. Parcours visuel local : `npm run build && npm run test:e2e:adventure` (Chrome/Chromium requis).
+
+
+### Faune et navigation discrète
+
+Le bestiaire compte 36 espèces supplémentaires, trois dans chacun des douze biomes. Les coquillages disposent de formes propres (moule, palourde, huître, éventail, spirale) et les crevettes d'un corps articulé avec antennes, pattes et queue en éventail.
+
+Les prises peuvent être minuscules ou colossales, cuivrées, azur ou nacrées, et porter un trait Vif, Cuirassé, Tenace ou Rusé. Ces traits modifient le combat et le prix ; ils sont consignés dans les variantes du bestiaire, même après vente. Les sauvegardes existantes restent compatibles.
+
+Le bouton œil en haut de l'écran masque le HUD. La navigation sur la mer, le lancer et toute l'interface de pêche restent disponibles. Le même bouton réaffiche le HUD. Le réglage de taille visuelle du bateau est supprimé ; les différences de dimensions entre modèles restent.
+
+`npm run preview:sprites` génère les planches de contrôle à partir des véritables sprites Canvas dans `docs/art-preview/`.

@@ -510,3 +510,14 @@ button.crab-target, button.crab-target:hover:not(:disabled), button.crab-target:
   .rare-banner b { font-size: 20px; }
 }
 @media(prefers-reduced-motion:reduce) { .rare-banner > span { animation: none; } }
+.hud-toggle { z-index: 2; position: absolute; left: 50%; top: max(10px,env(safe-area-inset-top)); transform: translateX(-50%); width: 34px; height: 34px; min-height: 34px; padding: 5px; border-radius: 50%; background: #112333bb; border-color: #79949b55; opacity: .65; }
+.hud-toggle:hover, .hud-toggle:focus-visible { opacity: 1; }
+.hud-toggle:active:not(:disabled) { transform: translateX(-50%); }
+.hud.is-minimal .card, .hud.is-minimal .nav, .hud.is-minimal .context .tip { display: none; }
+.hud.is-minimal .context > button:not([data-testid=cast]) { display: none; }
+.hud.is-minimal .context { bottom: max(14px,env(safe-area-inset-bottom)); }
+
+@media(max-width:760px) {
+  .hud-toggle { left: auto; right: max(10px,env(safe-area-inset-right)); top: auto; bottom: calc(110px + env(safe-area-inset-bottom)); transform: none; width: 40px; height: 40px; }
+  .hud-toggle:active:not(:disabled) { transform: none; }
+}

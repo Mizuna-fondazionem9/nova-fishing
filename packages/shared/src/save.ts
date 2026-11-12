@@ -7,7 +7,7 @@ import { SPECIES, SPECIES_BY_ID, type Species } from './species';
 import { bulkOf, priceOf, type Specimen } from './fish';
 import { gearOf, gearTier, upgradeCost, zeroLevels, NETS, UPGRADE_BY_KEY, type Levels, type UpgradeKey } from './gear';
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 export interface BestiaryEntry {
   n: number;
@@ -16,7 +16,7 @@ export interface BestiaryEntry {
   first: number;
   biomes: BiomeId[];
   /** Variantes conservées même après vente ; absent dans les anciennes sauvegardes. */
-  variants?: Pick<Specimen, "color" | "size" | "tough">[];
+  variants?: Pick<Specimen, "color" | "size" | "tough" | "trait">[];
 }
 
 export interface Stats {
@@ -50,7 +50,6 @@ export interface Save {
   vessels?: string[];
   paint?: number;
   paints?: number[];
-  boatSize?: number;
   cat?: { port: string; at: number; sequence: number };
   treasures?: string[];
   v: number;
@@ -79,7 +78,7 @@ export function newSave(seed: number, now: number): Save {
   const p = startPort(seed);
   const up = zeroLevels();
   return {
-    kit:'standard',vessel:'skiff',vessels:['skiff'],paint:0,paints:[0],boatSize:1,treasures:[],
+    kit:'standard',vessel:'skiff',vessels:['skiff'],paint:0,paints:[0],treasures:[],
     v: SAVE_VERSION, x: p.x + 0.5, y: p.y + 0.5, lastPort: p.id, coins: 40, hull: gearOf(up).hullMax, up, net: 0,
     cargo: [], aquarium: [], bestiary: {},
     stats: { caught: 0, escaped: 0, sold: 0, earned: 0, dist: 0, wrecks: 0, crits: 0, legend: 0, myth: 0, maxKg: 0, underdog: 0, biomes: [], ports: [p.id], netted: 0 },
@@ -94,6 +93,7 @@ export function migrateSave(raw: unknown, seed: number, now: number): Save {
   const r = raw as Partial<Save>;
   const s: Save = { ...base, ...r, up: { ...base.up, ...(r.up ?? {}) }, stats: { ...base.stats, ...(r.stats ?? {}) }, daily: { ...base.daily, ...(r.daily ?? {}) } };
   s.v = SAVE_VERSION;
+  delete (s as Save & {boatSize?:number}).boatSize;
   s.cargo = (s.cargo ?? []).filter((c) => SPECIES_BY_ID[c.sp]);
   s.aquarium = (s.aquarium ?? []).filter((c) => SPECIES_BY_ID[c.sp]);
   return s;
@@ -228,8 +228,8 @@ export function applyCatch(s: Save, spec: Specimen, crits: number, now: number):
   e.variants ??= [];
   // Récupère aussi les prises encore présentes des anciennes sauvegardes.
   for (const f of [...s.cargo, ...s.aquarium, spec]) {
-    if (f.sp === spec.sp && !e.variants.some(v => v.color === f.color && v.size === f.size && v.tough === f.tough))
-      e.variants.push({ color: f.color, size: f.size, tough: f.tough });
+    if (f.sp === spec.sp && !e.variants.some(v => v.color === f.color && v.size === f.size && v.tough === f.tough && v.trait === f.trait))
+      e.variants.push({ color: f.color, size: f.size, tough: f.tough, ...(f.trait?{trait:f.trait}:{}) });
   }
   e.n++;
   e.maxLen = Math.max(e.maxLen, spec.len);

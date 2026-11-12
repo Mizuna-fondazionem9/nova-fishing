@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react';
-import { SPECIES_BY_ID, RARITY_NAMES, RARITY_COLORS, SIZE_NAMES, COLOR_NAMES, type Species, type Specimen } from '../../../shared/src/index';
+import { SPECIES_BY_ID, RARITY_NAMES, RARITY_COLORS, SIZE_NAMES, COLOR_NAMES, TRAIT_NAMES, type Species, type Specimen } from '../../../shared/src/index';
 import { fishSprite, boatSprite } from '../game/sprites';
 import { setState, useStore } from '../store';
 import { sfx } from '../game/audio';
@@ -88,6 +88,7 @@ export function Tags({ f }: { f: Specimen }) {
       {f.size > 0 && <span className="tag gold">{SIZE_NAMES[f.size]}</span>}
       {f.color > 0 && <span className="tag violet">{COLOR_NAMES[f.color]}</span>}
       {f.tough && <span className="tag red">Coriace</span>}
+      {f.trait && <span className="tag green">{TRAIT_NAMES[f.trait]}</span>}
     </>
   );
 }

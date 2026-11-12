@@ -138,9 +138,9 @@ entiers sûrs, 9 × 10^15).
 ## Économie
 
 - Valeur de référence d'une espèce : `5 · tier^1,55 × rareté`, avec rareté = 1 / 1,5 / 2,4 / 4 / 7 / 12.
-- Prix d'un spécimen : `valeur × (poids / poids moyen)^0,55` (borné à [0,4 ; 6]) `× taille × couleur × coriace ×
+- Prix d'un spécimen : `valeur × (poids / poids moyen)^0,55` (borné à [0,4 ; 6]) `× taille × couleur × coriace × trait ×
   (1 + 0,35 · b)`. Taille : grand ×1,25, géant ×1,8, record ×3. Couleur : albinos et mélanique ×1,5, doré ×3,
-  irisé ×6. Coriace ×1,3.
+  irisé ×6, cuivré ×1,8, azur ×2, nacré ×2,5. Minuscule ×0,65, colossal ×4,5. Coriace ×1,3. Traits : voir ci-dessous.
 - Le prix est toujours recalculé par le serveur à partir du spécimen qu'il a lui-même créé.
 - Encombrement en cale : `⌈√poids en kg⌉`, entre 1 et 40 unités.
 - Naufrage : cale perdue, retour au port le plus proche avec 40 % de coque. Améliorations, bestiaire, aquarium et
@@ -152,7 +152,7 @@ entiers sûrs, 9 × 10^15).
 
 | Variante | Probabilité de base | Effet |
 |---|---|---|
-| Grand / Géant / Record | 4,2 % / 0,72 % / 0,08 %, multipliées par `1 + b` | longueur jusqu'à 1,15 / 1,30 / 1,50 fois le maximum normal |
+| Grand / Géant / Record | 4,2 % / 0,72 % / 0,065 %, multipliées par `1 + b` | longueur jusqu'à 1,15 / 1,30 / 1,50 fois le maximum normal |
 | Albinos / Mélanique / Doré / Irisé | 1 % / 1 % / 0,4 % / 0,1 % | palette différente, même silhouette |
 | Coriace | `6 % + 2 % · b` | fatigue ×1,35, puissance ×1,15 |
 
@@ -199,7 +199,7 @@ l'évite en changeant de cap.
 - Chat pêcheur : 1 500 pièces, affecté à un port ; une petite prise par 15 minutes, six en réserve au maximum même hors ligne. Cale pleine : réserve conservée. Relocalisation possible une fois la réserve récupérée.
 - Coffre : une position déterministe par cellule de port et par journée UTC, 200–300 pièces ; approche à cinq tuiles, ouverture refusée pendant une pêche ou une attaque et crédit unique par joueur.
 - Cotre : 2 500 pièces, vitesse ×1,18 / cale ×0,85 / coque ×0,9. Grand voilier : 8 000, vitesse ×1,05 / cale ×1,35 / coque ×0,95. Bateau de pêche : 25 000, vitesse ×0,78 / cale ×2 / coque ×1,4. Améliorations existantes conservées. Changement de modèle : proportion de dégâts conservée, cale vérifiée.
-- Peintures : première gratuite puis 350 pièces par couleur permanente ; trois tailles visuelles gratuites, sans effet sur les statistiques.
+- Peintures : première gratuite puis 350 pièces par couleur permanente ; la coque, le pont, la cabine et les rayures des voiles sont recolorés. Aucun réglage de taille visuelle.
 - Sauvegarde v2 additive, sans migration SQL : modèles, couleurs, compagnon et coffres restent dans la sauvegarde JSON existante.
 
 ### Carnet de l'explorateur
@@ -211,3 +211,15 @@ l'évite en changeant de cap.
 - Appâts consommés au lancer : discret 35 pièces, scintillant 60 ; réserve plafonnée à vingt par type. Aucun effet sur la silhouette annoncée.
 - Réputation et collections : décors/titres, pas de revenu passif. Premier rang à 100 réputation dans un port : décor et trois appâts, une seule fois par joueur.
 - Sauvegarde v3, limites et règles détaillées dans `docs/carnet-explorateur.md`.
+
+
+## Variantes supplémentaires
+
+Les anciens indices de taille (0–3) et de couleur (0–4) restent inchangés pour préserver les captures enregistrées.
+
+- Minuscule : 3,5 % ; longueur 45–75 % de la borne basse de l'espèce ; prix ×0,65.
+- Colossal : 0,015 % × bonus régional (pris sur la tranche Record) ; longueur 150–165 % de la borne haute ; prix ×4,5.
+- Cuivré / Azur / Nacré : 0,6 % chacun avant bonus d'appât, prix ×1,8 / ×2 / ×2,5.
+- Un trait au maximum, 3 % chacun : Vif (vitesse ×1,18, endurance ×0,92, prix ×1,15), Cuirassé (endurance ×1,18, vitesse ×0,92, prix ×1,2), Tenace (endurance ×1,1, puissance ×1,15, prix ×1,18), Rusé (zone parfaite ×0,85, vitesse ×1,06, prix ×1,15). Le plafond de vitesse reste 2,6.
+- Les crabes ne tirent ni Vif ni Rusé : ces effets sur le curseur ne s'appliqueraient pas à leur mini-jeu. Le chat et le casier ne rapportent pas de traits.
+- Les 36 poissons supplémentaires suivent la formule de valeur des espèces existantes et les tables de rencontre habituelles de leur biome ; aucun bonus de rendement global n'est ajouté.

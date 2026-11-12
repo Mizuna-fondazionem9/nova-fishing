@@ -26,6 +26,7 @@ function NavIcon({ name }: { name: keyof typeof NAV_ICONS }) {
 }
 
 export function Hud() {
+  const hidden=useStore(s=>s.hudHidden);
   const save = useStore((s) => s.save)!;
   const hud = useStore((s) => s.hud);
   const user = useStore((s) => s.user);
@@ -38,7 +39,8 @@ export function Hud() {
   const dailyLeft = daily.length - (save.daily.day === dayKey(serverNow()) ? save.daily.done.length : 0);
   const hullRatio = save.hull / g.hullMax;
   return (
-    <div className="hud">
+    <div className={`hud ${hidden?'is-minimal':''}`}>
+      <button className="hud-toggle" aria-label={hidden?'Afficher l’interface':'Masquer l’interface'} title={hidden?'Afficher l’interface':'Masquer l’interface'} aria-pressed={hidden} onClick={()=>setState({hudHidden:!hidden})}><svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>{hidden&&<path d="M3 3l18 18"/>}</svg></button>
       <div className="card tl">
         <div className="who">
           {user?.avatar ? <img src={user.avatar} alt="" /> : <span className="avatar">{(user?.name ?? '?').slice(0, 1).toUpperCase()}</span>}

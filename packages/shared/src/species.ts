@@ -54,6 +54,7 @@ export interface Species {
   prefs: { time?: TimeOfDay; weather?: Weather };
   shape: Shape;
   colors: [string, string, string];
+  detail?: 'spiny'|'ribbon'|'fan'|'sailfin'|'lantern'|'butterfly';
   ancient?: boolean;
   pattern: 'none' | 'stripes' | 'spots' | 'bands';
 }
@@ -228,6 +229,34 @@ for (const [id,name,shape,rarity,tier] of [
   ['carpe_doree','Carpe dorée','deep',0,2],['perche_insulaire','Perche insulaire','fusi',0,1.5],
   ['crevette_douce','Crevette d’eau douce','shrimp',0,1],['crevette_jade','Crevette de jade','shrimp',1,2],
 ] as [string,string,Shape,number,number][]) SPECIES.push(S(id,name,'Un habitant des rivières qui traversent les grandes îles.', 'river',0,1,'small',4,shape==='shrimp'?10:60,shape==='shrimp'?0.04:4,rarity,tier,shape,'#d78b64 #f5f0d8 #547f6d',{pattern:'spots'}));
+
+// Trois nouvelles silhouettes détaillées par biome ; identifiants stables et palettes propres.
+const additions: [BiomeId,number,[string,string,Shape,Species['detail'],string][]][] = [
+ ['coastal',1.4,[['rouget_sable','Rouget sablé','fusi','spiny','#c86f59 #f6d5a2 #704c54'],['grondin_perle','Grondin perlé','deep','fan','#9b826b #e2dcb5 #436e80'],['aiguillette_argent','Aiguillette argentée','bill','ribbon','#639baf #e3f3ea #3d5776']]],
+ ['tropical',3,[['perroquet_lagon','Perroquet des lagons','deep','butterfly','#40a5a0 #f4cb78 #7650a3'],['baliste_cobalt','Baliste cobalt','deep','spiny','#4b7bc0 #ead49b #283e77'],['voilier_malabar','Voilier de Malabar','bill','sailfin','#7771bc #e4bfd3 #35466f']]],
+ ['reef',3,[['mandarin_corail','Mandarin des coraux','deep','fan','#e98a4d #68c9c7 #594486'],['papillon_ruban','Papillon rubané','deep','butterfly','#e6c75f #fff0b5 #493b68'],['gobie_fleur','Gobie fleur','fusi','spiny','#ba78a4 #f4d6bb #516b9d']]],
+ ['temperate',2.5,[['lieu_dore','Lieu doré','fusi','spiny','#b5a16b #e8e2c6 #526e72'],['saint_pierre_lune','Saint-Pierre lunaire','deep','fan','#acaa86 #eee7c4 #516f83'],['lancon_bleu','Lançon bleu','bill','ribbon','#699fa8 #ebf0d6 #455d7b']]],
+ ['polar',5,[['loche_arctique','Loche arctique','eel','ribbon','#8ca8b6 #e5ede0 #526983'],['loup_de_givre','Loup de givre','deep','spiny','#7c93ad #e6e6d8 #42536e'],['lompene_perle','Lompène perlé','fusi','fan','#a8a5c2 #f1e7df #68738f']]],
+ ['deep',7,[['chimere_soie','Chimère de soie','bill','ribbon','#9b8bab #e5cedc #4e5576'],['baudroie_cuivre','Baudroie cuivrée','angler','lantern','#a2785c #f1c889 #4d4a69'],['grenadier_epines','Grenadier épineux','deep','spiny','#887f9d #d7c7d4 #3d5269']]],
+ ['abyss',12,[['dragon_barbel','Dragon barbelé','eel','lantern','#6b6f9c #d5e7cb #343a67'],['hachette_obsidienne','Hachette d’obsidienne','moon','fan','#68748b #cfdecd #353c61'],['ombrelle_abyssale','Ombrelle abyssale','ray','butterfly','#8175ab #d9cbe8 #3b496e']]],
+ ['mystic',16,[['poisson_runique','Poisson runique','deep','butterfly','#8a82c9 #e7dbaf #4f557f'],['serpent_aurore','Serpent d’aurore','eel','ribbon','#64aaa1 #e6c9ec #50598c'],['raie_constellation','Raie constellation','ray','lantern','#657db4 #ede5c7 #43416e']]],
+ ['volcanic',8,[['rascasse_basalte','Rascasse de basalte','deep','spiny','#a66151 #f5b67d #4b394c'],['espadon_braise','Espadon de braise','bill','sailfin','#c57a4f #ffe0a1 #764553'],['murene_fournaise','Murène des fournaises','eel','lantern','#ad6557 #e9c48b #57445f']]],
+ ['crystal',6,[['voilier_prisme','Voilier prismatique','bill','sailfin','#74b5c7 #ede7ce #6e6aab'],['papillon_quartz','Papillon de quartz','deep','butterfly','#a2c9cc #fff3dc #8277b1'],['raie_opale','Raie opale','ray','fan','#97b3ca #f1deeb #5d749d']]],
+ ['spectral',11,[['revenant_lunaire','Revenant lunaire','moon','lantern','#9fbab4 #eaf2cd #527b83'],['ruban_des_ames','Ruban des âmes','eel','ribbon','#84b8a9 #e4efdb #4c6f87'],['aiguille_funebre','Aiguille funèbre','bill','spiny','#719b9e #d5e7cc #405671']]],
+ ['river',1.4,[['brochet_macule','Brochet maculé','bill','spiny','#819b62 #e5d6a1 #475b4a'],['gardon_vermeil','Gardon vermeil','fusi','fan','#b48f6b #f1e3bc #6a7b70'],['combattant_sauvage','Combattant sauvage','deep','sailfin','#b36d8d #eed9c6 #5b6f9c']]],
+];
+for(const [biome,tier,rows] of additions)rows.forEach(([id,name,shape,detail,colors],i)=>{
+  const sil:Silhouette=shape==='ray'?'ray':shape==='eel'||shape==='bill'?'long':'small';
+  const sp=S(id,name,'Une silhouette caractéristique de ces eaux, aux nageoires finement dessinées.',biome,0,1,sil,
+    12+i*6,45+i*35,2+i*6,i,tier+i*1.8,shape,colors,{pattern:i===0?'spots':i===1?'bands':'stripes',stam:1.1});
+  sp.detail=detail;SPECIES.push(sp);
+});
+const shellPalettes:Record<string,[string,string,string]>={
+ crevette_douce:['#cf927b','#f7d6bb','#8c645e'],crevette_jade:['#79ad96','#d2e9c8','#4b7c74'],
+ moule:['#334f73','#92b6bb','#172d49'],palourde:['#bca57d','#f4dfb2','#795b53'],huitre:['#9b9b7d','#f1e4bf','#626e63'],
+ coquille_saint_jacques:['#cd937a','#f9d3a5','#915d6c'],moule_de_braise:['#7b4c4b','#eab076','#3b2f44'],palourde_opaline:['#b9b1cc','#f5ecd8','#827da5'],coquillage_spectral:['#8cb8ac','#e1f0ce','#517a87'],
+};
+for(const sp of SPECIES)if(shellPalettes[sp.id])sp.colors=shellPalettes[sp.id];
 
 export const SPECIES_BY_ID: Record<string, Species> = Object.fromEntries(SPECIES.map((s) => [s.id, s]));
 

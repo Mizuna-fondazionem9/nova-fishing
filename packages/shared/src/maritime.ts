@@ -35,11 +35,6 @@ export function maritimeOp(s: Save, action: string, value: string, port: string,
     s.paints=owned; s.paint=paint;
     return {ok:true,message:'Peinture appliquée.'};
   }
-  if (action==='size') {
-    const size=Number(value);
-    if (![0.85,1,1.15].includes(size)) return fail('Taille inconnue.');
-    s.boatSize=size; return {ok:true,message:'Taille visuelle modifiée (sans effet sur les statistiques).'};
-  }
   if (action==='cat-buy') {
     if (s.cat) return fail('Vous avez déjà un chat pêcheur.');
     if (s.coins<CAT_PRICE) return fail('Le chat pêcheur coûte 1 500 pièces.');
@@ -63,7 +58,7 @@ export function maritimeOp(s: Save, action: string, value: string, port: string,
       const rng=new Rng(hashN(seed,s.cat.sequence,s.cat.at,99));
       const sp=pool[rng.int(0,pool.length-1)];
       const spec=rollSpecimen(rng,sp,1,'coastal',now,`cat-${s.cat.at}-${s.cat.sequence}`);
-      spec.kg=Math.min(0.5,spec.kg); spec.len=Math.min(spec.len,sp.lmax*0.6); spec.size=0; spec.color=0; spec.tough=false; spec.value=priceOf(spec);
+      spec.kg=Math.min(0.5,spec.kg); spec.len=Math.min(spec.len,sp.lmax*0.6); spec.size=0; spec.color=0; spec.tough=false; delete spec.trait; spec.value=priceOf(spec);
       if (bulkOf(spec.kg)>holdFree(s)) break;
       applyCatch(s,spec,0,now); s.cat.sequence++; got++;
     }
