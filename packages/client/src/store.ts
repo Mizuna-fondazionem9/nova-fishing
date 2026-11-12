@@ -45,6 +45,7 @@ export interface AppState {
   daily: Challenge[];
   panel: Panel;
   hudHidden: boolean;
+  fishingProfile: 'debutant' | 'moyen';
   landmarkId?: string | null;
   toasts: { id: number; text: string }[];
   hud: Hud | null;
@@ -58,7 +59,7 @@ export interface AppState {
 
 let state: AppState = {
   phase: 'loading', loadText: 'Connexion…', loadPct: 0, authError: null, devAuth: false, discord: true, user: null, save: null, seed: 0, daily: [],
-  hudHidden: false, panel: null, toasts: [], hud: null, fishing: null, result: null,
+  hudHidden: false, fishingProfile: 'moyen', panel: null, toasts: [], hud: null, fishing: null, result: null,
   sound: (() => {
     try {
       return localStorage.getItem('nf_sound') !== '0';

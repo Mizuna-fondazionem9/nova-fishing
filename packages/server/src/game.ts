@@ -4,7 +4,7 @@ import { randomInt, randomUUID } from 'node:crypto';
 import {
   Rng, tileAt, isLand, startPort, portInRange, spawnShadows, speciesForShadow, slotOf, rollSpecimen, fightStats, makeBiteScript,
   judgeHook, makeCombatParams, replayCombat, gearOf, applyCatch, noteBiome, evalTrophies, bumpDaily, dailyChallenges,
-  dayKey, opSettleCatch, opSell, opUpgrade, opBuyNet, opRepair, opKeep, opRelease, applyDamage, holdFree, bulkOf, regionBonus, encounterTier, effectiveUpgradeLevel,
+  dayKey, opSettleCatch, opSell, opUpgrade, opBuyNet, opRepair, opKeep, opRelease, applyDamage, holdFree, bulkOf, regionBonus, eligibleNetSpecies,
   SPECIES, SPECIES_BY_ID, HOSTILES, HOSTILE_BY_ID, BIOMES, NETS, NET_COOLDOWN_MS, NET_DISTANCE, RARITY_WEIGHT,
   adventureOf, adventurePortOp, nearbyLandmarks, landmarkById, discoverPoint, pointOp, chartOp, noteAdventureCatch,
   maritimeOp, nearbyTreasures,
@@ -153,7 +153,7 @@ export class Game {
     save.netProgress = 0;
     save.netAt = now;
     const tile = tileAt(this.seed, Math.floor(save.x), Math.floor(save.y));
-    const pool = SPECIES.filter((s) => s.sil === 'small' && s.rarity <= 1 && encounterTier(s, tile.level, tile.biome) <= net.maxTier + effectiveUpgradeLevel(save.up.nets ?? 0) * 0.12 && s.biomes.includes(tile.biome));
+    const pool = eligibleNetSpecies(save.net, save.up, tile.biome, tile.level);
     if (!pool.length) return [];
     const rng = new Rng(this.randomSeed());
     const population = spawnShadows(this.seed, Math.floor(save.x / CHUNK), Math.floor(save.y / CHUNK), slotOf(now)).length;

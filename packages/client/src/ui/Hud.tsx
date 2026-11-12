@@ -1,4 +1,4 @@
-import { BIOMES, NETS, cargoBulk, gearOf, gearTier, dayKey, fishingSector } from '../../../shared/src/index';
+import { BIOMES, NETS, cargoBulk, gearOf, rodStars, dayKey, fishingAdvice, netFishingProfile } from '../../../shared/src/index';
 import { useStore, setState, serverNow, portOp, type Panel } from '../store';
 import { sfx, unlockAudio } from '../game/audio';
 import { rt, Bar, Coins, fmt1 } from './common';
@@ -34,6 +34,9 @@ export function Hud() {
   const daily = useStore((s) => s.daily);
   const g = gearOf(save.up,save.vessel,save.kit);
   const bulk = cargoBulk(save);
+  const skill = useStore(s => s.fishingProfile);
+  const advice = hud ? fishingAdvice(save.up, hud.biome, hud.level, skill) : null;
+  const netProfile = hud ? netFishingProfile(save.net, save.up, hud.biome, hud.level, bulk >= g.hold) : null;
   const dest = rt.game?.boat.dest ?? null;
   const net = NETS[save.net];
   const dailyLeft = daily.length - (save.daily.day === dayKey(serverNow()) ? save.daily.done.length : 0);
@@ -58,7 +61,7 @@ export function Hud() {
           <span className="v">{bulk}<i>/{g.hold}</i></span>
         </div>
         <div className="gearline">
-          <span><span className="k">Canne</span> ★{fmt1(gearTier(g.rod))}</span>
+          <span><span className="k">Canne</span> ★{fmt1(rodStars(save.up))}</span>
           <span><span className="k">Filet</span> {net ? net.name.replace('Filet ', '') : 'aucun'}</span>
         </div>
       </div>
@@ -66,8 +69,12 @@ export function Hud() {
       <div className="card tr">
         {hud && (
           <>
-            <b className={`biome ${BIOMES[hud.biome].danger >= 0.4 ? 'hot' : ''}`}>{BIOMES[hud.biome].name}</b>
-            <button className="sector-badge" onClick={open('ship')} title="Conseil de pêche et équipement">{fishingSector(hud.level).name} · Conseil de pêche ↗</button>
+            <b className={`biome ${advice?.state ?? ''}`}>{BIOMES[hud.biome].name}</b>
+            <button className={`sector-badge zone-rating ${advice?.state}`} onClick={open('ship')} title="Repère de difficulté et équipement">
+              <span>{advice?.sector}</span><strong>{advice?.title}</strong>
+              <span>Canne ★{fmt1(rodStars(save.up))} · {advice?.target === null ? 'Zone très exigeante' : `★${advice?.target} conseillées`}</span>
+            </button>
+            {netProfile && <span className={`net-rating ${netProfile.state}`}>Filet · {netProfile.title}</span>}
             <span className="coords">X {hud.x} · Y {hud.y}</span>
             <span className="k">{TOD[hud.tod]} · {WEATHER[hud.weather]}</span>
           </>

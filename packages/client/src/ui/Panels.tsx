@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   KIT_DEFS, BAITS, VESSELS, PAINTS, CAT_PRICE, catReady, getPort,
   TRAIT_NAMES, type SpecimenTrait, COLOR_NAMES, SIZE_NAMES, BIOMES, BIOME_IDS, NETS, RARITY_COLORS, SILHOUETTE_NAMES, SPECIES, TROPHIES, UPGRADES,
-  bulkOf, cargoBulk, dayKey, fishingAdvice, depthMeters, gearOf, gearTier, priceOf, upgradeCost,
+  bulkOf, cargoBulk, dayKey, fishingAdvice, rodStars, netFishingProfile, depthMeters, gearOf, priceOf, upgradeCost,
   type Specimen, type Species, type UpgradeDef,
 } from '../../../shared/src/index';
 import { useStore, setState, getState, portOp, api, serverNow, toast, BASE } from '../store';
@@ -235,7 +235,7 @@ export function ShipPanel() {
   const save = useStore((s) => s.save)!;
   const [busy, run] = useBusy();
   const hud = useStore(s => s.hud);
-  const [skill, setSkill] = useState<'debutant' | 'moyen'>('debutant');
+  const skill = useStore(s => s.fishingProfile);
   const advice = hud ? fishingAdvice(save.up, hud.biome, hud.level, skill) : null;
   const g = gearOf(save.up,save.vessel,save.kit);
   return (
@@ -251,16 +251,17 @@ export function ShipPanel() {
       </Section>
       {advice && hud && <section className={`zone-advice ${advice.state}`}>
         <h3>{BIOMES[hud.biome].name} · {advice.sector}</h3>
-        <label>Repère pour <select value={skill} onChange={e => setSkill(e.target.value as 'debutant' | 'moyen')}><option value="debutant">Je débute / je rate souvent</option><option value="moyen">Je suis à l’aise avec la jauge</option></select></label>
+        <label>Repère pour <select value={skill} onChange={e => setState({fishingProfile:e.target.value as 'debutant' | 'moyen'})}><option value="debutant">Je débute / je rate souvent</option><option value="moyen">Je suis à l’aise avec la jauge</option></select></label>
         <b>{advice.title}</b>
-        <p>{advice.target === null ? 'Cette zone reste très exigeante. Reviens vers les eaux proches du départ pour progresser plus tranquillement.' : `Pour les prises courantes, vise environ le niveau ${advice.target} sur tes six améliorations de canne.`}</p>
-        <p>Ton amélioration la plus basse : <strong>{advice.weakest}, niveau {advice.minimum}</strong>. {advice.target !== null && advice.minimum < advice.target ? 'Renforce-la au port avant de t’aventurer plus loin.' : 'Les poissons rares et géants peuvent rester plus difficiles.'}</p>
+        <p>Ta canne : <strong>★{fmt1(advice.stars)}</strong> · {advice.target === null ? 'Zone très exigeante' : <>Repère conseillé : <strong>★{advice.target}</strong></>}</p>
+        <p>Filet · {netFishingProfile(save.net, save.up, hud.biome, hud.level, cargoBulk(save) >= gearOf(save.up,save.vessel,save.kit).hold).title}</p>
+        <p>Les étoiles représentent la moyenne des six améliorations. Ton adresse et ta spécialisation peuvent te permettre de pêcher au-dessus de ce repère.</p>
       </section>}
       <Section title="Équipement">
         <dl className="facts">
           <div className="full"><dt>Montage</dt><dd>{KIT_DEFS.find(k=>k.id===(save.kit??'standard'))?.name}</dd></div>
           <div className="full"><dt>Appât</dt><dd>{BAITS.find(b=>b.id===save.adventure?.bait)?.name??'Aucun'}</dd></div>
-          <div><dt>Canne</dt><dd>★{fmt1(gearTier(g.rod))}</dd></div>
+          <div><dt>Canne</dt><dd>★{fmt1(rodStars(save.up))}</dd></div>
           <div><dt>Puissance</dt><dd>{fmt1(g.rod.power)}</dd></div>
           <div><dt>Résistance</dt><dd>{fmt1(g.rod.resistance)}</dd></div>
           <div><dt>Ligne</dt><dd>{g.rod.line}</dd></div>
