@@ -260,7 +260,7 @@ for(const sp of SPECIES)if(shellPalettes[sp.id])sp.colors=shellPalettes[sp.id];
 
 export const SPECIES_BY_ID: Record<string, Species> = Object.fromEntries(SPECIES.map((s) => [s.id, s]));
 
-/** Créatures hostiles : elles attaquent le bateau, on ne les pêche pas. */
+/** Profils de déplacement des prédateurs capturables au harpon à corde. */
 export interface Hostile {
   id: string;
   name: string;

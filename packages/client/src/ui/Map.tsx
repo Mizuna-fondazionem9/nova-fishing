@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { BIOMES, CELL, getPort, tileAt, type BiomeId, type Port } from '../../../shared/src/index';
-import { useStore, getState, setState } from '../store';
+import { BIOMES, CELL, getPort, tileAt, portDestinations, type BiomeId, type Port } from '../../../shared/src/index';
+import { useStore, getState, setState, serverNow } from '../store';
 import { rt, Modal } from './common';
 
 const WATER: Record<BiomeId, [number, number, number]> = {
@@ -15,6 +15,12 @@ const SIZE = 240; // pixels de carte (affichés agrandis, rendu net)
 /** Carte du monde centrée sur le bateau. Dessinée par bandes, image après image, pour ne jamais figer le jeu. */
 export function MapPanel() {
   const seed = useStore((s) => s.seed);
+  const save = useStore((s) => s.save);
+  const hud = useStore((s) => s.hud);
+  const fishing = useStore((s) => s.fishing);
+  const result = useStore((s) => s.result);
+  const destinations = save ? portDestinations(save, seed, serverNow()) : [];
+  const navigationBlocked = !!fishing || !!result || !!save?.pendingCatch;
   const canvas = useRef<HTMLCanvasElement>(null);
   const [si, setSi] = useState(0);
   const [hover, setHover] = useState<{ x: number; y: number; biome: string } | null>(null);
@@ -121,6 +127,18 @@ export function MapPanel() {
 
   return (
     <Modal title="Carte du monde" wide>
+      <section className="port-navigation" aria-label="Navigation automatique">
+        <div className="row between"><h3>Rejoindre un port</h3>{hud?.route && <button onClick={() => rt.game?.cancelMove()}>Arrêter le trajet</button>}</div>
+        <p className="note">Choisis un port : le bateau s’y rend en contournant les îles. Garde le jeu ouvert ; les dangers restent actifs.</p>
+        {hud?.route && <p role="status">En route vers <b>{hud.route}</b></p>}
+        <div className="port-destinations">
+          {destinations.map(({port,reasons}) => <button key={port.id} disabled={navigationBlocked} onClick={() => {if(rt.game?.goToPort(port))setState({panel:null});}}>
+            <span><b>{port.name}</b><small>{reasons.join(' · ')}</small></span>
+            <span className="num">{Math.round(Math.hypot(port.x+.5-(rt.game?.boat.x??0),port.y+.5-(rt.game?.boat.y??0)))} tuiles →</span>
+          </button>)}
+        </div>
+        {navigationBlocked && <p className="note">Termine la pêche et le choix de ta prise avant de partir.</p>}
+      </section>
       <div className="row between">
         <span className="note num">{hover ? `X ${hover.x} · Y ${hover.y} — ${hover.biome}` : 'Touchez la carte pour fixer un cap.'}</span>
         <div className="row">
@@ -139,7 +157,7 @@ export function MapPanel() {
         <span><i style={{ background: '#ffb76e' }} />Carte reconstituée</span>
       </div>
       <button onClick={()=>setState({panel:'journal',landmarkId:null})}>Ouvrir le carnet d’exploration</button>
-      <p className="note">Largeur affichée : {SIZE * scale} tuiles. Les très longs trajets se font en plusieurs caps.</p>
+      <p className="note">Largeur affichée : {SIZE * scale} tuiles. Pour rejoindre un port, utilise les destinations ci-dessus.</p>
     </Modal>
   );
 }

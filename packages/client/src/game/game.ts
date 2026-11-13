@@ -2,12 +2,12 @@
 // Le rendu se fait à la résolution « pixel art » puis est agrandi sans lissage par le navigateur.
 import {
   TILE, CHUNK, CELL, Rng, hash2, clamp, tileAt, getPort, portInRange, daylight, timeOfDay, weatherAt, spawnShadows, slotOf,
-  nearbyLandmarks, SPECIES_BY_ID, nearbyTreasures, findPath, gearOf, Combat, HOSTILE_BY_ID, predatorForShadow,
+  nearbyLandmarks, SPECIES_BY_ID, nearbyTreasures, findPath, gearOf, Combat, HOSTILE_BY_ID, predatorForShadow, PortNavigation,
   type Pt, type Shadow, type BiteScript, type Port, type Weather, type Hostile, type Silhouette,
   type CastResponse, type HookResponse, type ResolveResponse, type SyncResponse, type HitResponse, type Mutation, type Encounter,
 } from '../../../shared/src/index';
 import { Terrain, CHUNK_PX } from './terrain';
-import { boatSprite, fishSprite, shadowFrames, getDecor, resetSprites, SHADOW_FRAMES } from './sprites';
+import { boatSprite, shadowFrames, getDecor, resetSprites, SHADOW_FRAMES } from './sprites';
 import { comboColor, comboTier } from './combo';
 import { sfx, setAmbience, unlockAudio, pauseAudio } from './audio';
 import { getState, setState, toast, api, applyMutation, serverNow, type FishStage } from '../store';
@@ -99,6 +99,7 @@ export class Game {
   private last = 0;
   private raf = 0;
   private views = new Map<string, ShadowView[]>();
+  navigation: PortNavigation | null = null;
   fish: Fishing | null = null;
   hostile: HostileState | null = null;
   private particles: Particle[] = [];
@@ -319,18 +320,44 @@ export class Game {
   }
 
   goTo(x: number, y: number): boolean {
-    if (this.fish) return false;
+    if (this.fish || getState().save?.pendingCatch || getState().result) return false;
     const path = findPath(this.terrain.blocked, this.boat.x, this.boat.y, x, y, 30000);
     if (!path || !path.length) {
       toast('Destination inaccessible.');
       return false;
     }
+    this.navigation = null;
     this.boat.path = path;
     this.boat.dest = path[path.length - 1];
     return true;
   }
 
+  goToPort(port: Port): boolean {
+    if (this.fish || getState().save?.pendingCatch || getState().result) return false;
+    const route = new PortNavigation(port);
+    const path = route.plan(this.terrain.blocked, this.boat);
+    if (!path) { toast('Impossible de tracer une route vers ce port.'); return false; }
+    if (!path.length) { this.cancelMove(); toast(`Tu es déjà à ${port.name}.`); return true; }
+    this.navigation = route;
+    this.boat.path = path;
+    this.boat.dest = route.target;
+    toast(`Cap sur ${port.name}. Le trajet reste exposé aux prédateurs.`);
+    return true;
+  }
+
+  private continueNavigation(): void {
+    const route = this.navigation;
+    if (!route || this.boat.path.length) return;
+    if (getState().save?.pendingCatch || this.fish) { this.cancelMove(); return; }
+    const path = route.plan(this.terrain.blocked, this.boat);
+    if (!path) { this.cancelMove(); toast('Navigation interrompue : route inaccessible.'); return; }
+    if (!path.length) { this.cancelMove(); toast(`Arrivée à ${route.port.name}.`); void this.sync(); return; }
+    this.boat.path = path;
+    this.boat.dest = route.target;
+  }
+
   cancelMove(): void {
+    this.navigation = null;
     this.boat.path = [];
     this.boat.dest = null;
   }
@@ -419,6 +446,7 @@ export class Game {
           biome: tile.biome, x: Math.round(this.boat.x), y: Math.round(this.boat.y), level: tile.level,
           port: this.boat.speed < 0.5 ? portInRange(this.seed, this.boat.x, this.boat.y) : null,
           moving: this.boat.path.length > 0, canCast: !this.fish && !!this.castTarget(),
+          route: this.navigation?.port.name,
           tod: timeOfDay(serverNow()), weather: this.weather, danger: !!this.hostile, fps: this.fps,
           landmark: nearbyLandmarks(this.seed,this.boat.x,this.boat.y).find(p=>Math.hypot(p.x-this.boat.x,p.y-this.boat.y)<8),
           treasure: nearbyTreasures(this.seed,this.boat.x,this.boat.y,serverNow()).find(t=>Math.hypot(t.x-this.boat.x,t.y-this.boat.y)<5 && !getState().save?.treasures?.includes(t.id)),
@@ -432,6 +460,7 @@ export class Game {
     const b = this.boat;
     const save = getState().save;
     if (!save) return;
+    this.continueNavigation();
     const g = gearOf(save.up,save.vessel,save.kit);
     let target = 0;
     if (b.path.length && !this.fish) {
@@ -442,7 +471,7 @@ export class Game {
       const final = b.path.length === 1;
       if (d < (final ? 0.15 : 0.7)) {
         b.path.shift();
-        if (!b.path.length) b.dest = null;
+        if (!b.path.length && !this.navigation) b.dest = null;
       } else {
         const diff = angDiff(Math.atan2(dy, dx), b.angle);
         const turn = (2.4 + g.accel * 0.15) * dt;
@@ -1062,7 +1091,7 @@ export class Game {
       if (px < -50 || py < -50 || px > vw + 50 || py > vh + 50) continue;
       const frames = shadowFrames(v.sh.sil,deep);
       const fast = this.fish?.target === v && (this.fish.stage === 'fight' || this.fish.stage === 'countdown');
-      const fr = predator?fishSprite(predator,0,Math.floor(t*3)%2):frames[Math.floor(t * (fast ? 16 : 5 + SPEED[v.sh.sil] * 4) + v.sh.seed) % SHADOW_FRAMES];
+      const fr = frames[Math.floor(t * (fast ? 16 : 5 + SPEED[v.sh.sil] * 4) + v.sh.seed) % SHADOW_FRAMES];
       const scale = v.sh.sil === 'giant' ? 0.9 + v.sh.size * 0.5 : 0.8 + v.sh.size * 0.45;
       const alpha = (deep ? 0.65 : clamp(0.5 - v.sh.depth * 0.2, 0.25, 0.5)) * Math.min(1, (t - v.born) * 0.8 + 0.05) * (v.flee > 0 ? Math.min(1, v.flee) : 1);
       if(predator){ctx.fillStyle='#ff7d76';ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.fillText('!',px,py-18);}
@@ -1072,7 +1101,7 @@ export class Game {
         const ddx = i ? Math.cos(oa) * (5 + i * 2) : 0;
         const ddy = i ? Math.sin(oa * 1.3) * (4 + i * 2) : 0;
         ctx.save();
-        ctx.globalAlpha = predator?.95:alpha;
+        ctx.globalAlpha = alpha;
         ctx.translate(px + Math.round(ddx), py + Math.round(ddy));
         ctx.rotate(v.angle);
         ctx.scale(scale, scale);
@@ -1251,12 +1280,12 @@ export class Game {
         ctx.globalAlpha = 1;
         ctx.drawImage(dec.alert, hx - 2, hy - 24);
       }
-      const kind: Silhouette = h.kind.id === 'calmar_furieux' ? 'cephalo' : h.kind.id === 'serpent_de_mer' ? 'long' : 'shark';
+      const kind: Silhouette = (h.speciesId ? SPECIES_BY_ID[h.speciesId]?.sil : undefined) ?? (h.kind.id === 'calmar_furieux' ? 'cephalo' : h.kind.id === 'serpent_de_mer' ? 'long' : 'shark');
       const biome = tileAt(this.seed,Math.floor(h.x),Math.floor(h.y)).biome;
       const bright = ['deep','abyss','volcanic','spectral'].includes(biome) || this.light < 0.5;
       const frames = shadowFrames(kind,bright);
-      const fr=h.speciesId?fishSprite(SPECIES_BY_ID[h.speciesId],0,Math.floor(t*4)%2):frames[Math.floor(t * (h.mode === 'charge' ? 18 : 8)) % SHADOW_FRAMES];
-      const sc=h.speciesId?Math.min(1.4,65/fr.width):kind==='shark'?1.5:kind==='long'?2.4:2.2;
+      const fr=frames[Math.floor(t * (h.mode === 'charge' ? 18 : 8)) % SHADOW_FRAMES];
+      const sc=kind==='shark'?1.5:kind==='long'?2.4:2.2;
       ctx.save();
       ctx.globalAlpha = h.mode === 'leave' ? Math.max(0, h.t / 3.5) * 0.8 : 0.82;
       ctx.translate(hx, hy);

@@ -106,7 +106,7 @@ export function Hud() {
             </button>
           )}
           {hud?.moving && dest && (
-            <button onClick={() => rt.game?.cancelMove()}>Annuler le cap <span className="num">{Math.round(dest.x)}, {Math.round(dest.y)}</span></button>
+            <button onClick={() => rt.game?.cancelMove()}>{hud.route ? `Arrêter · ${hud.route}` : 'Annuler le cap'} <span className="num">{Math.round(dest.x)}, {Math.round(dest.y)}</span></button>
           )}
           {hud && !hud.moving && !hud.canCast && !hud.port && !hud.danger && (
             <div className="tip">Touchez la mer pour naviguer. Approchez-vous d’une ombre, arrêtez-vous, puis lancez.</div>
