@@ -11,6 +11,7 @@ export interface Hud {
   level: number;
   port: Port | null;
   moving: boolean;
+  route?: string;
   canCast: boolean;
   tod: TimeOfDay;
   weather: Weather;

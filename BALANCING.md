@@ -226,7 +226,7 @@ Les anciens indices de taille (0–3) et de couleur (0–4) restent inchangés p
 
 ## Harpon à corde et niveau du pêcheur
 
-Les rencontres de production proviennent maintenant des ombres déterministes d'espèces dangereuses déjà au bestiaire : certains requins, serpents et calmars. Les anciennes apparitions hostiles indépendantes ne sont plus tirées au hasard. Un lance-harpon coûte 1 200 pièces au port, chaque recharge 25 pièces (réserve maximale 99). Une tentative consomme une recharge dès la préparation ; un tir raté laisse la créature dans le monde. Le tir se fait dans une fenêtre de précision de 450 ms, puis le combat utilise le rythme de capture habituel et une corde visible.
+Les rencontres de production proviennent maintenant des ombres déterministes d'espèces dangereuses déjà au bestiaire : les requins (hors requin-baleine), les serpents de mer et les grands calmars agressifs. Toutes les ombres éligibles sont hostiles, sans filtre supplémentaire de 20 %. Le requin-baleine et les petits calmars restent paisibles. Les anciennes apparitions hostiles indépendantes ne sont plus tirées au hasard. Un lance-harpon coûte 1 200 pièces au port, chaque recharge 25 pièces (réserve maximale 99). Une tentative consomme une recharge dès la préparation ; un tir raté laisse la créature dans le monde. Le tir se fait dans une fenêtre de précision de 450 ms, puis le combat utilise le rythme de capture habituel et une corde visible.
 
 À l'accrochage, le prédateur inflige immédiatement `clamp(round(tier / 7), 2, 5)` points de coque, y compris sur un combat parfait. Cette base est infligée toutes les huit secondes, augmentée de 1 à 3 points après 30/60/90 secondes. Un raté non pardonné ajoute une attaque, limitée à une toutes les deux secondes. Le serveur rejoue le combat, déduit les dégâts supplémentaires et interdit la récompense en cas de naufrage. Les dégâts initiaux et la recharge restent dépensés en cas d'abandon. La valeur d'une capture dangereuse est `round(valeur habituelle × 1,35 + 75)` ; elle ne dépend pas des dégâts volontairement subis.
 
@@ -235,3 +235,10 @@ Le niveau du joueur va de 1 à 50. Pour passer du niveau `n` au suivant : `round
 Les quatre bonus progressent linéairement du niveau 1 au niveau 50 : probabilités de variantes ×1 à ×3 ; poids des espèces rares ×1 à ×2 ; chance de pardonner un raté 0 à 1/6, au plus deux fois par combat ; chance de convertir un coup normal réussi en critique 0 à 20 %. Le tirage des espèces rares reste conditionné par la silhouette et le biome, et un poids multiplié par deux ne garantit pas une fréquence finale doublée.
 
 La sauvegarde v6 conserve l'équipement et reprend les anciennes captures par une estimation d'XP issue du bestiaire, pondérée par la proportion de captures actives enregistrées. Cette reprise est approximative puisque l'ancien historique ne conserve pas l'origine et la difficulté de chaque poisson. XP, possession du lance-harpon et munitions sont persistées dans la sauvegarde existante, sans migration SQL supplémentaire.
+
+
+## Navigation vers les ports
+
+La carte propose le dernier port visité, Port-Nova, les ports des contrats actifs du jour et le port du chat pêcheur. Les destinations sont dédupliquées en conservant leurs motifs. Les coordonnées proviennent du monde généré, sans téléportation ni changement de validation côté serveur.
+
+Le bateau suit les chemins maritimes existants avec la marge de sécurité de sa coque. La destination finale reste mémorisée pendant les chemins partiels : une nouvelle recherche bornée est lancée lorsque le cap intermédiaire est atteint, jusqu'à la zone d'accostage. Un nouveau cap manuel, un arrêt, une pêche, une collision ou une correction de position serveur annule ce trajet. Une prise en attente bloque le départ. Le jeu doit rester ouvert et les prédateurs restent actifs pendant le voyage.

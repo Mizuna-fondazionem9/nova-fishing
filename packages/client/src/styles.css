@@ -596,3 +596,9 @@ button.crab-target, button.crab-target:hover:not(:disabled), button.crab-target:
 .harpoon-aim { position: relative; height: 24px; margin: 10px 8px; background: #0b1e29; border: 1px solid #6e8791; border-radius: 6px; overflow: hidden; }
 .harpoon-aim i { position: absolute; top: 0; bottom: 0; background: #448d68; }.harpoon-aim > span { position: absolute; top: 0; bottom: 0; width: 4px; background: #fff2ce; box-shadow: 0 0 6px #fff; }
 .hunt-status { background: #3c2630eb; color: #f7b6aa; padding: 8px 12px; border-radius: 8px; font-size: 12px; text-align: center; }
+.port-navigation { margin-bottom: 1.2rem; }
+.port-navigation h3 { margin: .4rem 0; }
+.port-destinations { display: grid; gap: .6rem; margin-top: .7rem; }
+.port-destinations button { display: flex; justify-content: space-between; align-items: center; text-align: left; gap: .8rem; padding: .8rem 1rem; }
+.port-destinations button small { display: block; opacity: .75; margin-top: .25rem; font-size: .8rem; }
+.port-destinations .num { font-size: .8rem; flex-shrink: 0; }
