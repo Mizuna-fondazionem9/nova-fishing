@@ -2,7 +2,7 @@
 import { useSyncExternalStore } from 'react';
 import type { Save, Challenge, UserInfo, Specimen, Port, Weather, TimeOfDay, BiomeId, MeResponse, Mutation } from '../../shared/src/index';
 
-export type Panel = null | 'port' | 'ship' | 'bestiary' | 'aquarium' | 'trophies' | 'daily' | 'settings' | 'map' | 'journal';
+export type Panel = null | 'profile' | 'port' | 'ship' | 'bestiary' | 'aquarium' | 'settings' | 'map' | 'journal';
 
 export interface Hud {
   biome: BiomeId;
@@ -45,6 +45,7 @@ export interface AppState {
   seed: number;
   daily: Challenge[];
   panel: Panel;
+  journalTab: 'quests' | 'trophies' | 'contracts';
   hudHidden: boolean;
   fishingProfile: 'debutant' | 'moyen';
   landmarkId?: string | null;
@@ -60,7 +61,7 @@ export interface AppState {
 
 let state: AppState = {
   phase: 'loading', loadText: 'Connexion…', loadPct: 0, authError: null, devAuth: false, discord: true, user: null, save: null, seed: 0, daily: [],
-  hudHidden: false, fishingProfile: 'moyen', panel: null, toasts: [], hud: null, fishing: null, result: null,
+  hudHidden: false, fishingProfile: 'moyen', panel: null, journalTab: 'quests', toasts: [], hud: null, fishing: null, result: null,
   sound: (() => {
     try {
       return localStorage.getItem('nf_sound') !== '0';
@@ -83,7 +84,7 @@ const subscribe = (l: () => void): (() => void) => {
   return () => listeners.delete(l);
 };
 export function useStore<T>(sel: (s: AppState) => T): T {
-  return useSyncExternalStore(subscribe, () => sel(state));
+  return useSyncExternalStore(subscribe, () => sel(state), () => sel(state));
 }
 
 let toastId = 1;

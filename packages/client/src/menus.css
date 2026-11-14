@@ -1,0 +1,116 @@
+/* Menu presentation only: the world, permanent HUD and fishing overlays keep their styles. */
+.menu-overlay { padding: max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left)); }
+.menu-modal { width:min(100%,480px); max-height:calc(100dvh - 24px); border:1px solid #425966; border-radius:16px; background:#12222e; box-shadow:0 20px 60px #0008; }
+.menu-modal.wide { width:min(100%,720px); }
+.menu-modal header { padding:10px 12px 10px 16px; background:#172b37; border-bottom:1px solid #344d5b; gap:10px; }
+.menu-modal header h2 { color:#f1ead9; font:650 19px/1.25 var(--f-title); letter-spacing:0; white-space:normal; }
+.menu-modal .close { flex:none; width:44px; height:44px; min-height:44px; }
+.menu-modal .top { padding:10px 12px; background:#12222e; gap:8px; }
+.menu-modal .body { padding:14px; gap:16px; overflow-x:hidden; overscroll-behavior:contain; scrollbar-gutter:stable; }
+.menu-modal .body > *, .menu-modal .info, .menu-modal .block, .menu-modal .row > * { min-width:0; }
+.menu-modal button { min-height:44px; border-radius:9px; padding:9px 12px; font:600 13px/1.35 var(--f-body); letter-spacing:0; text-transform:none; box-shadow:none; white-space:normal; overflow-wrap:anywhere; }
+.menu-modal button:disabled { opacity:.55; }
+.menu-modal button:focus-visible, .menu-modal summary:focus-visible, .profile-trigger:focus-visible { outline:2px solid #e4c987; outline-offset:2px; }
+.menu-modal .tabs { gap:5px; }
+.menu-modal .tabs button { padding:8px 5px; background:#1b303e; border-color:transparent; color:#b9cbd3; }
+.menu-modal .tabs button.on { background:#2c5359; border-color:#73aaa5; color:#effaf6; }
+.menu-modal .block { gap:10px; }
+.menu-modal h3, .menu-modal h4 { font:650 13px/1.4 var(--f-body); letter-spacing:.025em; text-transform:none; color:#d3dfdf; margin:2px 0 6px; }
+.menu-modal .note, .menu-modal .info p { font-size:12px; line-height:1.5; }
+.menu-modal .row { flex-wrap:wrap; gap:8px; }
+.menu-modal .balance .coins { font-size:16px; }
+.menu-modal .fishrow, .menu-modal .uprow { background:#172c38; padding:10px; gap:10px; border:1px solid #304957; border-radius:10px; }
+.menu-modal .uprow { display:grid; grid-template-columns:minmax(0,1fr) auto; }
+.menu-modal .uprow > button { width:auto; max-width:150px; }
+.menu-modal .uprow > .boat-preview { grid-row:span 2; max-width:70px; }
+.menu-modal .uprow:has(>.boat-preview) { grid-template-columns:70px minmax(0,1fr); }
+.menu-modal .uprow:has(>.boat-preview) > button { justify-self:start; grid-column:2; }
+.menu-modal .info .name b { font:600 13px/1.4 var(--f-body); letter-spacing:0; }
+.menu-modal .fishrow { flex-wrap:wrap; }
+.menu-modal .fishrow .pic { width:48px; }
+.menu-modal .fishrow .pic canvas { max-width:48px; max-height:48px; object-fit:contain; }
+.menu-modal .fishrow .price { font-size:13px; }
+.menu-modal .fishrow .actions { width:100%; justify-content:stretch; }
+.menu-modal .fishrow .actions button { flex:1; }
+.menu-modal .meta { font-size:11px; gap:3px 8px; }
+.menu-modal .tag { font-size:10px; padding:2px 5px; }
+.menu-modal .facts { grid-template-columns:1fr; gap:0; }
+.menu-modal .facts dt { font-size:12px; font-weight:500; text-transform:none; letter-spacing:0; }
+.menu-modal .facts dd { font-size:13px; overflow-wrap:anywhere; }
+.menu-modal .facts > div { padding:9px 0; }
+.menu-modal summary { cursor:pointer; min-height:44px; padding:11px 0; font-size:13px; }
+.menu-modal details > summary::marker { color:#86bab1; }
+.menu-help { font-size:12px; color:#adc2ca; }
+.menu-help summary { width:fit-content; text-decoration:underline; text-underline-offset:3px; padding:4px 0; display:list-item; min-height:32px; }
+.menu-help > div { padding:0 0 8px; line-height:1.5; }
+.menu-disclosure, .exploration-section { border-top:1px solid #344d5b; }
+.menu-modal .menu-help summary { min-height:44px; }
+.cargo-summary { display:grid; gap:8px; padding:12px; background:#192f3b; border:1px solid #3b5864; border-radius:10px; }
+.cargo-summary .row { font-size:13px; }
+.cargo-summary small, .cargo-summary .row > span:not(.coins) { color:#b1c6ce; }
+.cargo-list { display:grid; gap:0; }
+.cargo-species { border-bottom:1px solid #304855; }
+.cargo-species > summary { display:flex; align-items:center; gap:10px; min-height:68px; padding:8px 2px; list-style:none; }
+.cargo-species > summary::-webkit-details-marker { display:none; }
+.cargo-icon { width:44px; height:44px; flex:none; display:grid; place-items:center; overflow:hidden; }
+.cargo-icon canvas { max-width:44px; max-height:36px; height:auto!important; width:auto!important; object-fit:contain; }
+.cargo-name { flex:1; min-width:0; display:grid; gap:3px; }
+.cargo-name b { font-size:13px; overflow-wrap:anywhere; }
+.cargo-name small { color:#aec2cc; font-size:11px; }
+.cargo-species > summary > .coins { font-size:12px; flex:none; }
+.disclosure { color:#9db9c4; transition:transform .15s; }
+.cargo-species[open] > summary .disclosure { transform:rotate(180deg); }
+.cargo-details { display:grid; gap:8px; padding:0 0 12px; }
+.profile-trigger { cursor:pointer; }
+.profile-chevron { margin-left:auto; color:#9bb9c4; }
+.profile-boat { display:flex; gap:16px; align-items:center; padding:6px 0 12px; }
+.profile-boat > div { flex:1; display:grid; gap:10px; font-size:13px; }
+.menu-modal .upgrade-groups { gap:14px; }
+.menu-modal .upgrade-levels { grid-template-columns:1fr; gap:8px; }
+.menu-modal .upgrade-level { padding:10px 12px; background:#172c38; }
+.menu-modal .upgrade-level-heading { font-size:12px; }
+.menu-modal .upgrade-level-heading b { font-size:15px; }
+.menu-modal .upgrade-level p { font-size:12px; }
+.journal-page { display:grid; gap:12px; }
+.menu-modal .trophies { display:grid; gap:8px; }
+.menu-modal .trophy { background:#172c38; border-color:#304957; border-radius:10px; padding:12px; align-items:flex-start; }
+.menu-modal .trophy.got { border-color:#807149; }
+.menu-modal .trophy b { font:600 14px/1.4 var(--f-body); letter-spacing:0; }
+.menu-modal .trophy p { font-size:12px; line-height:1.5; }
+.menu-modal .trophy .medal { transform:scale(.75); transform-origin:top center; }
+.menu-modal .reward { display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px; font-size:12px; }
+.journal-contract { display:grid; gap:7px; padding:12px; background:#172c38; border:1px solid #304957; border-radius:10px; }
+.journal-contract > .row:first-child { align-items:flex-start; }
+.journal-contract > .row:first-child > b { flex:1; font-size:13px; }
+.journal-contract .coins { font-size:13px; }
+.contract-actions button { flex:1; }
+.exploration-content { display:grid; gap:12px; }
+.menu-modal .expedition-summary { gap:6px; }
+.menu-modal .expedition-summary span { padding:10px 5px; }
+.menu-modal .landmark-description, .menu-modal .lore-card p { font:14px/1.6 var(--f-body); }
+.menu-modal .lore-card,.menu-modal .chart-card { padding:12px; background:#172c38; border-color:#344d5b; }
+.menu-modal input, .menu-modal select { min-height:44px; max-width:100%; min-width:0; font-size:16px; }
+.menu-modal .zone-advice { padding:10px 12px; }
+.menu-modal .zone-advice p { font-size:12px; }
+.menu-modal .zone-advice label { display:grid; gap:6px; }
+.menu-modal .collection-grid { grid-template-columns:1fr; }
+.menu-modal .collection-card,.menu-modal .contract-card { padding:12px; background:#172c38; border-color:#344d5b; }
+@media(min-width:600px) {
+  .menu-modal .body { padding:20px; }
+  .menu-modal .facts { grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 20px; }
+  .menu-modal .upgrade-levels { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .menu-modal .collection-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media(max-width:360px) {
+  .menu-modal .body { padding:10px; }
+  .menu-modal header h2 { font-size:17px; }
+  .cargo-species > summary { gap:6px; }
+  .cargo-icon { width:32px; }
+  .cargo-species > summary > .coins { font-size:11px; }
+}
+@media(max-height:480px) {
+  .menu-modal { max-height:calc(100dvh - 16px); }
+  .menu-modal header { padding:4px 10px; }
+  .menu-modal .top { padding:4px 10px; }
+}
+@media(prefers-reduced-motion:reduce) { .menu-modal,.menu-overlay { animation:none; } .disclosure { transition:none; } }

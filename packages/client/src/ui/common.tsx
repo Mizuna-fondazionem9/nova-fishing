@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useId, type ReactNode } from 'react';
 import { SPECIES_BY_ID, RARITY_NAMES, RARITY_COLORS, SIZE_NAMES, COLOR_NAMES, TRAIT_NAMES, type Species, type Specimen } from '../../../shared/src/index';
 import { fishSprite, boatSprite } from '../game/sprites';
 import { setState, useStore } from '../store';
@@ -111,15 +111,32 @@ export const speciesOf = (f: Specimen): Species => SPECIES_BY_ID[f.sp];
  * ce qui garde les onglets visibles en permanence, y compris sur un petit écran.
  */
 export function Modal({ title, children, top, wide = false, onClose }: { title: string; children: ReactNode; top?: ReactNode; wide?: boolean; onClose?: () => void }) {
+  const dialog=useRef<HTMLDivElement>(null);
+  const titleId=useId();
+  const closeRef=useRef(onClose);closeRef.current=onClose;
   const close = (): void => {
     sfx('click');
-    (onClose ?? (() => setState({ panel: null })))();
+    (closeRef.current ?? (() => setState({ panel: null })))();
   };
+  useEffect(()=>{
+    const previous=document.activeElement as HTMLElement|null;
+    dialog.current?.querySelector<HTMLButtonElement>('.close')?.focus({preventScroll:true});
+    const key=(e:KeyboardEvent)=>{
+      if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();close();return;}
+      if(e.key!=='Tab')return;
+      const elements=Array.from(dialog.current?.querySelectorAll<HTMLElement>('button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),summary,[tabindex="0"]')??[]).filter(el=>el.getClientRects().length>0);
+      const first=elements[0],last=elements[elements.length-1];
+      if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}
+      else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}
+    };
+    window.addEventListener('keydown',key,true);
+    return()=>{window.removeEventListener('keydown',key,true);if(previous?.isConnected)previous.focus({preventScroll:true});};
+  },[]);
   return (
-    <div className="overlay" onPointerDown={(e) => e.target === e.currentTarget && close()}>
-      <div className={`modal ${wide ? 'wide' : ''}`} role="dialog" aria-label={title}>
+    <div className="overlay menu-overlay" onPointerDown={(e) => e.target === e.currentTarget && close()}>
+      <div ref={dialog} className={`modal menu-modal ${wide ? 'wide' : ''}`} role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <header>
-          <h2>{title}</h2>
+          <h2 id={titleId}>{title}</h2>
           <button className="icon close" onClick={close} aria-label="Fermer" />
         </header>
         {top && <div className="top">{top}</div>}
@@ -137,4 +154,19 @@ export function Bar({ value, max, color, label }: { value: number; max: number; 
       {label && <span className="num">{label}</span>}
     </div>
   );
+}
+
+export function Tabs<T extends string>({ tabs, value, onChange }: { tabs: [T, string][]; value: T; onChange: (t: T) => void }) {
+  return (
+    <div className="tabs" role="tablist" aria-label="Rubriques" style={{gridTemplateColumns:`repeat(${Math.min(3,tabs.length)},minmax(0,1fr))`}}>
+      {tabs.map(([id, label]) => (
+        <button key={id} role="tab" aria-selected={id === value} className={id === value ? 'on' : ''} tabIndex={id===value?0:-1} onKeyDown={e=>{const index=tabs.findIndex(([v])=>v===id);const next=e.key==='ArrowRight'?(index+1)%tabs.length:e.key==='ArrowLeft'?(index-1+tabs.length)%tabs.length:e.key==='Home'?0:e.key==='End'?tabs.length-1:-1;if(next>=0){e.preventDefault();onChange(tabs[next][0]);(e.currentTarget.parentElement?.children[next] as HTMLElement)?.focus();e.currentTarget.closest('.modal')?.querySelector('.body')?.scrollTo(0,0);}}} onClick={e => { sfx('click'); onChange(id); e.currentTarget.closest('.modal')?.querySelector('.body')?.scrollTo(0,0); }}>{label}</button>
+      ))}
+    </div>
+  );
+}
+
+
+export function Help({label='En savoir plus',children}:{label?:string;children:ReactNode}) {
+  return <details className="menu-help"><summary>{label}</summary><div>{children}</div></details>;
 }

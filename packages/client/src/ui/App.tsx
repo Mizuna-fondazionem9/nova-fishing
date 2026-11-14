@@ -4,8 +4,9 @@ import { Game } from '../game/game';
 import { rt } from './common';
 import { Hud } from './Hud';
 import { FishingOverlay, ResultModal } from './Fishing';
-import { PortPanel, ShipPanel, BestiaryPanel, AquariumPanel, TrophiesPanel, DailyPanel, SettingsPanel } from './Panels';
-import { JournalPanel } from './Adventure';
+import { PortPanel, ShipPanel, ProfilePanel, BestiaryPanel, AquariumPanel, SettingsPanel } from './Panels';
+import { LogbookPanel } from './Logbook';
+import '../menus.css';
 import { MapPanel } from './Map';
 
 function Loading({ text, pct }: { text: string; pct: number }) {
@@ -94,13 +95,12 @@ function GameView() {
       {ready && <FishingOverlay />}
       {panel === 'port' && <PortPanel />}
       {panel === 'ship' && <ShipPanel />}
+      {panel === 'profile' && <ProfilePanel />}
       {panel === 'bestiary' && <BestiaryPanel />}
       {panel === 'aquarium' && <AquariumPanel />}
-      {panel === 'trophies' && <TrophiesPanel />}
-      {panel === 'daily' && <DailyPanel />}
       {panel === 'settings' && <SettingsPanel />}
       {panel === 'map' && <MapPanel />}
-      {panel === 'journal' && <JournalPanel />}
+      {panel === 'journal' && <LogbookPanel />}
       <ResultModal />
       <div className={`fade ${fade ? 'on' : ''}`} />
       <div className={`cover ${ready ? 'gone' : ''}`}><Loading text="Génération de l’océan…" pct={0.4 + pct * 0.6} /></div>

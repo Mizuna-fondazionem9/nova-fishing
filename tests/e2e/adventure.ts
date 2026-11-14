@@ -98,16 +98,17 @@ try {
   }
   await page.setViewportSize({width:1280,height:850});
   await page.getByTestId('port').click();
-  await page.getByRole('tab', { name: 'Capitainerie', exact: true }).click();
+  await page.getByRole('tab', { name: 'Préparation', exact: true }).click();
+  await page.getByRole('button',{name:'Contrats et réputation → Journal de bord'}).click();
   await page
     .getByRole('button', { name: 'Accepter', exact: true })
     .first()
     .click();
-  await page.getByText('Contrats en cours', { exact: true }).waitFor();
+  await page.getByText('1 / 3 en cours',{exact:true}).waitFor();
   await page.screenshot({ path: shots + '/captaincy-desktop.png' });
-  await page
-    .getByRole('button', { name: 'Préparer la sortie', exact: true })
-    .click();
+  await page.getByRole('button',{name:'Fermer',exact:true}).click();
+  await page.getByTestId('port').click();
+  await page.getByRole('tab',{name:'Préparation',exact:true}).click();
   await page
     .locator('.uprow')
     .filter({ hasText: 'Montage de précision' })
@@ -132,6 +133,7 @@ try {
     .getByRole('navigation')
     .getByRole('button', { name: 'Aquarium', exact: true })
     .click();
+  await page.locator('summary').filter({hasText:'Décors et collections'}).click();
   await page
     .getByRole('textbox', { name: 'Nom de l’aquarium' })
     .fill('Les Jardins de Nova');
@@ -140,7 +142,7 @@ try {
   await page
     .getByRole('button', { name: 'Jardin de nacre', exact: true })
     .click();
-  await page.locator('.tank.theme-coral').waitFor();
+  await page.locator('.nova-aquarium').waitFor();
   await page.screenshot({ path: shots + '/aquarium-desktop.png' });
   await page.getByRole('button', { name: 'Fermer', exact: true }).click();
   // Position de test enregistrée directement dans le stockage local, jamais via une route de triche.
