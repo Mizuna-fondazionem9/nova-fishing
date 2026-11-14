@@ -281,7 +281,8 @@ async function main(): Promise<void> {
     step(`retour au port (${port.name})`);
 
     // Aquarium : garder un poisson. Vente : vendre le reste.
-    await p.click('[data-testid=keep]');
+    await p.locator('.cargo-species > summary').first().click();
+    await p.locator('[data-testid=keep]').first().click();
     await p.waitForFunction(() => (window as any).__nf.getState().save.aquarium.length === 1);
     await p.waitForTimeout(400);
     await p.screenshot({ path: `${SHOTS}/02-criee.png` });
@@ -315,14 +316,14 @@ async function main(): Promise<void> {
     await p.waitForSelector('dl.facts');
     await p.keyboard.press('Escape');
     await p.click('.nav button:nth-child(3)');
-    await p.waitForSelector('.tank .swim canvas');
+    await p.waitForSelector('.nova-aquarium canvas');
     await p.waitForTimeout(400);
     await p.screenshot({ path: `${SHOTS}/05-aquarium.png` });
     await p.keyboard.press('Escape');
     step('bestiaire (fiche découverte, inconnues masquées) et aquarium animé');
 
     // Déconnexion puis reconnexion.
-    await p.click('.nav button:nth-child(6)');
+    await p.getByRole('navigation').getByRole('button',{name:'Réglages',exact:true}).click();
     await p.click('[data-testid=logout]');
     await p.waitForSelector('.login');
     assert.equal((await ctx.request.get(`${URL}/api/me`)).status(), 401, 'la session doit être fermée');
@@ -349,7 +350,8 @@ async function main(): Promise<void> {
     await m.waitForFunction(() => (window as any).__nf.game.boat.speed > 0.5, null, { timeout: 5000 });
     await m.waitForTimeout(1500);
     await m.screenshot({ path: `${SHOTS}/06-mobile.png` });
-    await m.tap('.nav button:nth-child(4)');
+    await m.getByRole('navigation').getByRole('button',{name:/Journal/}).tap();
+    await m.getByRole('tab',{name:'Trophées',exact:true}).tap();
     await m.waitForSelector('.trophies');
     await m.waitForTimeout(400);
     await m.screenshot({ path: `${SHOTS}/07-mobile-trophees.png` });

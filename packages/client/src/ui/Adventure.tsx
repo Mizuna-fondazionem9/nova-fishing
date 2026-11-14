@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import {
-  getPort,
   THEME_NAMES,
   newAdventure,
   nearbyLandmarks,
@@ -8,8 +7,6 @@ import {
   POINT_LABELS,
   ventHot,
   STORY_TEXT,
-  portContracts,
-  contractProgress,
   KIT_DEFS,
   BAITS,
   COLLECTIONS,
@@ -18,7 +15,7 @@ import {
   type Landmark,
 } from '../../../shared/src/index';
 import { useStore, setState, serverNow, portOp } from '../store';
-import { rt, Modal, Coins, Bar, FishIcon, speciesOf } from './common';
+import { rt, Modal, Help, Coins, Bar, FishIcon, speciesOf } from './common';
 import { sfx } from '../game/audio';
 
 const ICONS = { wreck: '⚓', sanctuary: '◈', lagoon: '◌', vent: '♨' };
@@ -47,147 +44,19 @@ function Heading({ children }: { children: React.ReactNode }) {
   return <h3 className="adventure-heading">{children}</h3>;
 }
 export function Captaincy() {
-  const save = useStore((s) => s.save)!,
-    seed = useStore((s) => s.seed),
-    hud = useStore((s) => s.hud);
-  const a = save.adventure ?? newAdventure(),
-    port = hud?.port?.id ?? save.lastPort;
-  const [tab, setTab] = useState<'contracts' | 'equipment'>('contracts');
+  const save = useStore((s) => s.save)!;
+  const a = save.adventure ?? newAdventure();
   const { busy, run } = useAction();
-  useClock();
-  const op = (action: string, value: string) =>
-    void run('/api/port/adventure', { action, value });
-  const day = dayKey(serverNow()),
-    rep = a.reputation[port] ?? 0;
-  const active = a.active.filter((c) => c.day === day);
-  const board = portContracts(seed, port, serverNow());
-  return (
-    <div className="adventure-section">
-      <div className="reputation-card">
-        <span className="eyebrow">Réputation de ce port</span>
-        <strong>
-          {rep < 100
-            ? 'Visiteur'
-            : rep < 250
-              ? 'Habitué'
-              : rep < 500
-                ? 'Navigateur reconnu'
-                : 'Légende du quai'}
-        </strong>
-        <Bar
-          value={rep % 100}
-          max={100}
-          color="#d6b97d"
-          label={`${rep} points`}
-        />
-        <p>
-          À 100 points : décor du port et trois appâts scintillants, une seule
-          fois.
-        </p>
-      </div>
-      <div className="adventure-tabs">
-        <button
-          aria-pressed={tab === 'contracts'}
-          onClick={() => setTab('contracts')}
-        >
-          Contrats
-        </button>
-        <button
-          aria-pressed={tab === 'equipment'}
-          onClick={() => setTab('equipment')}
-        >
-          Préparer la sortie
-        </button>
-      </div>
-      {tab === 'contracts' ? (
-        <>
-          <Heading>Tableau du quai</Heading>
-          <p className="note">
-            Trois contrats actifs au maximum. Six récompenses par journée UTC,
-            tous ports confondus. Les contrats expirent à minuit UTC.
-          </p>
-          {board.map((c) => {
-            const accepted = active.find((v) => v.id === c.id),
-              done = a.completed.includes(c.id);
-            return (
-              <article className="contract-card" key={c.id}>
-                <div>
-                  <b>{c.label}</b>
-                  <p>
-                    {c.kind === 'delivery'
-                      ? 'Les prises livrées seront retirées de la cale.'
-                      : c.kind === 'photo'
-                        ? 'Capture à la ligne après acceptation ; les prises du chat ne comptent pas.'
-                        : 'Seules les nouvelles découvertes après acceptation comptent.'}
-                  </p>
-                </div>
-                <div className="contract-reward">
-                  <Coins n={c.reward} />
-                  <small>+{c.rep} réputation</small>
-                </div>
-                {accepted && (
-                  <Bar
-                    value={contractProgress(save, accepted)}
-                    max={accepted.goal}
-                    color="#78c9ba"
-                    label={`${Math.min(accepted.goal, contractProgress(save, accepted)).toLocaleString('fr-FR')} / ${accepted.goal}`}
-                  />
-                )}
-                <button
-                  disabled={
-                    busy ||
-                    done ||
-                    (!accepted && active.length >= 3) ||
-                    (!!accepted &&
-                      contractProgress(save, accepted) < accepted.goal)
-                  }
-                  onClick={() => op(accepted ? 'complete' : 'accept', c.id)}
-                >
-                  {done
-                    ? 'Terminé'
-                    : accepted
-                      ? 'Remettre le contrat'
-                      : 'Accepter'}
-                </button>
-              </article>
-            );
-          })}
-          {active.length > 0 && (
-            <>
-              <Heading>Contrats en cours</Heading>
-              {active.map((c) => (
-                <div className="active-contract" key={c.id}>
-                  <span>
-                    {c.label}
-                    <small>
-                      À remettre à{' '}
-                      {
-                        getPort(
-                          seed,
-                          ...(c.port.split(':').map(Number) as [
-                            number,
-                            number,
-                          ]),
-                        ).name
-                      }{' '}
-                      · {Math.min(c.goal, contractProgress(save, c))} / {c.goal}
-                    </small>
-                  </span>
-                  <button disabled={busy} onClick={() => op('abandon', c.id)}>
-                    Abandonner
-                  </button>
-                </div>
-              ))}
-            </>
-          )}
-        </>
-      ) : (
+  const op = (action: string, value: string) => void run('/api/port/adventure', { action, value });
+  return <div className="adventure-section">
+    <button className="journal-link" onClick={()=>setState({panel:'journal',journalTab:'contracts',landmarkId:null})}>Contrats et réputation → Journal de bord</button>
+
         <>
           <Heading>Matériel spécialisé</Heading>
-          <p className="note">
+          <Help label="Choisir un montage">
             Un seul montage équipé. Les avantages ont un coût ; la canne et ses
             améliorations restent conservées.
-          </p>
+          </Help>
           {KIT_DEFS.map((k) => (
             <article className="uprow" key={k.id}>
               <div className="info">
@@ -209,10 +78,10 @@ export function Captaincy() {
             </article>
           ))}
           <Heading>Appâts</Heading>
-          <p className="note">
+          <Help label="Utiliser les appâts">
             Une unité consommée par lancer. Un appât ne change pas la silhouette
             visée et ne garantit aucune espèce.
-          </p>
+          </Help>
           <button
             disabled={busy || !a.bait}
             onClick={() => op('bait-select', 'none')}
@@ -247,14 +116,13 @@ export function Captaincy() {
             </article>
           ))}
         </>
-      )}
-    </div>
-  );
+</div>;
 }
+
 function setCourse(p: Landmark) {
   if (rt.game?.goTo(p.x, p.y)) setState({ panel: null });
 }
-export function JournalPanel() {
+export function ExplorationContent() {
   const save = useStore((s) => s.save)!,
     seed = useStore((s) => s.seed),
     hud = useStore((s) => s.hud),
@@ -404,11 +272,8 @@ export function JournalPanel() {
   }
   const known = Object.values(a.points).sort((x, y) => y.at - x.at);
   return (
-    <Modal title="Carnet d’exploration" wide>
-      <p className="journal-intro">
-        Au-delà des cartes
-        <span>Chaque lieu conserve sa position et sa petite histoire.</span>
-      </p>
+    <div className="exploration-content">
+
       <div className="expedition-summary">
         <span>
           <b>{known.length}</b> lieux découverts
@@ -467,14 +332,14 @@ export function JournalPanel() {
           ))}
         </section>
       )}
-    </Modal>
+    </div>
   );
 }
 function PointCard({ p }: { p: Landmark }) {
   return (
     <button
       className={`point-card ${p.kind}`}
-      onClick={() => setState({ landmarkId: p.id })}
+      onClick={() => setState({ landmarkId: p.id, journalTab: 'quests' })}
     >
       <span aria-hidden="true">{ICONS[p.kind]}</span>
       <b>{p.name}</b>
@@ -504,10 +369,7 @@ export function AquariumWorkshop() {
   return (
     <div className="adventure-section">
       <Heading>Votre aquarium</Heading>
-      <p className="note">
-        Renommez et décorez le bassin au port. Les collections débloquent des
-        décors permanents, sans revenu passif.
-      </p>
+      <Help label="Personnaliser le bassin">Renommage et décors au port. Les collections débloquent des décors permanents.</Help>
       <div className="aquarium-name">
         <input
           aria-label="Nom de l’aquarium"

@@ -9,8 +9,9 @@ import {
   type Specimen, type Species, type UpgradeDef,
 } from '../../../shared/src/index';
 import { useStore, setState, getState, portOp, api, serverNow, toast, BASE } from '../store';
+import { groupCargo, trophyProgress } from './menu-data';
 import { setSound, sfx, unlockAudio, testAudio } from '../game/audio';
-import { rt, Modal, Bar, Coins, FishIcon, BoatIcon, Rarity, Tags, speciesOf, fmt, fmt1, fmtKg, fmtLen } from './common';
+import { rt, Modal, Tabs, Help, Bar, Coins, FishIcon, BoatIcon, Rarity, Tags, speciesOf, fmt, fmt1, fmtKg, fmtLen } from './common';
 
 /** Empêche les doubles clics pendant qu'une requête est en cours (le serveur protège aussi de son côté). */
 function useBusy(): [boolean, (fn: () => Promise<unknown>) => void] {
@@ -20,16 +21,6 @@ function useBusy(): [boolean, (fn: () => Promise<unknown>) => void] {
     setBusy(true);
     void fn().finally(() => setBusy(false));
   }];
-}
-
-function Tabs<T extends string>({ tabs, value, onChange }: { tabs: [T, string][]; value: T; onChange: (t: T) => void }) {
-  return (
-    <div className="tabs" role="tablist">
-      {tabs.map(([id, label]) => (
-        <button key={id} role="tab" aria-selected={id === value} className={id === value ? 'on' : ''} onClick={() => { sfx('click'); onChange(id); }}>{label}</button>
-      ))}
-    </div>
-  );
 }
 
 /** Titre de section : petit, en capitales, avec un compteur éventuel à droite. */
@@ -65,7 +56,7 @@ function HarpoonShop() {
   const save=useStore(s=>s.save)!;
   const [busy,run]=useBusy();
   return <Section title="Harpon à corde" aside={`${save.harpoons} / ${HARPOON_MAX_AMMO} recharges`}>
-    <p className="note">Les prédateurs signalés par « ! » s’accrochent au harpon. Chaque tentative consomme une recharge, même si le tir manque. Ils peuvent abîmer la coque même avec un combat parfait.</p>
+    <Help label="Utiliser le harpon">Les prédateurs signalés par « ! » s’accrochent au harpon. Chaque tentative consomme une recharge, même si le tir manque. Ils peuvent abîmer la coque même avec un combat parfait.</Help>
     {!save.harpoonOwned ? <button disabled={busy||save.coins<HARPOON_LAUNCHER_PRICE} onClick={()=>run(()=>portOp('/api/port/harpoon',{action:'launcher'}))}>Acheter le lance-harpon <Coins n={HARPOON_LAUNCHER_PRICE}/></button> : <div className="row">{[1,5,10].map(count=><button key={count} disabled={busy||save.coins<count*HARPOON_AMMO_PRICE||save.harpoons+count>HARPOON_MAX_AMMO} onClick={()=>run(()=>portOp('/api/port/harpoon',{action:'ammo',count}))}>+{count} harpon(s) <Coins n={count*HARPOON_AMMO_PRICE}/></button>)}</div>}
   </Section>;
 }
@@ -75,9 +66,9 @@ function PlayerProgression() {
   const p=playerProgress(save.xp),b=playerBonuses(p.level);
   return <Section title={`Pêcheur · niveau ${p.level} / 50`} aside={p.next?`${p.current} / ${p.next} XP`:'Niveau maximum'}>
     <Bar value={p.next?p.current:1} max={p.next||1} color="#b49ee8"/>
-    <p className="note">L’XP vient des captures actives, même relâchées ou en attente de place. Les filets ne donnent pas d’XP.</p>
+    <Help label="Gagner de l’XP">L’XP vient des captures actives, même relâchées ou en attente de place. Les filets ne donnent pas d’XP.</Help>
     <dl className="facts"><div><dt>Variantes</dt><dd>×{fmt1(b.variants)}</dd></div><div><dt>Tirage des rares</dt><dd>×{fmt1(b.rare)}</dd></div><div><dt>Ratés pardonnés</dt><dd>{Math.round(b.forgive*100)} %</dd></div><div><dt>Critiques chanceux</dt><dd>{Math.round(b.luckyCrit*100)} %</dd></div></dl>
-    <p className="note">Au maximum, 1 raté sur 6 peut être pardonné, avec deux déclenchements au plus par combat. Les chances de variantes atteignent ×3 et le poids de tirage des espèces rares ×2 au niveau 50.</p>
+    <Help label="Détail des bonus">Au maximum, 1 raté sur 6 peut être pardonné, avec deux déclenchements au plus par combat. Les chances de variantes atteignent ×3 et le poids de tirage des espèces rares ×2 au niveau 50.</Help>
   </Section>;
 }
 
@@ -92,7 +83,7 @@ function UpgradeRow({ u }: { u: UpgradeDef }) {
     <div className="uprow">
       <div className="info">
         <div className="name"><b>{u.name}</b><span className="lvl">Niveau {lvl}</span></div>
-        <p>{u.desc}</p>
+        <Help label="Effet">{u.desc}</Help>
         <div className="eff">{u.fmt(u.effect(lvl))}{!max && <><i className="arrow" aria-label="devient" /><b>{u.fmt(u.effect(lvl + 1))}</b></>}</div>
       </div>
       <button className="buy" data-testid={`up-${u.key}`} disabled={busy || max || locked || save.coins < cost} onClick={() => run(async () => { if (await portOp('/api/port/upgrade', { key: u.key })) sfx('coin'); })}>
@@ -102,27 +93,32 @@ function UpgradeRow({ u }: { u: UpgradeDef }) {
   );
 }
 
-function SellTab() {
-  const save = useStore((s) => s.save)!;
-  const [busy, run] = useBusy();
-  const total = save.cargo.reduce((a, f) => a + priceOf(f), 0);
-  const g = gearOf(save.up,save.vessel,save.kit);
-  const aquaFull = save.aquarium.length >= g.aquarium;
-  if (!save.cargo.length) return <p className="empty">La cale est vide. Les poissons capturés apparaîtront ici.</p>;
-  return (
-    <Section title="Cale" aside={`${cargoBulk(save)} / ${g.hold} unités`}>
-      <button className="big wide" data-testid="sell-all" disabled={busy} onClick={() => run(async () => { if (await portOp('/api/port/sell', { uids: 'all' })) sfx('coin'); })}>
-        Tout vendre <Coins n={total} />
-      </button>
-      {save.cargo.map((f) => (
-        <FishRow key={f.uid} f={f}>
-          <button disabled={busy} onClick={() => run(async () => { if (await portOp('/api/port/sell', { uids: [f.uid] })) sfx('coin'); })}>Vendre</button>
-          <button data-testid="keep" disabled={busy || aquaFull} title={aquaFull ? 'Aquarium plein' : 'Exposer dans l’aquarium'} onClick={() => run(() => portOp('/api/port/keep', { uid: f.uid }))}>Garder</button>
-        </FishRow>
-      ))}
-    </Section>
-  );
+export function CargoList({atPort=false, release=true}: {atPort?:boolean;release?:boolean}) {
+  const save=useStore(s=>s.save)!;
+  const [busy,run]=useBusy();
+  const g=gearOf(save.up,save.vessel,save.kit),used=cargoBulk(save);
+  const groups=useMemo(()=>groupCargo(save.cargo),[save.cargo]);
+  const total=groups.reduce((n,g)=>n+g.value,0);
+  return <>
+    <div className="cargo-summary">
+      <div className="row between"><b>{used} / {g.hold} unités</b><span>{Math.max(0,g.hold-used)} libres</span></div>
+      <Bar value={used} max={g.hold} color={used>=g.hold?'#e18e86':'#81c7bc'} />
+      <div className="row between"><small>{save.cargo.length} prises · {groups.length} espèces</small><Coins n={total}/></div>
+    </div>
+    {atPort && save.cargo.length>0 && <button className="big wide" data-testid="sell-all" disabled={busy} onClick={()=>run(async()=>{if(await portOp('/api/port/sell',{uids:'all'}))sfx('coin');})}>Tout vendre <Coins n={total}/></button>}
+    {!groups.length && <p className="empty">La cale est vide.</p>}
+    <div className="cargo-list">{groups.map(group=><details className="cargo-species" key={group.sp}>
+      <summary><span className="cargo-icon"><FishIcon sp={speciesOf(group.fish[0])} fit /></span><span className="cargo-name"><b>{speciesOf(group.fish[0]).name}</b><small>×{group.fish.length} · {group.bulk} unités</small></span><Coins n={group.value}/><span className="disclosure" aria-hidden="true">⌄</span></summary>
+      <div className="cargo-details">{group.fish.map(f=><FishRow key={f.uid} f={f}>
+        {atPort && <><button disabled={busy} onClick={()=>run(()=>portOp('/api/port/sell',{uids:[f.uid]}))}>Vendre</button><button data-testid="keep" disabled={busy||save.aquarium.length>=g.aquarium} onClick={()=>run(()=>portOp('/api/port/keep',{uid:f.uid}))}>{save.aquarium.length>=g.aquarium?'Aquarium plein':'Garder'}</button></>}
+        {release && <button disabled={busy} onClick={()=>run(()=>portOp('/api/release',{uid:f.uid,from:'cargo'}))}>Relâcher</button>}
+      </FishRow>)}</div>
+    </details>)}</div>
+    {!atPort && save.cargo.length>0 && <p className="note">Vente et transfert à l’aquarium au port.</p>}
+  </>;
 }
+
+function SellTab() { return <CargoList atPort release={false}/>; }
 
 function YardTab() {
   const save = useStore((s) => s.save)!;
@@ -148,7 +144,7 @@ function YardTab() {
         {UPGRADES.filter((u) => u.group === 'boat').map((u) => <UpgradeRow key={u.key} u={u} />)}
       </Section>
       <Section title="Filets">
-        <p className="note">Un filet capture tout seul de petits poissons communs pendant que vous naviguez. Jamais les grosses pièces.</p>
+        <Help label="Fonctionnement des filets">Un filet capture tout seul de petits poissons communs pendant que vous naviguez. Jamais les grosses pièces.</Help>
         {NETS.map((n, i) => n && (
           <div className="uprow" key={i}>
             <div className="info"><div className="name"><b>{n.name}</b></div><p>{n.desc}</p></div>
@@ -190,7 +186,7 @@ function MaritimeTab() {
   const nextCat=save.cat ? Math.max(0,15-Math.floor((serverNow()-save.cat.at)/60000)) : 15;
   return <>
     <Section title="Chat pêcheur">
-      <p className="note">Une petite prise toutes les 15 minutes, jusqu’à six en réserve. Le chat travaille au quai où il est installé, même hors connexion.</p>
+      <Help label="Fonctionnement du chat">Une petite prise toutes les 15 minutes, jusqu’à six en réserve. Le chat travaille au quai où il est installé, même hors connexion.</Help>
       {!save.cat ? <button disabled={busy || save.coins<CAT_PRICE} onClick={()=>action('cat-buy')}>Adopter · <Coins n={CAT_PRICE}/></button> : <>
         <p>🐈 Au port {getPort(seed,...save.cat.port.split(':').map(Number) as [number,number]).name} · {ready} / 6 prises prêtes.{ready===0 ? ` Prochaine prise dans ${nextCat} min.` : ''}</p>
         {save.cat.port===hud?.port?.id ? <button disabled={busy || ready===0} onClick={()=>action('cat-claim')}>Récupérer les prises</button> : <button disabled={busy || ready>0} onClick={()=>action('cat-move')}>Installer le chat à ce quai</button>}
@@ -221,7 +217,7 @@ export function PortPanel() {
       top={
         <>
           <div className="balance"><span className="k">Votre bourse</span><Coins n={save.coins} /></div>
-          <Tabs tabs={[['sell', 'Criée'], ['yard', 'Chantier'], ['rod', 'Atelier'], ['aqua', 'Aquarium'], ['life','Compagnon & flotte'], ['captaincy','Capitainerie']]} value={tab} onChange={setTab} />
+          <Tabs tabs={[['sell', 'Criée'], ['yard', 'Chantier'], ['rod', 'Atelier'], ['aqua', 'Aquarium'], ['life','Flotte & chat'], ['captaincy','Préparation']]} value={tab} onChange={setTab} />
         </>
       }
     >
@@ -255,33 +251,36 @@ export function PortPanel() {
 // ---------- Cale et équipement (consultable partout) ----------
 
 export function ShipPanel() {
+  const atPort=!!useStore(s=>s.hud?.port);
+  return <Modal title="Cale" wide><CargoList atPort={atPort}/></Modal>;
+}
+
+export function ProfilePanel() {
   const save = useStore((s) => s.save)!;
-  const [busy, run] = useBusy();
+  const [tab,setTab]=useState<'boat'|'equipment'|'progress'>('boat');
   const hud = useStore(s => s.hud);
   const skill = useStore(s => s.fishingProfile);
   const advice = hud ? fishingAdvice(save.up, hud.biome, hud.level, skill) : null;
   const g = gearOf(save.up,save.vessel,save.kit);
   return (
-    <Modal title="Cale et équipement" wide>
-      <PlayerProgression />
+    <Modal title="Profil et bateau" wide top={<Tabs tabs={[['boat','Bateau'],['equipment','Équipement'],['progress','Progression']]} value={tab} onChange={setTab}/>}>
+      {tab==='progress' && <><PlayerProgression/><PlayerStatistics/></>}
+      {tab==='boat' && <>
+        <Section title={VESSELS.find(v=>v.id===(save.vessel??'skiff'))?.name??'Bateau'}>
+          <div className="profile-boat"><BoatIcon model={save.vessel??'skiff'} paint={save.paint??0}/><div><b>Coque · {Math.round(save.hull)} / {g.hullMax} PV</b><Bar value={save.hull} max={g.hullMax} color="#81c7bc"/></div></div>
+          <dl className="facts"><div><dt>Vitesse</dt><dd>{fmt1(g.speed)} tuiles/s</dd></div><div><dt>Accélération</dt><dd>{fmt1(g.accel)}</dd></div><div><dt>Capacité</dt><dd>{g.hold} unités</dd></div><div><dt>Réparation</dt><dd>{fmt1(g.repairCost)} pièces / PV</dd></div></dl>
+        </Section>
+      </>}
+      {tab==='equipment' && <>
       <p className="note">Harpon : {save.harpoonOwned ? `${save.harpoons} recharge(s)` : 'Lance-harpon à acheter au port'}</p>
-      <Section title="Cale" aside={`${cargoBulk(save)} / ${g.hold} unités`}>
-        {!save.cargo.length && <p className="empty">La cale est vide.</p>}
-        {save.cargo.map((f) => (
-          <FishRow key={f.uid} f={f}>
-            <button disabled={busy} title="Remettre à l’eau pour libérer de la place" onClick={() => run(() => portOp('/api/release', { uid: f.uid, from: 'cargo' }))}>Relâcher</button>
-          </FishRow>
-        ))}
-        <p className="note">La vente, les améliorations et l’aquarium se font au port. En cas de naufrage, la cale est perdue.</p>
-      </Section>
-      {advice && hud && <section className={`zone-advice ${advice.state}`}>
+      {advice && hud && <details className={`zone-advice ${advice.state}`}><summary>Repères de la zone · {advice.title}</summary>
         <h3>{BIOMES[hud.biome].name} · {advice.sector}</h3>
         <label>Repère pour <select value={skill} onChange={e => setState({fishingProfile:e.target.value as 'debutant' | 'moyen'})}><option value="debutant">Je débute / je rate souvent</option><option value="moyen">Je suis à l’aise avec la jauge</option></select></label>
         <b>{advice.title}</b>
         <p>Ta canne : <strong>★{fmt1(advice.stars)}</strong> · {advice.target === null ? 'Zone très exigeante' : <>Repère conseillé : <strong>★{advice.target}</strong></>}</p>
         <p>Filet · {netFishingProfile(save.net, save.up, hud.biome, hud.level, cargoBulk(save) >= gearOf(save.up,save.vessel,save.kit).hold).title}</p>
         <p>Les étoiles représentent la moyenne des six améliorations. Ton adresse et ta spécialisation peuvent te permettre de pêcher au-dessus de ce repère.</p>
-      </section>}
+      </details>}
       <Section title="Équipement">
         <dl className="facts">
           <div className="full"><dt>Montage</dt><dd>{KIT_DEFS.find(k=>k.id===(save.kit??'standard'))?.name}</dd></div>
@@ -290,16 +289,17 @@ export function ShipPanel() {
           <div><dt>Puissance</dt><dd>{fmt1(g.rod.power)}</dd></div>
           <div><dt>Résistance</dt><dd>{fmt1(g.rod.resistance)}</dd></div>
           <div><dt>Ligne</dt><dd>{g.rod.line}</dd></div>
-          <div><dt>Vitesse</dt><dd>{fmt1(g.speed)} tuiles/s</dd></div>
-          <div><dt>Coque</dt><dd>{g.hullMax} PC</dd></div>
+
+
           <div><dt>Filet</dt><dd>{NETS[save.net]?.name ?? 'Aucun'}</dd></div>
           <div><dt>Aquarium</dt><dd>{g.aquarium} places</dd></div>
         </dl>
       </Section>
       <p className="note"><a href="https://novabot-hub.fr/nova-fishing#guide-canne" target="_blank" rel="noreferrer">Quelle zone pour ma canne ? Consulter les niveaux conseillés ↗</a></p>
-      <Section title="Niveaux d’amélioration">
+      </>}
+      {tab!=='progress' && <Section title="Améliorations">
         <div className="upgrade-groups">
-          {([['boat', 'Bateau'], ['rod', 'Canne & ligne'], ['aquarium', 'Aquarium']] as const).map(([group, title]) => (
+          {([['boat', 'Bateau'], ['rod', 'Canne & ligne'], ['aquarium', 'Aquarium']] as const).filter(([group])=>tab==='boat'?group==='boat':group!=='boat').map(([group, title]) => (
             <div className="upgrade-group" key={group}>
               <h4>{title}</h4>
               <div className="upgrade-levels">
@@ -317,7 +317,7 @@ export function ShipPanel() {
             </div>
           ))}
         </div>
-      </Section>
+      </Section>}
     </Modal>
   );
 }
@@ -417,7 +417,7 @@ export function AquariumPanel() {
     <Modal title={save.adventure?.aquarium.name??'Aquarium'} wide>
       <Tank fish={save.aquarium} />
       {save.aquarium.find(f=>f.uid===save.adventure?.aquarium.featured)&&<div className="featured-display"><span className="eyebrow">À l’honneur</span>{save.aquarium.filter(f=>f.uid===save.adventure?.aquarium.featured).map(f=><div key={f.uid}><FishIcon sp={speciesOf(f)} color={f.color} scale={3}/><b>{speciesOf(f).name}</b><small>{fmtKg(f.kg)} · {fmtLen(f.len)}</small></div>)}</div>}
-      <AquariumWorkshop />
+      <details className="menu-disclosure"><summary>Décors et collections</summary><AquariumWorkshop /></details>
       <Section title="Poissons exposés" aside={`${save.aquarium.length} / ${cap}`}>
         <AquariumList atPort={!!hud?.port} />
         <p className="note">Les bassins s’agrandissent au port, onglet Aquarium.</p>
@@ -428,31 +428,40 @@ export function AquariumPanel() {
 
 // ---------- Trophées ----------
 
-export function TrophiesPanel() {
+export function TrophiesContent() {
   const save = useStore((s) => s.save)!;
   const got = TROPHIES.filter((t) => save.trophies[t.id]).length;
-  const st = save.stats;
+
   return (
-    <Modal
-      title="Trophées"
-      wide
-      top={<div className="balance"><span className="k">Débloqués</span><b className="num">{got} / {TROPHIES.length}</b><Bar value={got} max={TROPHIES.length} color="#f0b429" /></div>}
-    >
+    <>
+      <div className="balance"><span>Trophées obtenus</span><b>{got} / {TROPHIES.length}</b></div>
+      <Bar value={got} max={TROPHIES.length} color="#d8b577"/>
       <div className="trophies">
         {TROPHIES.map((t) => {
           const at = save.trophies[t.id];
+          const progress=trophyProgress(save,t.id);
           return (
             <div key={t.id} className={`trophy ${at ? 'got' : ''}`}>
               <i className="medal" aria-hidden="true" />
               <div>
                 <b>{t.name}</b>
                 <p>{t.desc}</p>
+                {!at && progress && <Bar value={progress.value} max={progress.max} color="#81c7bc" label={`${fmt(Math.floor(Math.min(progress.value,progress.max)))} / ${fmt(progress.max)}`}/>}
+                {!at && <small className="note">À obtenir</small>}
                 {at && <small className="date">Obtenu le {new Date(at).toLocaleDateString('fr-FR')}</small>}
               </div>
             </div>
           );
         })}
       </div>
+
+    </>
+  );
+}
+
+function PlayerStatistics() {
+  const st=useStore(s=>s.save!.stats);
+  return (
       <Section title="Statistiques">
         <dl className="facts">
           <div><dt>Captures</dt><dd>{fmt(st.caught)}</dd></div>
@@ -466,20 +475,18 @@ export function TrophiesPanel() {
           <div><dt>Biomes</dt><dd>{st.biomes.length} / {BIOME_IDS.length}</dd></div>
           <div><dt>Ports visités</dt><dd>{st.ports.length}</dd></div>
         </dl>
-      </Section>
-    </Modal>
-  );
+      </Section>);
 }
 
 // ---------- Défis du jour ----------
 
-export function DailyPanel() {
+export function DailyContent() {
   const save = useStore((s) => s.save)!;
   const daily = useStore((s) => s.daily);
   const today = save.daily.day === dayKey(serverNow());
   return (
-    <Modal title="Défis du jour">
-      <p className="note">Trois défis renouvelés chaque jour à minuit (UTC). La récompense grandit avec votre bestiaire.</p>
+    <>
+      <p className="note">Défis quotidiens · Récompenses automatiques.</p>
       {daily.map((c) => {
         const done = today && save.daily.done.includes(c.id);
         const prog = done ? c.goal : today ? save.daily.prog[c.id] ?? 0 : 0;
@@ -489,12 +496,12 @@ export function DailyPanel() {
             <div>
               <b>{c.label}</b>
               <Bar value={prog} max={c.goal} color="#a05cf0" label={`${Math.floor(prog)} / ${c.goal}`} />
-              <div className="reward"><span className="k">{done ? 'Récompense reçue' : 'Récompense'}</span><Coins n={c.reward} /></div>
+              <div className="reward"><span>{done ? 'Récompense reçue' : 'Récompense'}</span><Coins n={c.reward} /></div>
             </div>
           </div>
         );
       })}
-    </Modal>
+    </>
   );
 }
 

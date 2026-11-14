@@ -1,5 +1,5 @@
 import { BIOMES, NETS, cargoBulk, gearOf, rodStars, dayKey, fishingAdvice, playerProgress, predatorForShadow } from '../../../shared/src/index';
-import { useStore, setState, serverNow, portOp, type Panel } from '../store';
+import { useStore, getState, setState, serverNow, portOp, type Panel } from '../store';
 import { sfx, unlockAudio } from '../game/audio';
 import { rt, Bar, Coins, fmt1 } from './common';
 
@@ -7,6 +7,7 @@ const TOD = { aube: 'Aube', jour: 'Jour', crepuscule: 'Crépuscule', nuit: 'Nuit
 const WEATHER = { clair: 'Ciel clair', brume: 'Brume', pluie: 'Pluie', orage: 'Orage' };
 
 const open = (panel: Panel) => (): void => {
+  if (panel==='profile' && (getState().fishing || getState().result || getState().save?.pendingCatch)) return;
   unlockAudio();
   sfx('click');
   setState({ panel });
@@ -49,10 +50,10 @@ export function Hud() {
     <div className={`hud ${hidden?'is-minimal':''}`}>
       <button className="hud-toggle" aria-label={hidden?'Afficher l’interface':'Masquer l’interface'} title={hidden?'Afficher l’interface':'Masquer l’interface'} aria-pressed={hidden} onClick={()=>setState({hudHidden:!hidden})}><svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>{hidden&&<path d="M3 3l18 18"/>}</svg></button>
       <div className="hud-top">
-      <div className="card tl">
+      <div className="card tl profile-trigger" role="button" tabIndex={0} aria-label="Ouvrir le profil et le bateau" aria-haspopup="dialog" onClick={open('profile')} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open('profile')();}}}>
         <div className="who">
           {user?.avatar ? <img src={user.avatar} alt="" /> : <span className="avatar">{(user?.name ?? '?').slice(0, 1).toUpperCase()}</span>}
-          <b>{user?.name}</b>
+          <b>{user?.name}</b><span className="profile-chevron" aria-hidden="true">›</span>
         </div>
         <div className="player-level"><span>Niv. {progress.level}</span><Bar value={progress.next?progress.current:1} max={progress.next||1} color="#b49ee8" /></div>
         <div className="purse"><Coins n={save.coins} testid="coins" /></div>
@@ -119,9 +120,7 @@ export function Hud() {
           <button onClick={open('ship')}><NavIcon name="ship" /><span>Cale</span></button>
           <button onClick={open('bestiary')}><NavIcon name="bestiary" /><span>Bestiaire</span></button>
           <button onClick={open('aquarium')}><NavIcon name="aquarium" /><span>Aquarium</span></button>
-          <button onClick={open('trophies')}><NavIcon name="trophies" /><span>Trophées</span></button>
-          <button onClick={open('daily')}><NavIcon name="daily" /><span>Défis</span>{dailyLeft > 0 && <em>{dailyLeft}</em>}</button>
-          <button onClick={()=>{setState({landmarkId:null});open('journal')();}}><NavIcon name="journal"/><span>Carnet</span></button>
+          <button onClick={()=>{setState({landmarkId:null});open('journal')();}}><NavIcon name="journal"/><span>Journal</span>{dailyLeft>0 && <em>{dailyLeft}</em>}</button>
           <button onClick={open('settings')}><NavIcon name="settings" /><span>Réglages</span></button>
         </nav>
       )}

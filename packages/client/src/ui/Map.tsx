@@ -156,7 +156,7 @@ export function MapPanel() {
         <span><i style={{ background: '#9de5d6' }} />Lieu découvert</span>
         <span><i style={{ background: '#ffb76e' }} />Carte reconstituée</span>
       </div>
-      <button onClick={()=>setState({panel:'journal',landmarkId:null})}>Ouvrir le carnet d’exploration</button>
+      <button onClick={()=>setState({panel:'journal',journalTab:'quests',landmarkId:null})}>Journal de bord · Exploration</button>
       <p className="note">Largeur affichée : {SIZE * scale} tuiles. Pour rejoindre un port, utilise les destinations ci-dessus.</p>
     </Modal>
   );
