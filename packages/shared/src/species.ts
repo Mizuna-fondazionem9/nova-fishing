@@ -258,6 +258,28 @@ const shellPalettes:Record<string,[string,string,string]>={
 };
 for(const sp of SPECIES)if(shellPalettes[sp.id])sp.colors=shellPalettes[sp.id];
 
+// Robes propres aux espèces nées d'une série : chaque animal garde sa couleur même s'il partage une région.
+const ownPalettes: Record<string, string> = {
+  crabe_river_b: '#3f74b8 #bfe0ee #1f3f6e', crabe_river_c: '#9a6a3f #e6c690 #4a3a28',
+  crabe_volcanic_a: '#5c5664 #c4b6ae #2a2630', crabe_volcanic_c: '#2a2433 #8f7fb0 #c9486a',
+  crabe_crystal_a: '#d8c8d8 #ffffff #9a86b0', crabe_crystal_b: '#a8dcd0 #fff4f8 #e8a0c8', crabe_crystal_c: '#2f5fc0 #bfe0ff #1a2f70',
+  crabe_spectral_a: '#9fe0c0 #f0fff0 #4a8f80', crabe_spectral_b: '#6f9fa8 #d8f0e8 #2f4658', crabe_spectral_c: '#b7c9d8 #f4f8ff #5a6a8a',
+  crabe_coastal_b: '#8a7460 #e2d2b0 #3a5a9a', crabe_coastal_c: '#b0623f #f0d2a8 #5a2f22',
+  crabe_tropical_a: '#5a6fa8 #e8b070 #a8502f', crabe_tropical_c: '#5f6a3a #d8c890 #c8642f',
+  crabe_reef_a: '#f0e0e0 #ffffff #d0485a', crabe_reef_c: '#f4e8d0 #ffffff #c8642f',
+  crabe_temperate_b: '#8a5f7a #ecd9c0 #4a2f48', crabe_temperate_c: '#7a8a3a #d8d890 #3f4a22',
+  crabe_polar_a: '#d8a888 #fff0e0 #a05a48', crabe_polar_b: '#b8483a #f4c8a0 #6a1f28',
+  crabe_deep_a: '#8a5a3a #d8b890 #3f6a6a', crabe_deep_b: '#e8e0d0 #ffffff #c8a070',
+  crabe_abyss_a: '#e8e4d0 #ffffff #c0a878', crabe_abyss_b: '#3d5564 #a9d4d0 #5fe0d0', crabe_abyss_c: '#9a3f4a #d8b0a8 #3a2438',
+  crabe_mystic_a: '#d8d4b0 #ffffe8 #8a86c0', crabe_mystic_c: '#5a52a8 #e3c9ff #ffd86a',
+  koi_kohaku: '#f6f1e6 #ffffff #e0452f', koi_showa: '#26242c #f4efe6 #d8402f', carpe_doree: '#d9a23a #fbe9a8 #a8662a', perche_insulaire: '#7f9a4f #f0ecc8 #e0642f',
+  dunkleosteus: '#6a7f78 #d9c9a0 #2f4448', xiphactinus: '#4f7a8a #dfe6d8 #2a4050', leedsichthys: '#5f7a6a #e0d8b8 #33483f',
+  helicoprion: '#7a6f6a #e0d4c0 #3f3a44', saurichthys: '#7f8a5a #e8e0b8 #404a30',
+};
+for (const sp of SPECIES) if (ownPalettes[sp.id]) sp.colors = ownPalettes[sp.id].split(' ') as [string, string, string];
+// « Raie de cristal » est une raie : son ombre et sa famille suivent son nom.
+for (const sp of SPECIES) if (sp.id === 'poisson_crystal_b') { sp.shape = 'ray'; sp.sil = 'ray'; }
+
 export const SPECIES_BY_ID: Record<string, Species> = Object.fromEntries(SPECIES.map((s) => [s.id, s]));
 
 /** Profils de déplacement des prédateurs capturables au harpon à corde. */

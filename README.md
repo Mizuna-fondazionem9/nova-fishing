@@ -280,6 +280,10 @@ Le bouton œil en haut de l'écran masque le HUD. La navigation sur la mer, le l
 
 `npm run preview:sprites` génère les planches de contrôle à partir des véritables sprites Canvas dans `docs/art-preview/`.
 
+#### Illustrations du bestiaire
+
+Chaque espèce a sa propre fiche de dessin dans `packages/client/src/game/fish-specs.ts` (formes, nageoires, motifs), indexée par identifiant ; les couleurs restent dans `species.ts`. Les dessinateurs sont dans `fish-engine.ts` (poisson de profil paramétrable) et `fish-forms.ts` (raies, céphalopodes, crabes, crevettes, coquillages, tortue, hippocampe). Pour ajouter une espèce : ajouter sa fiche, lancer `npm run preview:sprites` et regarder `docs/art-preview/bestiaire-*.png`. `npm test` refuse une espèce sans fiche, deux silhouettes identiques ou presque identiques, et un dessin hors gabarit (88 × 60).
+
 
 ### Profils publics et aquariums du Hub
 
