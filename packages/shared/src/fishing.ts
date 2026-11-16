@@ -103,13 +103,16 @@ export interface CombatParams {
 export function makeCombatParams(f: FightStats, rod: RodStats, seed: number): CombatParams {
   // Usure passive : croît avec la puissance du poisson, freinée par la résistance de la canne.
   const drain = (0.677 * Math.pow(f.power, 0.9)) / Math.pow(rod.resistance, 0.4);
+  // Suitable power shortens routine catches; under-equipped rods retain the
+  // regional endurance barrier. Full relief starts at 75% of fish power.
+  const powerComfort = Math.max(0, Math.min(1, (rod.power / f.power - 0.25) / 0.5));
   return {
     seed: seed >>> 0,
     profile: f.profile,
     speed: f.speed,
     zone: Math.min(0.3, f.zone * (1 + rod.precision)),
     crit: 0.3,
-    stamina: f.stamina,
+    stamina: f.stamina * (1 - (f.routineStaminaReduction ?? 0) * powerComfort),
     line: rod.line,
     // L'usure minimale garantit qu'aucun combat ne dépasse ~2 minutes.
     drain: Math.max(drain, rod.line / 110),
