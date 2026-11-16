@@ -1,4 +1,4 @@
-import { predatorForShadow } from './predators';
+import { isPredatorSpecies, predatorForShadow } from './predators';
 // Spécimens (individus), variantes procédurales, prix, statistiques de combat et apparition des ombres.
 import { Rng, hashN, clamp } from './rng';
 import { CHUNK, BIOMES, tileAt, timeOfDay, weatherAt, type BiomeId, type Tile, type TimeOfDay, type Weather } from './world';
@@ -94,6 +94,8 @@ export interface FightStats {
   zone: number;
   aggr: number;
   profile: CursorProfile;
+  /** Maximum endurance relief for routine catches when rod power is adequate. */
+  routineStaminaReduction?: number;
 }
 
 /** Statistiques de combat d'un individu. Le niveau régional renforce surtout le « point fort » de l'espèce. */
@@ -102,6 +104,10 @@ export function fightStats(sp: Species, spec: Pick<Specimen, 'len' | 'tough' | '
   const tier = encounterTier(sp, spec.lvl, spec.biome);
   const sizeF = clamp(spec.len / ((sp.lmin + sp.lmax) / 2), 0.6, 2.2);
   const f = (k: Focus): number => 1 + (sp.focus === k ? 0.5 : 0.15) * bonus;
+  // Everyday catches should be brief with suitable gear. Keep regional pressure,
+  // species differences and variant multipliers, but reserve long fights for
+  // rare catches and predators. Crabs retain their separate target-click balance.
+  const ordinary = sp.rarity <= 1 && !sp.ancient && sp.sil !== 'crab' && !isPredatorSpecies(sp);
   return {
     stamina: 84 * Math.pow(tier, 0.8) * sp.stam * Math.pow(sizeF, 0.8) * (spec.tough ? 1.35 : 1) * (spec.trait==='armored'?1.18:spec.trait==='relentless'?1.1:spec.trait==='swift'?0.92:1) * f('endurant'),
     power: 6.5 * Math.pow(tier, 0.92) * sp.pow * Math.pow(sizeF, 0.5) * (spec.tough ? 1.15 : 1) * (spec.trait==='relentless'?1.15:1) * f('puissant'),
@@ -109,6 +115,7 @@ export function fightStats(sp: Species, spec: Pick<Specimen, 'len' | 'tough' | '
     zone: (spec.trait==='cunning'?0.85:1)*clamp((0.25 - 0.0035 * tier) / Math.sqrt(f('ruse')), 0.1, 0.25),
     aggr: sp.aggr,
     profile: sp.profile,
+    ...(ordinary ? { routineStaminaReduction: sp.rarity === 0 ? 0.45 : 0.35 } : {}),
   };
 }
 

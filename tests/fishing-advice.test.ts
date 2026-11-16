@@ -8,7 +8,7 @@ test('the visible sector names cover fractional regional levels without gaps',()
 });
 test('a specialised rod is rated by the average, without an imposed weakest upgrade',()=>{
  const up=zeroLevels();for(const k of ROD_KEYS)up[k]=10;up.reel=0;
- const advice=fishingAdvice(up,'coastal',1,'debutant');
+ const advice=fishingAdvice(up,'coastal',1,'moyen');
  assert.equal(advice.state,'ready');assert.equal(advice.stars,8.3);assert.equal('weakest' in advice,false);
  up.reel=10;assert.equal(rodStars(up),10);
  assert.notEqual(fishingAdvice(up,'coastal',10,'debutant').state,'ready');

@@ -29,5 +29,6 @@ test('guide covers all biomes and regional bands, using bounded upgrade levels a
  }
  const coast=guide.rows.find(r=>r.biome==='coastal'&&r.min===1)!;
  const abyss=guide.rows.find(r=>r.biome==='abyss'&&r.min===1)!;
- assert.ok(coast.debutant!==null&&coast.debutant<=5);assert.ok(abyss.debutant===null||abyss.debutant>coast.debutant);
+ assert.ok(coast.moyen!==null&&coast.moyen<=5);
+ assert.ok(coast.debutant!==null);assert.ok(abyss.debutant===null||abyss.debutant>coast.debutant);
 });

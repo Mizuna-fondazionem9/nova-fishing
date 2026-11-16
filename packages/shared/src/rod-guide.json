@@ -1,6 +1,9 @@
 {
-  "target": 0.75,
-  "samplesPerSpecies": 20,
+  "target": 0.8,
+  "samplesPerSpecies": 40,
+  "maxSeconds": 25,
+  "maxSuccessfulHits": 12,
+  "scope": "ordinary-per-species",
   "bands": [
     {
       "min": 1,
@@ -25,56 +28,56 @@
       "name": "Eaux côtières",
       "min": 1,
       "max": 3,
-      "debutant": 5,
-      "moyen": 1
+      "debutant": 11,
+      "moyen": 4
     },
     {
       "biome": "tropical",
       "name": "Mer tropicale",
       "min": 1,
       "max": 3,
-      "debutant": 7,
-      "moyen": 2
+      "debutant": 18,
+      "moyen": 8
     },
     {
       "biome": "reef",
       "name": "Récifs coralliens",
       "min": 1,
       "max": 3,
-      "debutant": 6,
-      "moyen": 1
+      "debutant": 11,
+      "moyen": 8
     },
     {
       "biome": "temperate",
       "name": "Océan tempéré",
       "min": 1,
       "max": 3,
-      "debutant": 8,
-      "moyen": 2
+      "debutant": 18,
+      "moyen": 9
     },
     {
       "biome": "polar",
       "name": "Eaux polaires",
       "min": 1,
       "max": 3,
-      "debutant": 12,
-      "moyen": 5
+      "debutant": 16,
+      "moyen": 13
     },
     {
       "biome": "deep",
       "name": "Océan profond",
       "min": 1,
       "max": 3,
-      "debutant": 15,
-      "moyen": 7
+      "debutant": 24,
+      "moyen": 19
     },
     {
       "biome": "abyss",
       "name": "Fosses abyssales",
       "min": 1,
       "max": 3,
-      "debutant": 39,
-      "moyen": 16
+      "debutant": null,
+      "moyen": 27
     },
     {
       "biome": "mystic",
@@ -82,55 +85,55 @@
       "min": 1,
       "max": 3,
       "debutant": null,
-      "moyen": 25
+      "moyen": 38
     },
     {
       "biome": "volcanic",
       "name": "Océan volcanique",
       "min": 1,
       "max": 3,
-      "debutant": 38,
-      "moyen": 12
+      "debutant": null,
+      "moyen": 21
     },
     {
       "biome": "crystal",
       "name": "Mer de cristal",
       "min": 1,
       "max": 3,
-      "debutant": 18,
-      "moyen": 10
+      "debutant": null,
+      "moyen": 18
     },
     {
       "biome": "spectral",
       "name": "Mer spectrale",
       "min": 1,
       "max": 3,
-      "debutant": 39,
-      "moyen": 17
+      "debutant": null,
+      "moyen": 27
     },
     {
       "biome": "river",
       "name": "Rivières insulaires",
       "min": 1,
       "max": 3,
-      "debutant": 4,
-      "moyen": 0
+      "debutant": 5,
+      "moyen": 4
     },
     {
       "biome": "coastal",
       "name": "Eaux côtières",
       "min": 4,
       "max": 8,
-      "debutant": 15,
-      "moyen": 7
+      "debutant": null,
+      "moyen": 12
     },
     {
       "biome": "tropical",
       "name": "Mer tropicale",
       "min": 4,
       "max": 8,
-      "debutant": 19,
-      "moyen": 9
+      "debutant": 50,
+      "moyen": 12
     },
     {
       "biome": "reef",
@@ -138,31 +141,31 @@
       "min": 4,
       "max": 8,
       "debutant": 16,
-      "moyen": 8
+      "moyen": 12
     },
     {
       "biome": "temperate",
       "name": "Océan tempéré",
       "min": 4,
       "max": 8,
-      "debutant": 18,
-      "moyen": 8
+      "debutant": null,
+      "moyen": 12
     },
     {
       "biome": "polar",
       "name": "Eaux polaires",
       "min": 4,
       "max": 8,
-      "debutant": 22,
-      "moyen": 11
+      "debutant": 34,
+      "moyen": 16
     },
     {
       "biome": "deep",
       "name": "Océan profond",
       "min": 4,
       "max": 8,
-      "debutant": 43,
-      "moyen": 13
+      "debutant": null,
+      "moyen": 22
     },
     {
       "biome": "abyss",
@@ -170,7 +173,7 @@
       "min": 4,
       "max": 8,
       "debutant": null,
-      "moyen": 21
+      "moyen": 29
     },
     {
       "biome": "mystic",
@@ -178,7 +181,7 @@
       "min": 4,
       "max": 8,
       "debutant": null,
-      "moyen": 27
+      "moyen": 41
     },
     {
       "biome": "volcanic",
@@ -186,23 +189,23 @@
       "min": 4,
       "max": 8,
       "debutant": null,
-      "moyen": 17
+      "moyen": 25
     },
     {
       "biome": "crystal",
       "name": "Mer de cristal",
       "min": 4,
       "max": 8,
-      "debutant": 39,
-      "moyen": 13
+      "debutant": null,
+      "moyen": 20
     },
     {
       "biome": "spectral",
       "name": "Mer spectrale",
       "min": 4,
       "max": 8,
-      "debutant": 45,
-      "moyen": 21
+      "debutant": null,
+      "moyen": 29
     },
     {
       "biome": "river",
@@ -210,7 +213,7 @@
       "min": 4,
       "max": 8,
       "debutant": 15,
-      "moyen": 8
+      "moyen": 13
     },
     {
       "biome": "coastal",
@@ -218,7 +221,7 @@
       "min": 9,
       "max": 15,
       "debutant": null,
-      "moyen": 18
+      "moyen": 34
     },
     {
       "biome": "tropical",
@@ -226,7 +229,7 @@
       "min": 9,
       "max": 15,
       "debutant": null,
-      "moyen": 23
+      "moyen": 30
     },
     {
       "biome": "reef",
@@ -234,7 +237,7 @@
       "min": 9,
       "max": 15,
       "debutant": null,
-      "moyen": 19
+      "moyen": 26
     },
     {
       "biome": "temperate",
@@ -242,7 +245,7 @@
       "min": 9,
       "max": 15,
       "debutant": null,
-      "moyen": 19
+      "moyen": 34
     },
     {
       "biome": "polar",
@@ -250,7 +253,7 @@
       "min": 9,
       "max": 15,
       "debutant": null,
-      "moyen": 23
+      "moyen": 29
     },
     {
       "biome": "deep",
@@ -258,7 +261,7 @@
       "min": 9,
       "max": 15,
       "debutant": null,
-      "moyen": 26
+      "moyen": 34
     },
     {
       "biome": "abyss",
@@ -266,7 +269,7 @@
       "min": 9,
       "max": 15,
       "debutant": null,
-      "moyen": 39
+      "moyen": null
     },
     {
       "biome": "mystic",
@@ -274,7 +277,7 @@
       "min": 9,
       "max": 15,
       "debutant": null,
-      "moyen": 34
+      "moyen": 45
     },
     {
       "biome": "volcanic",
@@ -282,7 +285,7 @@
       "min": 9,
       "max": 15,
       "debutant": null,
-      "moyen": 32
+      "moyen": 43
     },
     {
       "biome": "crystal",
@@ -290,7 +293,7 @@
       "min": 9,
       "max": 15,
       "debutant": null,
-      "moyen": 26
+      "moyen": 34
     },
     {
       "biome": "spectral",
@@ -298,15 +301,15 @@
       "min": 9,
       "max": 15,
       "debutant": null,
-      "moyen": 35
+      "moyen": null
     },
     {
       "biome": "river",
       "name": "Rivières insulaires",
       "min": 9,
       "max": 15,
-      "debutant": 39,
-      "moyen": 18
+      "debutant": 36,
+      "moyen": 27
     },
     {
       "biome": "coastal",
