@@ -6,8 +6,8 @@ const params = (precision = 0) => ({ ...makeCombatParams(fightStats(crab, { len:
 const wait = (c: Combat, tick: number) => { while (c.tick < tick && c.state === 'run') c.step(); };
 
 test('trois crabes spécifiques dans chacun des douze biomes, avec silhouettes distinctes', () => {
-  assert.equal(SPECIES.filter(s => s.sil === 'crab').length, 36);
-  for (const biome of BIOME_IDS) assert.equal(SPECIES.filter(s => s.sil === 'crab' && s.biomes.includes(biome)).length, 3);
+  assert.equal(SPECIES.filter(s => s.id.startsWith('crabe_') && !s.fieldNotes && s.sil === 'crab').length, 36);
+  for (const biome of BIOME_IDS) assert.equal(SPECIES.filter(s => s.id.startsWith('crabe_') && !s.fieldNotes && s.sil === 'crab' && s.biomes.includes(biome)).length, 3);
 });
 test('parfait à 280 ms, coup normal après, cible plus grande et délai plus long avec précision', () => {
   const c = new Combat(params());

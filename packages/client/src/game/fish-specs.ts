@@ -5,7 +5,16 @@ import type { Species } from '../../../shared/src/index';
 import { drawEye, seedOf, type Fin, type FinKind, type FishSpec, type Kit } from './fish-engine';
 import type { RaySpec, CephSpec, CrabSpec, CrustSpec, ShellSpec, TurtleSpec, SeahorseSpec } from './fish-forms';
 
-export type ArtSpec =
+import type { AnimalSpec } from './catalog-art/animals';
+import { art as riverArt } from './catalog-art/river';
+import { art as coastalArt } from './catalog-art/coastal';
+import { art as reefArt } from './catalog-art/reef';
+import { art as tropicalArt } from './catalog-art/tropical';
+import { art as deepArt } from './catalog-art/deep';
+import { art as polarArt } from './catalog-art/polar';
+import { art as abyssArt } from './catalog-art/abyss';
+
+export type ArtSpec = AnimalSpec
   | (FishSpec & { r?: 'fish' }) | (RaySpec & { r: 'ray' }) | (CephSpec & { r: 'ceph' }) | (CrabSpec & { r: 'crab' })
   | (CrustSpec & { r: 'crust' }) | (ShellSpec & { r: 'shell' }) | (TurtleSpec & { r: 'turtle' }) | (SeahorseSpec & { r: 'horse' });
 
@@ -20,6 +29,7 @@ const WH = '#f6f4ea';
 const INK = '#1b1b26';
 
 export const SPECS: Record<string, ArtSpec> = {
+  ...riverArt, ...coastalArt, ...reefArt, ...tropicalArt, ...deepArt, ...polarArt, ...abyssArt,
   // =========================================================================
   // Eaux côtières
   // =========================================================================
