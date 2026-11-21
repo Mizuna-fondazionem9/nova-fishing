@@ -358,7 +358,7 @@ export function BestiaryPanel() {
       <Modal title="Bestiaire" onClose={() => setPick(null)}>
         <div className="showcase"><FishIcon sp={pick} color={color} scale={4} animate hidden={!e} /></div>
         <h3 className="species" style={{ color: RARITY_COLORS[pick.rarity] }}>{e ? pick.name : 'Espèce à découvrir'}</h3>
-        <p className="tags"><Rarity r={pick.rarity} /><span className="tag">{SILHOUETTE_NAMES[pick.sil]}</span>{trait&&<span className="tag green">{TRAIT_NAMES[trait]}</span>}</p>
+        <p className="tags"><Rarity r={pick.rarity} /><span className="tag">{(e && pick.fieldNotes?.group) || SILHOUETTE_NAMES[pick.sil]}</span>{trait&&<span className="tag green">{TRAIT_NAMES[trait]}</span>}</p>
         <p className="desc">{e ? pick.desc : 'Une silhouette manque encore à votre carnet. Voici où tenter votre chance.'}</p>
         <Section title="Quand lancer la ligne ?">
           <div className="conditions"><span>◷ {pick.prefs.time ? `Plus fréquent : ${pick.prefs.time}` : 'À toute heure'}</span><span>☁ {pick.prefs.weather ? `Météo favorable : ${pick.prefs.weather}` : 'Toute météo'}</span></div>
@@ -369,6 +369,11 @@ export function BestiaryPanel() {
           {!e.variants && <p className="note">Les anciennes prises vendues n’enregistraient pas leurs variantes. Vos prises conservées sont visibles ; les prochaines seront mémorisées définitivement.</p>}
         </Section>}
         <dl className="facts">
+          {e && pick.fieldNotes && <>
+            <div className="full"><dt>Nom scientifique</dt><dd><i>{pick.fieldNotes.scientificName}</i></dd></div>
+            <div><dt>Taille adulte</dt><dd>{pick.fieldNotes.sizeRange}</dd></div>
+            <div><dt>{pick.fieldNotes.estimatedWeight ? 'Poids estimé' : 'Poids adulte'}</dt><dd>{pick.fieldNotes.weightRange}</dd></div>
+          </>}
           <div><dt>Captures</dt><dd>{e?.n ?? 0}</dd></div>
           <div><dt>Plus grand</dt><dd>{e ? fmtLen(e.maxLen) : '—'}</dd></div>
           <div><dt>Poids record</dt><dd>{e ? fmtKg(e.maxKg) : '—'}</dd></div>

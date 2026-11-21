@@ -1,6 +1,15 @@
 // Base des espèces. Les identifiants sont STABLES : ne jamais les renommer (sauvegardes, bestiaire).
 import { BIOME_IDS, type BiomeId, type TimeOfDay, type Weather } from './world';
 
+import type { FieldEntry, FieldNotes } from './catalog/types';
+import { entries as riverEntries } from './catalog/river';
+import { entries as coastalEntries } from './catalog/coastal';
+import { entries as reefEntries } from './catalog/reef';
+import { entries as tropicalEntries } from './catalog/tropical';
+import { entries as deepEntries } from './catalog/deep';
+import { entries as polarEntries } from './catalog/polar';
+import { entries as abyssEntries } from './catalog/abyss';
+
 export type Silhouette = 'small' | 'long' | 'massive' | 'shark' | 'ray' | 'cephalo' | 'giant' | 'crab';
 export const SILHOUETTE_NAMES: Record<Silhouette, string> = {
   crab: 'Crabe',
@@ -40,6 +49,8 @@ export interface Species {
   lmin: number;
   lmax: number;
   kgMax: number;
+  kgMin?: number;
+  fieldNotes?: FieldNotes;
   rarity: number;
   /** Difficulté de référence (1 = sardine, 30 = léviathan). */
   tier: number;
@@ -279,6 +290,27 @@ const ownPalettes: Record<string, string> = {
 for (const sp of SPECIES) if (ownPalettes[sp.id]) sp.colors = ownPalettes[sp.id].split(' ') as [string, string, string];
 // « Raie de cristal » est une raie : son ombre et sa famille suivent son nom.
 for (const sp of SPECIES) if (sp.id === 'poisson_crystal_b') { sp.shape = 'ray'; sp.sil = 'ray'; }
+
+// Depths are normalized map coordinates. The river channel is at 0.22.
+const habitats: [BiomeId, number, number, FieldEntry[]][] = [
+  ['river', 0.04, 0.48, riverEntries],
+  ['coastal', 0.02, 0.4, coastalEntries],
+  ['reef', 0.04, 0.44, reefEntries],
+  ['tropical', 0.23, 0.65, tropicalEntries],
+  ['deep', 0.62, 1, deepEntries],
+  ['polar', 0.05, 0.82, polarEntries],
+  ['abyss', 0.63, 1, abyssEntries],
+];
+for (const [biome, dmin, dmax, entries] of habitats) {
+  for (const entry of entries) {
+    const { id, name, description, lmin, lmax, kgMin, kgMax, tier, rarity, sil, shape, colors, ...fieldNotes } = entry;
+    const species = S(id, name, description, biome, dmin, dmax, sil, lmin, lmax, kgMax, rarity, tier, shape, colors.join(' '));
+    species.fieldNotes = fieldNotes;
+    species.kgMin = kgMin;
+    if (id === 'calmar_de_humboldt') species.aggr = 0.75;
+    SPECIES.push(species);
+  }
+}
 
 export const SPECIES_BY_ID: Record<string, Species> = Object.fromEntries(SPECIES.map((s) => [s.id, s]));
 

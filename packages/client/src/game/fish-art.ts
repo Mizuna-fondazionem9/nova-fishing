@@ -1,6 +1,7 @@
 // Illustration d'une espèce : choisit le bon dessinateur d'après sa fiche et rend les deux images de nage.
 // Module pur : utilisable dans les tests sans navigateur.
 import type { Species } from '../../../shared/src/index';
+import { drawAnimal } from './catalog-art/animals';
 import { Grid } from './pix';
 import { drawFish, makeCols, seedOf, type Cols } from './fish-engine';
 import { drawRay, drawCeph, drawCrab, drawCrust, drawShell, drawTurtle, drawSeahorse } from './fish-forms';
@@ -8,6 +9,7 @@ import { specOf, type ArtSpec } from './fish-specs';
 
 export function renderSpec(spec: ArtSpec, cols: Cols, frame: number, seed: number): Grid {
   switch (spec.r) {
+    case 'animal': return drawAnimal(spec, cols, frame);
     case 'ray': return drawRay(spec, cols, frame, seed);
     case 'ceph': return drawCeph(spec, cols, frame, seed);
     case 'crab': return drawCrab(spec, cols, frame, seed);

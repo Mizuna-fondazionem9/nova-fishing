@@ -1,7 +1,7 @@
 import { isPredatorSpecies, predatorForShadow } from './predators';
 // Spécimens (individus), variantes procédurales, prix, statistiques de combat et apparition des ombres.
 import { Rng, hashN, clamp } from './rng';
-import { CHUNK, BIOMES, tileAt, timeOfDay, weatherAt, type BiomeId, type Tile, type TimeOfDay, type Weather } from './world';
+import { CHUNK, BIOME_IDS, BIOMES, tileAt, timeOfDay, weatherAt, type BiomeId, type Tile, type TimeOfDay, type Weather } from './world';
 import { SPECIES, SPECIES_BY_ID, RARITY_VALUE, RARITY_WEIGHT, type Species, type Silhouette, type CursorProfile, type Focus } from './species';
 
 export interface Specimen {
@@ -72,12 +72,19 @@ export function rollSpecimen(rng: Rng, sp: Species, lvl: number, biome: BiomeId,
   if (size === 3) len = sp.lmax * (1.32 + 0.18 * rng.next());
   if(size===4)len=sp.lmin*rng.range(0.45,0.75);
   if(size===5)len=sp.lmax*rng.range(1.5,1.65);
-  const kg = sp.kgMax * Math.pow(len / sp.lmax, 3) * rng.range(0.9, 1.1);
+  let kg = sp.kgMax * Math.pow(len / sp.lmax, 3) * rng.range(0.9, 1.1);
+  if (sp.kgMin !== undefined) {
+    // The field catalogue supplies both adult endpoints. Interpolate on a
+    // cubic length curve; exceptional sizes can fall outside the adult range.
+    const fraction = (len ** 3 - sp.lmin ** 3) / (sp.lmax ** 3 - sp.lmin ** 3);
+    kg = size === 0 ? sp.kgMin + fraction * (sp.kgMax - sp.kgMin)
+      : size === 4 ? sp.kgMin * (len / sp.lmin) ** 3 : sp.kgMax * (len / sp.lmax) ** 3;
+  }
   const c = rng.next();
   const color = c < 0.001*colorBoost ? 4 : c < 0.005*colorBoost ? 3 : c < 0.015*colorBoost ? 2 : c < 0.025*colorBoost ? 1 : c < 0.031*colorBoost ? 5 : c < 0.037*colorBoost ? 6 : c < 0.043*colorBoost ? 7 : 0;
   const tough = rng.chance(0.06 + 0.02 * regionBonus(lvl));
   const spec: Specimen = {
-    uid, sp: sp.id, len: Math.round(len * 10) / 10, kg: Math.max(0.001, Math.round(kg * 1000) / 1000),
+    uid, sp: sp.id, len: Math.round(len * 10) / 10, kg: sp.kgMin === undefined ? Math.max(0.001, Math.round(kg * 1000) / 1000) : Math.max(0.000001, Math.round(kg * 1e6) / 1e6),
     size, color, tough, lvl: Math.round(lvl * 10) / 10, value: 0, at: now, biome,
   };
   const t=rng.next();
@@ -119,8 +126,9 @@ export function fightStats(sp: Species, spec: Pick<Specimen, 'len' | 'tough' | '
   };
 }
 
+const habitatPools = new Map(BIOME_IDS.map(b => [b, SPECIES.filter(sp => sp.biomes.includes(b))]));
+
 function weightOf(sp: Species, tile: Tile, tod: TimeOfDay, weather: Weather): number {
-  if (!sp.biomes.includes(tile.biome)) return 0;
   if (tile.depth < sp.dmin - 0.05 || tile.depth > sp.dmax + 0.05) return 0;
   let w = RARITY_WEIGHT[sp.rarity] * (sp.ancient ? 0.18 : 1);
   if (sp.rarity >= 2) w *= 1 + 0.6 * regionBonus(tile.level);
@@ -130,11 +138,12 @@ function weightOf(sp: Species, tile: Tile, tod: TimeOfDay, weather: Weather): nu
 }
 
 /** Tire une espèce pour une tuile. Si `sil` est fourni, seules les espèces de cette silhouette sont candidates. */
-export function pickSpecies(rng: Rng, tile: Tile, tod: TimeOfDay, weather: Weather, sil?: Silhouette, excludeCrabs = false, bait = 'none', rareBoost = 1): Species | null {
+export function pickSpecies(rng: Rng, tile: Tile, tod: TimeOfDay, weather: Weather, sil?: Silhouette, excludeCrabs = false, bait = 'none', rareBoost = 1, passiveOnly = false): Species | null {
   const items: Species[] = [];
   const weights: number[] = [];
-  for (const sp of SPECIES) {
+  for (const sp of habitatPools.get(tile.biome) ?? []) {
     if (sil && sp.sil !== sil) continue;
+    if (passiveOnly && isPredatorSpecies(sp)) continue;
     if (excludeCrabs && sp.sil === 'crab') continue;
     const w = weightOf(sp, tile, tod, weather)*(bait==='glimmer'&&sp.rarity>=2?1.75:1)*(sp.rarity>=2?Math.max(1,Math.min(2,rareBoost)):1);
     if (w > 0) {
@@ -163,6 +172,8 @@ export interface Shadow {
   size: number;
   seed: number;
   school: number;
+  /** Species for a hostile roll, null for a peaceful silhouette. */
+  predatorId?: string | null;
   biome: BiomeId;
   depth: number;
 }
@@ -190,7 +201,7 @@ function rawShadows(seed: number, cx: number, cy: number, slot: number): Shadow[
     out.push({
       key: shadowKey(cx, cy, slot, i), cx, cy, slot, idx: i, x, y, sil: sp.sil,
       size: rng.next(), seed: rng.int(1, 1_000_000_000), school: sp.sil === 'small' ? rng.int(1, 5) : 1,
-      biome: t.biome, depth: t.depth,
+      biome: t.biome, depth: t.depth, predatorId: isPredatorSpecies(sp) ? sp.id : null,
     });
   }
   return out;
@@ -214,7 +225,7 @@ export function spawnShadows(seed: number, cx: number, cy: number, slot: number)
     const rng = new Rng(hashN(seed,s.cx,s.cy,slot,s.idx,818));
     const tile = tileAt(seed,Math.floor(s.x),Math.floor(s.y));
     const sp = pickSpecies(rng,tile,timeOfDay(slot*SLOT_MS),weatherAt(seed,slot*SLOT_MS,s.x,s.y),undefined,true);
-    return sp ? [{...s,sil:sp.sil,school:sp.sil==='small' ? rng.int(1,5) : 1}] : [];
+    return sp ? [{...s,sil:sp.sil,predatorId:isPredatorSpecies(sp) ? sp.id : null,school:sp.sil==='small' ? rng.int(1,5) : 1}] : [];
   });
 }
 
@@ -222,6 +233,6 @@ export function spawnShadows(seed: number, cx: number, cy: number, slot: number)
 export function speciesForShadow(secret: Rng, seed: number, sh: Shadow, bait = 'none', rareBoost = 1): { sp: Species; tile: Tile } | null {
   const tile = tileAt(seed, Math.floor(sh.x), Math.floor(sh.y));
   const ms = sh.slot * SLOT_MS;
-  const sp = predatorForShadow(sh) ?? pickSpecies(secret, tile, timeOfDay(ms), weatherAt(seed, ms, sh.x, sh.y), sh.sil,false,bait,rareBoost);
+  const sp = predatorForShadow(sh) ?? pickSpecies(secret, tile, timeOfDay(ms), weatherAt(seed, ms, sh.x, sh.y), sh.sil,false,bait,rareBoost,true);
   return sp ? { sp, tile } : null;
 }

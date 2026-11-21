@@ -9,7 +9,7 @@ import type { Game } from '../game/game';
 export const rt: { game: Game | null } = { game: null };
 
 export const fmt = (n: number): string => Math.round(n).toLocaleString('fr-FR');
-export const fmtKg = (kg: number): string => (kg >= 1000 ? `${(kg / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} t` : kg >= 10 ? `${kg.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} kg` : kg >= 1 ? `${kg.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} kg` : `${Math.round(kg * 1000)} g`);
+export const fmtKg = (kg: number): string => (kg >= 1000 ? `${(kg / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} t` : kg >= 10 ? `${kg.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} kg` : kg >= 1 ? `${kg.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} kg` : `${(kg * 1000).toLocaleString('fr-FR', { maximumFractionDigits: kg < 0.001 ? 3 : 0 })} g`);
 export const fmtLen = (cm: number): string => (cm >= 100 ? `${(cm / 100).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} m` : `${cm.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} cm`);
 /** Nombre à une décimale, à la française : 1,6. */
 export const fmt1 = (n: number): string => n.toFixed(1).replace('.', ',');
@@ -66,11 +66,39 @@ export function FishIcon({ sp, color = 0, scale = 2, animate = false, hidden = f
     };
     const observer = contain ? new ResizeObserver(resize) : null;
     if (observer && c.parentElement) observer.observe(c.parentElement);
+    // The bestiary can hold hundreds of cards on a phone. Paint a static
+    // thumbnail when its row is about to scroll into view.
+    if (fit && !animate && !contain && typeof IntersectionObserver !== 'undefined') {
+      c.width = 132;
+      c.height = 62;
+      const visible = new IntersectionObserver(entries => {
+        if (entries.some(entry => entry.isIntersecting)) {
+          draw();
+          visible.disconnect();
+        }
+      }, { rootMargin: '180px' });
+      visible.observe(c);
+      return () => visible.disconnect();
+    }
     draw(); resize();
     if (!animate) return () => observer?.disconnect();
     const id = setInterval(() => {
       frame++;
-      draw(); resize();
+      // The bestiary can hold hundreds of cards on a phone. Paint a static
+    // thumbnail when its row is about to scroll into view.
+    if (fit && !animate && !contain && typeof IntersectionObserver !== 'undefined') {
+      c.width = 132;
+      c.height = 62;
+      const visible = new IntersectionObserver(entries => {
+        if (entries.some(entry => entry.isIntersecting)) {
+          draw();
+          visible.disconnect();
+        }
+      }, { rootMargin: '180px' });
+      visible.observe(c);
+      return () => visible.disconnect();
+    }
+    draw(); resize();
     }, 380);
     return () => { clearInterval(id); observer?.disconnect(); };
   }, [sp, color, scale, animate, hidden, gfx, fit, contain]);

@@ -36,7 +36,7 @@ export interface RaySpec {
   /** Position de la largeur maximale (0 = avant) ; courbure des bords avant et arrière. */
   f?: number; a?: number; b?: number;
   /** Recul des pointes d'ailes, rostre, cornes céphaliques (pixels). */
-  sweep?: number; snout?: number; horns?: number;
+  sweep?: number; snout?: number; horns?: number; sawTeeth?: boolean;
   /** Queue : longueur, genre, couleur. */
   tail?: [number, 'whip' | 'thick' | 'fins' | 'ribbon' | 'barb', C?];
   /** Lobes pelviens (pixels). */
@@ -95,6 +95,9 @@ export function drawRay(s: RaySpec, cols: Cols, frame: number, seed: number): Gr
     }
   }
   if (s.snout) for (let j = 1; j <= s.snout; j++) { g.set(xs + j, CY, cols.m); if (j < s.snout * 0.6) { g.set(xs + j, CY - 1, cols.m); g.set(xs + j, CY + 1, cols.m); } }
+  if (s.sawTeeth && s.snout) for (let j=2; j<s.snout; j+=2) {
+    for (const side of [-1,1]) g.line(xs+j, CY, xs+j+1, CY+side*(j%4 ? 3 : 2), cols.b);
+  }
   const eyes = s.eyes ?? [Math.max(3, Math.round(Ld * 0.18)), Math.max(2, Math.round(W * 0.16))];
   s.post?.({ ...kit, xs });
   g.outline(0.55, true);
