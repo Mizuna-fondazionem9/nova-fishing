@@ -346,6 +346,10 @@ button:focus-visible, input:focus-visible { outline: 3px solid #efd595; outline-
 .journal-intro { font: italic 26px Georgia,serif; color: #eeddb7; }
 .journal-intro span { display: block; font: 14px/1.6 var(--f-body); color: var(--dim); margin-top: 8px; }
 .search { width: 100%; border: 1px solid #5b707a; border-radius: 10px; background: #0c1b28; color: #fff; padding: 14px; font: inherit; }
+.bestiary-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.bestiary-filters .search { flex: 1 1 18rem; min-width: 0; }
+.bestiary-filters button { min-height: 44px; }
+.bestiary-filters button[aria-pressed=true] { border-color: #9ab7a3; background: #355b61; }
 .conditions { display: flex; flex-wrap: wrap; gap: 10px; }
 .conditions span { background: #233f49; color: #e2e8da; padding: 10px 14px; border-radius: 9px; font-size: 13px; }
 .variant-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
