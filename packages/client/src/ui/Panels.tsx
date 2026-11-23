@@ -345,6 +345,7 @@ export function BestiaryPanel() {
   const [color, setColor] = useState(0);
   const [trait,setTrait]=useState<SpecimenTrait|undefined>();
   const [query, setQuery] = useState('');
+  const [onlyUndiscovered, setOnlyUndiscovered] = useState(false);
   const [pick, setPick] = useState<Species | null>(null);
   const groups = useMemo(() => BIOME_IDS.map((b) => [b, SPECIES.filter((s) => s.biomes[0] === b)] as const), []);
   const known = Object.keys(bestiary).length;
@@ -384,6 +385,14 @@ export function BestiaryPanel() {
       </Modal>
     );
   }
+  const search = query.trim().toLocaleLowerCase('fr');
+  const visibleGroups = groups.map(([biome, species]) => {
+    const visible = species.filter(sp => {
+      if (onlyUndiscovered) return !bestiary[sp.id];
+      return !search || (bestiary[sp.id] && sp.name.toLocaleLowerCase('fr').includes(search));
+    });
+    return [biome, visible] as const;
+  }).filter(([, species]) => species.length > 0);
   return (
     <Modal
       title="Bestiaire"
@@ -391,9 +400,13 @@ export function BestiaryPanel() {
       top={<div className="balance"><span className="k">Espèces découvertes</span><b className="num">{known} / {SPECIES.length}</b><Bar value={known} max={SPECIES.length} color="#a05cf0" /></div>}
     >
       <p className="journal-intro">Le carnet des marées <span>Chaque silhouette, une rencontre à venir.</span></p>
-      <input className="search" aria-label="Rechercher une espèce découverte" placeholder="Rechercher une espèce découverte…" value={query} onChange={e => setQuery(e.target.value)} />
-      {groups.map(([b, all]) => [b, all.filter(sp => !query || (bestiary[sp.id] && sp.name.toLocaleLowerCase('fr').includes(query.toLocaleLowerCase('fr'))))] as const).filter(([, list]) => list.length).map(([b, list]) => (
-        <Section key={b} title={BIOMES[b].name} aside={`${list.filter((s) => bestiary[s.id]).length} / ${list.length}`}>
+      <div className="bestiary-filters">
+        <button type="button" aria-pressed={onlyUndiscovered} onClick={() => setOnlyUndiscovered(active => !active)}>À découvrir</button>
+        {!onlyUndiscovered && <input className="search" aria-label="Rechercher une espèce découverte" placeholder="Rechercher une espèce découverte…" value={query} onChange={e => setQuery(e.target.value)} />}
+      </div>
+      {visibleGroups.length === 0 && <p className="empty" role="status">{onlyUndiscovered ? 'Tu as découvert toutes les espèces du bestiaire !' : 'Aucune espèce découverte ne correspond à ta recherche.'}</p>}
+      {visibleGroups.map(([b, list]) => (
+        <Section key={b} title={BIOMES[b].name} aside={onlyUndiscovered ? `${list.length} à découvrir` : `${list.filter((s) => bestiary[s.id]).length} / ${list.length}`}>
           <div className="spgrid">{list.map((sp) => <SpeciesCard key={sp.id} sp={sp} onPick={sp => { setColor(0); setTrait(undefined); setPick(sp); }} />)}</div>
         </Section>
       ))}
